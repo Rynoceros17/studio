@@ -12,7 +12,7 @@ import {
   isSameDay,
   parseISO,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil } from 'lucide-react'; // Removed Star
+import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star } from 'lucide-react'; // Added Star back for high priority indicator
 import {
   DndContext,
   closestCenter,
@@ -145,18 +145,16 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     return (
         <Card
           className={cn(
-            "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words", // Added min-h
+            "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words border", // Added border for base styling
             isCompleted
-              ? 'bg-muted opacity-60'
+              ? 'bg-muted opacity-60 border-border' // Completed styling
               : task.highPriority
-                ? 'bg-accent/30' // Apply gold background for high priority
-                : 'bg-card',      // Default background
+                ? 'bg-card border-accent border-2' // High priority, not completed: white bg, gold border
+                : 'bg-card border-border',      // Default background and border
             isDragging && 'shadow-lg scale-105 border-2 border-primary animate-pulse',
             'transition-all duration-300 ease-in-out'
-            // Removed 'relative' - no longer needed for star
           )}
         >
-          {/* Removed Star Icon */}
           <div className="flex items-start justify-between gap-1 flex-grow">
              <div className="pt-0.5 text-muted-foreground cursor-grab shrink-0">
                 <GripVertical className="h-3 w-3" />
@@ -169,6 +167,8 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
                  title={task.name}
                >
                 {nameDisplay}
+                {/* Optional: Add a visual indicator for high priority within the card */}
+                {task.highPriority && !isCompleted && <Star className="inline-block h-3 w-3 ml-1 text-accent fill-accent" />}
               </p>
               {descriptionDisplay && (
                 <p className={cn(
@@ -239,10 +239,6 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
            const timer = setTimeout(() => setIsCompletedAnim(false), 500); // Match animation duration
            return () => clearTimeout(timer);
          }
-          // If task becomes incomplete, remove animation state immediately (optional)
-         // if (!isCompleted && isCompletedAnim) {
-         //    setIsCompletedAnim(false);
-         // }
        }, [isCompleted, isCompletedAnim]); // Depend on isCompleted and isCompletedAnim
 
   const handleToggleCompletion = (e: React.MouseEvent) => {
@@ -282,19 +278,16 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
     >
         <Card
             className={cn(
-                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer", // Added cursor-pointer, min-h
+                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer border", // Base styles + border
                 isCompleted
-                  ? 'bg-muted opacity-60' // Completed style
+                  ? 'bg-muted opacity-60 border-border' // Completed style
                   : task.highPriority
-                    ? 'bg-accent/30' // High priority, not completed: gold background
-                    : 'bg-card',       // Default background
-                isCompletedAnim && !isCompleted && 'animate-task-complete', // Apply animation ONLY if completing (isCompletedAnim is true and isCompleted is becoming true) - border removed
-                 // Removed gold border from completion animation
+                    ? 'bg-card border-accent border-2' // High priority, not completed: white bg, gold border
+                    : 'bg-card border-border',       // Default background and border
+                isCompletedAnim && 'animate-task-complete', // Apply animation when completing
                 'transition-all duration-300 ease-in-out'
-                // Removed 'relative' - no longer needed for star
             )}
         >
-            {/* Removed Star Icon */}
           <div className="flex items-start justify-between gap-1 flex-grow">
              <button
                 {...listeners} // Apply drag listeners only to the handle
@@ -313,6 +306,8 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
                  title={task.name}
                >
                  {nameDisplay}
+                 {/* Optional: Add a visual indicator for high priority within the card */}
+                 {task.highPriority && !isCompleted && <Star className="inline-block h-3 w-3 ml-1 text-accent fill-accent" />}
                </p>
                {descriptionDisplay && (
                  <p
@@ -507,7 +502,6 @@ export function CalendarView({
 
     const modifiers = useMemo(() => [
         restrictToVerticalAxis, // Only allow vertical movement
-        // restrictToParentElement, // Restrict movement within the SortableContext container (day column) - May cause issues if columns resize
         restrictToWindowEdges, // Prevent dragging outside the window entirely (fallback)
       ], []);
 
