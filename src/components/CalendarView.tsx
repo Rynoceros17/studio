@@ -24,6 +24,7 @@ import {
   DragOverlay, // Import DragOverlay
   defaultDropAnimationSideEffects, // Import default drop animation
   type DropAnimation,
+  MeasuringStrategy, // Import MeasuringStrategy
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -62,10 +63,6 @@ interface CalendarViewProps {
   updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
   toggleTaskCompletion: (id: string) => void;
   completedTasks: Set<string>; // Ensure this is expected as a Set
-  activeId: string | null; // Add activeId to props
-  handleDragStart: (event: any) => void; // Add handleDragStart
-  handleDragEnd: (event: DragEndEvent) => void; // Add handleDragEnd
-  handleDragCancel: () => void; // Add handleDragCancel
 }
 
 
@@ -78,7 +75,8 @@ interface SortableTaskProps {
 }
 
 // Helper function to truncate text
-const truncateText = (text: string, maxLength: number): string => {
+const truncateText = (text: string | undefined, maxLength: number): string => {
+    if (!text) return '';
     if (text.length <= maxLength) {
         return text;
     }
@@ -87,8 +85,9 @@ const truncateText = (text: string, maxLength: number): string => {
 
 // Non-sortable Task Item for DragOverlay
 function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
-    const nameDisplay = truncateText(task.name, 20); // Limit name length
-    const descriptionDisplay = task.description ? truncateText(task.description, 30) : ''; // Limit description length
+    // Reduced truncation limits for 7-column view
+    const nameDisplay = truncateText(task.name, 15); // Limit name length
+    const descriptionDisplay = truncateText(task.description, 25); // Limit description length
 
     return (
         <Card
@@ -168,8 +167,9 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
     deleteTask(task.id);
   }
 
-  const nameDisplay = truncateText(task.name, 20); // Limit name length
-  const descriptionDisplay = task.description ? truncateText(task.description, 30) : ''; // Limit description length
+  // Reduced truncation limits for 7-column view
+  const nameDisplay = truncateText(task.name, 15); // Limit name length
+  const descriptionDisplay = truncateText(task.description, 25); // Limit description length
 
 
   return (
@@ -178,7 +178,7 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
         {/* The Card is the visual representation */}
         <Card
             className={cn(
-                "p-3 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[70px] flex flex-col justify-between", // Ensure height allows content, flex layout
+                "p-3 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[70px] flex flex-col justify-between", // Ensure height allows content, flex layout, overflow hidden
                 isCompleted ? 'bg-muted opacity-60' : 'bg-card',
                 // isDragging && 'shadow-lg scale-105 border-2 border-primary animate-pulse', // Style moved to DragOverlay item
                 isCompleted ? 'border-2 border-accent animate-pulse' : '', // Gold border on completion with subtle pulse
@@ -248,7 +248,7 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
 }
 
 // Omit the props that will be managed internally by this component's state hooks
-export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCompletion, completedTasks }: Omit<CalendarViewProps, 'activeId' | 'handleDragStart' | 'handleDragEnd' | 'handleDragCancel'>) {
+export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCompletion, completedTasks }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false); // State to track client-side rendering
@@ -453,6 +453,7 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
       modifiers={[restrictToVerticalAxis, restrictToWindowEdges]} // Use imported modifiers
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} // Add measuring strategy
     >
       <div className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
