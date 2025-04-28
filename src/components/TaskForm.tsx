@@ -13,9 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from "@/components/ui/checkbox"; // Added Checkbox
+import { Label } from "@/components/ui/label"; // Added Label
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-// Removed useToast import as it's handled in the parent now
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,7 @@ const formSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
+  recurring: z.boolean().optional().default(false), // Add recurring field with default
 });
 
 type TaskFormValues = z.infer<typeof formSchema>;
@@ -33,7 +35,6 @@ interface TaskFormProps {
 }
 
 export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
-  // Removed toast instance
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const form = useForm<TaskFormValues>({
@@ -42,6 +43,7 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
       name: "",
       description: "",
       date: undefined, // Initialize date as undefined
+      recurring: false, // Initialize recurring as false
     },
   });
 
@@ -50,18 +52,20 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
       name: data.name,
       description: data.description,
       date: format(data.date, 'yyyy-MM-dd'), // Format date before adding
+      recurring: data.recurring, // Include recurring status
+       // Initialize other optional fields
+       details: '',
+       dueDate: undefined,
+       files: [],
     };
     addTask(newTask);
     form.reset(); // Reset form after submission
-    // Removed toast call here
     onTaskAdded?.(); // Call the callback if provided (e.g., to close a dialog)
   };
 
   return (
-    // Removed bg-secondary, p-6, rounded-lg, shadow - let the Dialog handle styling
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-         {/* Removed heading - Dialog has its own title */}
         <FormField
           control={form.control}
           name="name"
@@ -69,7 +73,7 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
             <FormItem>
               <FormLabel>Task Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Buy groceries" {...field} />
+                <Input placeholder="e.g., Dr Du Homework" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -82,7 +86,7 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
             <FormItem>
               <FormLabel>Description (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="e.g., Milk, eggs, bread" {...field} />
+                <Textarea placeholder="e.g., Math Extension 1" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -129,6 +133,26 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
             </FormItem>
           )}
         />
+         <FormField
+            control={form.control}
+            name="recurring"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/30">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>
+                    Repeat Weekly
+                  </FormLabel>
+                  <FormMessage />
+                </div>
+              </FormItem>
+            )}
+          />
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
           <PlusCircle className="mr-2 h-4 w-4" /> Add Task
         </Button>

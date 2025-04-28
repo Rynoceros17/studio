@@ -1,3 +1,4 @@
+
 "use client";
 
 import type * as React from 'react';
@@ -24,6 +25,7 @@ import {
   defaultDropAnimationSideEffects,
   type DropAnimation,
   MeasuringStrategy,
+  PointerActivationConstraint, // Import PointerActivationConstraint
 } from '@dnd-kit/core';
 import {
     restrictToVerticalAxis,
@@ -66,46 +68,36 @@ const dropAnimation: DropAnimation = {
     }),
   };
 
-interface CalendarViewProps {
-  tasks: Task[];
-  deleteTask: (id: string) => void;
-  updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
-  toggleTaskCompletion: (id: string) => void;
-  completedTasks: Set<string>;
-  updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
-  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => void; // Add updateTask prop
-}
-
 interface SortableTaskProps {
   task: Task;
   isCompleted: boolean;
   toggleTaskCompletion: (id: string) => void;
   deleteTask: (id: string) => void;
   isDragging?: boolean;
-  onTaskDoubleClick: (task: Task) => void;
+  onTaskClick: (task: Task) => void; // Changed from onTaskDoubleClick
   onEditClick: (task: Task) => void; // Add handler for edit click
 }
 
 // Determine max lengths based on viewport width (example breakpoints)
 const getMaxLength = (limitType: 'title' | 'desc'): number => {
-    const BASE_TITLE_LIMIT_SM = 10;
+    const BASE_TITLE_LIMIT_SM = 10; // Mobile (e.g., 1-2 cols)
     const BASE_DESC_LIMIT_SM = 15;
-    const BASE_TITLE_LIMIT_MD = 15;
+    const BASE_TITLE_LIMIT_MD = 15; // Tablet (e.g., 3-4 cols)
     const BASE_DESC_LIMIT_MD = 25;
-    const BASE_TITLE_LIMIT_LG = 20; // Adjust as needed for 7 columns
-    const BASE_DESC_LIMIT_LG = 30; // Adjust as needed for 7 columns
+    const BASE_TITLE_LIMIT_LG = 20; // Desktop (7 cols) - Adjust based on actual column width
+    const BASE_DESC_LIMIT_LG = 30; // Desktop (7 cols) - Adjust based on actual column width
 
     if (typeof window !== 'undefined') {
-        if (window.innerWidth < 640) { // sm screens (e.g., mobile, 1-2 columns maybe)
+        if (window.innerWidth < 640) { // sm screens
             return limitType === 'title' ? BASE_TITLE_LIMIT_SM : BASE_DESC_LIMIT_SM;
-        } else if (window.innerWidth < 1024) { // md screens (e.g., tablet, 3-4 columns maybe)
+        } else if (window.innerWidth < 1024) { // md screens
             return limitType === 'title' ? BASE_TITLE_LIMIT_MD : BASE_DESC_LIMIT_MD;
-        } else { // lg screens and up (desktop, 7 columns)
+        } else { // lg screens and up
             return limitType === 'title' ? BASE_TITLE_LIMIT_LG : BASE_DESC_LIMIT_LG;
         }
     }
     // Default for SSR or if window is undefined
-    return limitType === 'title' ? BASE_TITLE_LIMIT_MD : BASE_DESC_LIMIT_MD;
+    return limitType === 'title' ? BASE_TITLE_LIMIT_LG : BASE_DESC_LIMIT_LG; // Default to desktop
 };
 
 
@@ -184,7 +176,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     );
 }
 
-function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onTaskDoubleClick, onEditClick }: SortableTaskProps) {
+function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onTaskClick, onEditClick }: SortableTaskProps) {
   const {
     attributes,
     listeners,
@@ -217,19 +209,19 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
 
   const handleToggleCompletion = (e: React.MouseEvent) => {
       e.preventDefault();
-      e.stopPropagation(); // Prevent double click event
+      e.stopPropagation(); // Prevent click event propagation
       toggleTaskCompletion(task.id);
   };
 
   const handleDeleteTask = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation(); // Prevent double click event
+    e.stopPropagation(); // Prevent click event propagation
     deleteTask(task.id);
   }
 
     const handleEditClickInternal = (e: React.MouseEvent) => {
         e.preventDefault();
-        e.stopPropagation(); // Prevent double click event
+        e.stopPropagation(); // Prevent click event propagation
         onEditClick(task);
     };
 
@@ -237,26 +229,34 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
   const nameDisplay = truncateText(task.name, titleLimit);
   const descriptionDisplay = truncateText(task.description, descLimit);
 
-  const handleDoubleClick = () => {
-    onTaskDoubleClick(task);
+  const handleClick = () => {
+    onTaskClick(task); // Use single click handler
   };
 
   return (
-    <div ref={setNodeRef} style={style} data-testid={`task-${task.id}`} {...attributes} className="mb-1 touch-none" onDoubleClick={handleDoubleClick}>
+    <div
+        ref={setNodeRef}
+        style={style}
+        data-testid={`task-${task.id}`}
+        {...attributes} // Keep dnd attributes here
+        className="mb-1 touch-none"
+        onClick={handleClick} // Changed from onDoubleClick
+    >
         <Card
             className={cn(
-                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words", // Base styles, added min-h, break-words
+                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer", // Added cursor-pointer
                 isCompleted ? 'bg-muted opacity-60' : 'bg-card',
-                 isCompleted ? 'animate-pulse border-2 border-accent' : '',
-                 'transition-all duration-300 ease-in-out',
-                 "relative" // Ensure relative positioning for children if needed
+                // Removed gold border animation: isCompleted ? 'animate-pulse border-2 border-accent' : '',
+                'transition-all duration-300 ease-in-out',
+                "relative" // Ensure relative positioning for children if needed
             )}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <button
-                {...listeners}
+                {...listeners} // Apply drag listeners only to the handle
                 className="cursor-grab pt-0.5 text-muted-foreground hover:text-foreground touch-none focus-visible:ring-1 focus-visible:ring-ring rounded shrink-0"
                 aria-label="Drag task"
+                onClick={(e) => e.stopPropagation()} // Prevent card click when dragging
               >
                 <GripVertical className="h-3 w-3" />
              </button>
@@ -308,7 +308,7 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
                 className="h-5 w-5 text-destructive hover:text-destructive/80 focus-visible:ring-1 focus-visible:ring-ring rounded"
                 onClick={handleDeleteTask}
                 aria-label="Delete task"
-                disabled={isCompleted}
+                disabled={isCompleted} // Optionally disable delete for completed tasks
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -357,10 +357,12 @@ export function CalendarView({
 
    const parseISOStrict = (dateString: string | undefined): Date | null => {
        if (!dateString) return null;
-       const date = parseISO(dateString + 'T00:00:00');
+       // Ensure the input is just the date part before appending time
+       const datePart = dateString.split('T')[0];
+       const date = parseISO(datePart + 'T00:00:00'); // Add time part for consistent parsing
        if (isNaN(date.getTime())) {
            console.error("Invalid date string received:", dateString);
-           return null;
+           return null; // Return null for invalid dates
        }
        return date;
    }
@@ -371,8 +373,8 @@ export function CalendarView({
            console.error("Tasks data is invalid:", tasks);
            return groupedTasks;
        }
+       // Ensure completedTasks is a Set before using .has()
        const safeCompletedTasks = completedTasks instanceof Set ? completedTasks : new Set<string>();
-
 
        days.forEach(day => {
            const dateStr = format(day, 'yyyy-MM-dd');
@@ -428,17 +430,20 @@ export function CalendarView({
 
    const activeTask = useMemo(() => tasks.find(task => task && task.id === activeId), [tasks, activeId]);
 
-  const sensors = useSensors(
-      useSensor(PointerSensor, {
-        // Require the mouse to move by 10 pixels before activating
-        activationConstraint: {
-          distance: 8, // Increased distance slightly
-        },
-      }),
-      useSensor(KeyboardSensor, {
-        coordinateGetter: sortableKeyboardCoordinates,
-      })
-  );
+   // Configure pointer sensor for drag-and-drop activation
+   const pointerSensor = useSensor(PointerSensor, {
+       activationConstraint: {
+         distance: 5, // Start dragging after moving 5 pixels
+       } satisfies PointerActivationConstraint, // Use PointerActivationConstraint type
+     });
+
+   // Configure keyboard sensor
+   const keyboardSensor = useSensor(KeyboardSensor, {
+       coordinateGetter: sortableKeyboardCoordinates,
+     });
+
+   const sensors = useSensors(pointerSensor, keyboardSensor);
+
 
     const modifiers = useMemo(() => [
         restrictToVerticalAxis, // Only allow vertical movement
@@ -515,7 +520,7 @@ export function CalendarView({
     setCurrentDate(addDays(weekStart, 7));
   };
 
-    const handleTaskDoubleClick = (task: Task) => {
+    const handleTaskClick = (task: Task) => { // Changed from handleTaskDoubleClick
         setSelectedTaskForDetails(task);
     };
 
@@ -598,10 +603,10 @@ export function CalendarView({
                                <SortableTask
                                  key={task.id}
                                  task={task}
-                                 isCompleted={completedTasks.has(task.id)} // Check completion status
+                                 isCompleted={completedTasks?.has(task.id) ?? false} // Check completion status safely
                                  toggleTaskCompletion={toggleTaskCompletion}
                                  deleteTask={deleteTask}
-                                 onTaskDoubleClick={handleTaskDoubleClick} // Pass handler
+                                 onTaskClick={handleTaskClick} // Changed from onTaskDoubleClick
                                  onEditClick={handleEditClick} // Pass edit handler
                                />
                              ))
@@ -619,17 +624,17 @@ export function CalendarView({
             {activeId && activeTask ? (
                 <TaskItem
                     task={activeTask}
-                    isCompleted={completedTasks.has(activeId)}
+                    isCompleted={completedTasks?.has(activeId) ?? false} // Check completion status safely
                     isDragging // Add a prop to style the dragged item differently
                     // Provide dummy functions or context if needed by TaskItem for display
                     toggleTaskCompletion={() => {}}
                     deleteTask={() => {}}
-                    onTaskDoubleClick={() => {}}
+                    onTaskClick={() => {}} // Changed from onTaskDoubleClick
                     onEditClick={() => {}} // Add dummy edit handler
                 />
             ) : null}
         </DragOverlay>
-        {/* Task Details Display Dialog (for double click) */}
+        {/* Task Details Display Dialog (for single click) */}
         <TaskDetailsDisplayDialog
             task={selectedTaskForDetails}
             onClose={handleCloseTaskDetails}
