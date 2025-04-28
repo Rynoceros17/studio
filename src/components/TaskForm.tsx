@@ -1,3 +1,4 @@
+
 "use client";
 
 import type * as React from 'react';
@@ -14,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useToast } from '@/hooks/use-toast';
+// Removed useToast import as it's handled in the parent now
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -28,10 +29,11 @@ type TaskFormValues = z.infer<typeof formSchema>;
 
 interface TaskFormProps {
   addTask: (task: Omit<Task, 'id'>) => void;
+  onTaskAdded?: () => void; // Optional callback after task is added
 }
 
-export function TaskForm({ addTask }: TaskFormProps) {
-  const { toast } = useToast();
+export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
+  // Removed toast instance
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const form = useForm<TaskFormValues>({
@@ -51,16 +53,15 @@ export function TaskForm({ addTask }: TaskFormProps) {
     };
     addTask(newTask);
     form.reset(); // Reset form after submission
-    toast({
-      title: "Task Added",
-      description: `"${data.name}" added for ${format(data.date, 'PPP')}.`,
-    });
+    // Removed toast call here
+    onTaskAdded?.(); // Call the callback if provided (e.g., to close a dialog)
   };
 
   return (
+    // Removed bg-secondary, p-6, rounded-lg, shadow - let the Dialog handle styling
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 bg-secondary p-6 rounded-lg shadow">
-        <h2 className="text-xl font-semibold text-primary mb-4">Add New Task</h2>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+         {/* Removed heading - Dialog has its own title */}
         <FormField
           control={form.control}
           name="name"
@@ -99,16 +100,16 @@ export function TaskForm({ addTask }: TaskFormProps) {
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
+                        "w-full justify-start text-left font-normal", // Use justify-start
                         !field.value && "text-muted-foreground"
                       )}
                     >
+                      <CalendarIcon className="mr-2 h-4 w-4" /> {/* Icon on the left */}
                       {field.value ? (
                         format(field.value, "PPP")
                       ) : (
                         <span>Pick a date</span>
                       )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
