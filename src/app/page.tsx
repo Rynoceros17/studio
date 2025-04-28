@@ -275,16 +275,19 @@ export default function Home() {
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden"> {/* Added overflow-hidden */}
         <div className="w-full max-w-7xl space-y-4">
-          <header className="text-center py-2 relative z-10 flex flex-col sm:flex-row items-center justify-center gap-2"> {/* Ensure header is above timer and use flex for layout */}
+          <header className="text-center py-2 relative z-10"> {/* Ensure header is above timer */}
             <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
-            {isClient && ( // Render counter only on client
-                <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-1 text-xs mt-1 sm:mt-0">
+            {/* Counter moved outside header */}
+            {/* <p className="text-sm text-muted-foreground mt-1">Your Weekly Task Planner</p> */}
+          </header>
+
+           {/* Render counter only on client and position it */}
+            {isClient && (
+                <Badge variant="secondary" className="fixed top-6 left-6 z-50 flex items-center gap-1.5 px-2 py-1 text-xs">
                     <CheckSquare className="h-3 w-3" />
                     {completedCount} Completed
                 </Badge>
             )}
-            {/* <p className="text-sm text-muted-foreground mt-1 sm:ml-4">Your Weekly Task Planner</p> */}
-          </header>
 
           {/* Conditionally render CalendarView only on the client */}
           {isClient && (
