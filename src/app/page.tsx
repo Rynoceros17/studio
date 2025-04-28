@@ -17,7 +17,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"; // Import Sheet components
+import { TaskListSheet } from '@/components/TaskListSheet'; // Import the new TaskListSheet component
+import { Plus, List } from 'lucide-react'; // Added List icon
 import { format, parseISO, startOfWeek, endOfWeek, addDays, isSameDay } from 'date-fns';
 
 
@@ -28,6 +36,7 @@ export default function Home() {
 
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isTaskListOpen, setIsTaskListOpen] = useState(false); // State for task list sheet
   const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
@@ -241,6 +250,19 @@ export default function Home() {
      });
    }, [setTasks, toast]);
 
+   // Sort tasks by date for the list view
+   const sortedTasksForList = useMemo(() => {
+       return [...tasks].sort((a, b) => {
+           const dateA = parseISOStrict(a.date);
+           const dateB = parseISOStrict(b.date);
+           if (!dateA && !dateB) return 0;
+           if (!dateA) return 1;
+           if (!dateB) return -1;
+           return dateA.getTime() - dateB.getTime();
+       });
+   }, [tasks, parseISOStrict]);
+
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative">
       <div className="w-full max-w-7xl space-y-4">
@@ -262,6 +284,7 @@ export default function Home() {
             />
         )}
 
+        {/* Add New Task Dialog */}
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button
@@ -280,6 +303,34 @@ export default function Home() {
             <TaskForm addTask={addTask} onTaskAdded={() => setIsFormOpen(false)}/>
           </DialogContent>
         </Dialog>
+
+        {/* Task List Sheet */}
+         <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
+            <SheetTrigger asChild>
+                <Button
+                  variant="outline" // Use outline or another variant
+                  size="icon"
+                  className="fixed bottom-4 left-4 md:bottom-6 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary"
+                  aria-label="View task list"
+                >
+                  <List className="h-6 w-6 text-primary" />
+                </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0"> {/* Adjust width and remove padding */}
+                <SheetHeader className="p-4 border-b"> {/* Add padding back to header */}
+                  <SheetTitle className="text-primary">Task List</SheetTitle>
+                </SheetHeader>
+                {/* Pass sorted tasks and handlers */}
+                 <TaskListSheet
+                    tasks={sortedTasksForList}
+                    completedTasks={completedTasks}
+                    toggleTaskCompletion={toggleTaskCompletion}
+                    deleteTask={deleteTask}
+                    parseISOStrict={parseISOStrict} // Pass the parsing function
+                 />
+            </SheetContent>
+         </Sheet>
+
       </div>
     </main>
   );
