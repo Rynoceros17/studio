@@ -24,7 +24,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"; // Import Sheet components
-import { TaskListSheet } from '@/components/TaskListSheet'; // Import the new TaskListSheet component
+import { TaskListSheet } from '@/components/TaskListSheet'; // Import the TaskListSheet component
 import { Plus, List } from 'lucide-react'; // Added List icon
 import { format, parseISO, startOfWeek, endOfWeek, addDays, isSameDay } from 'date-fns';
 
@@ -100,7 +100,7 @@ export default function Home() {
            description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
        });
        setIsFormOpen(false);
-   }, [setTasks, toast, parseISOStrict]);
+   }, [setTasks, toast]); // Removed parseISOStrict from dependency array
 
 
   const deleteTask = useCallback((id: string) => {
@@ -151,7 +151,7 @@ export default function Home() {
             title: "Task Updated",
             description: "Core task details have been updated.",
         });
-    }, [setTasks, toast, parseISOStrict]);
+    }, [setTasks, toast]); // Removed parseISOStrict from dependency array
 
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
@@ -205,7 +205,7 @@ export default function Home() {
 
           return combinedTasks;
       });
-  }, [setTasks, parseISOStrict]); // Add parseISOStrict dependency
+  }, [setTasks]); // Removed parseISOStrict from dependency array
 
 
   const toggleTaskCompletion = useCallback((id: string) => {
@@ -249,19 +249,6 @@ export default function Home() {
        description: "Additional details have been updated.",
      });
    }, [setTasks, toast]);
-
-   // Sort tasks by date for the list view
-   const sortedTasksForList = useMemo(() => {
-       return [...tasks].sort((a, b) => {
-           const dateA = parseISOStrict(a.date);
-           const dateB = parseISOStrict(b.date);
-           if (!dateA && !dateB) return 0;
-           if (!dateA) return 1;
-           if (!dateB) return -1;
-           return dateA.getTime() - dateB.getTime();
-       });
-   }, [tasks, parseISOStrict]);
-
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative">
@@ -311,23 +298,17 @@ export default function Home() {
                   variant="outline" // Use outline or another variant
                   size="icon"
                   className="fixed bottom-4 left-4 md:bottom-6 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary"
-                  aria-label="View task list"
+                  aria-label="View scratchpad"
                 >
                   <List className="h-6 w-6 text-primary" />
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0"> {/* Adjust width and remove padding */}
-                <SheetHeader className="p-4 border-b"> {/* Add padding back to header */}
-                  <SheetTitle className="text-primary">Task List</SheetTitle>
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col"> {/* Adjust width, remove padding, add flex */}
+                <SheetHeader className="p-4 border-b shrink-0"> {/* Add padding back to header, make non-flexible */}
+                  <SheetTitle className="text-primary">Scratchpad</SheetTitle>
                 </SheetHeader>
-                {/* Pass sorted tasks and handlers */}
-                 <TaskListSheet
-                    tasks={sortedTasksForList}
-                    completedTasks={completedTasks}
-                    toggleTaskCompletion={toggleTaskCompletion}
-                    deleteTask={deleteTask}
-                    parseISOStrict={parseISOStrict} // Pass the parsing function
-                 />
+                {/* Pass necessary props - none needed for freeform text */}
+                 <TaskListSheet />
             </SheetContent>
          </Sheet>
 
