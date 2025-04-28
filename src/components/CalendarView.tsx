@@ -57,6 +57,18 @@ import {
 import { EditTaskDialog } from './EditTaskDialog'; // Import the renamed EditTaskDialog
 import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog'; // Import the new TaskDetailsDisplayDialog
 
+interface CalendarViewProps {
+    tasks: Task[];
+    deleteTask: (id: string) => void;
+    updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
+    // Now accepts taskId and dateStr for completion logic
+    toggleTaskCompletion: (taskId: string, dateStr: string) => void;
+    // Set of completion keys (e.g., `${taskId}_${dateStr}`)
+    completedTasks: Set<string>;
+    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
+    updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => void;
+}
+
 
 const dropAnimation: DropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -70,8 +82,9 @@ const dropAnimation: DropAnimation = {
 
 interface SortableTaskProps {
   task: Task;
+  dateStr: string; // Add the specific date string for this instance of the task
   isCompleted: boolean;
-  toggleTaskCompletion: (id: string) => void;
+  toggleTaskCompletion: (taskId: string, dateStr: string) => void; // Update signature
   deleteTask: (id: string) => void;
   isDragging?: boolean;
   onTaskClick: (task: Task) => void; // Changed from onTaskDoubleClick
@@ -176,7 +189,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     );
 }
 
-function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onTaskClick, onEditClick }: SortableTaskProps) {
+function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, deleteTask, onTaskClick, onEditClick }: SortableTaskProps) {
   const {
     attributes,
     listeners,
@@ -184,7 +197,8 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: `${task.id}_${dateStr}` }); // Unique ID per task instance on a date
+
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -210,13 +224,13 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
   const handleToggleCompletion = (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation(); // Prevent click event propagation
-      toggleTaskCompletion(task.id);
+      toggleTaskCompletion(task.id, dateStr); // Pass both task ID and date string
   };
 
   const handleDeleteTask = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent click event propagation
-    deleteTask(task.id);
+    deleteTask(task.id); // Delete task uses only the original ID
   }
 
     const handleEditClickInternal = (e: React.MouseEvent) => {
@@ -237,7 +251,7 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
     <div
         ref={setNodeRef}
         style={style}
-        data-testid={`task-${task.id}`}
+        data-testid={`task-${task.id}-${dateStr}`} // Use unique test ID
         {...attributes} // Keep dnd attributes here
         className="mb-1 touch-none"
         onClick={handleClick} // Changed from onDoubleClick
@@ -245,8 +259,7 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
         <Card
             className={cn(
                 "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer", // Added cursor-pointer
-                isCompleted ? 'bg-muted opacity-60' : 'bg-card',
-                // Removed gold border animation: isCompleted ? 'animate-pulse border-2 border-accent' : '',
+                isCompleted ? 'bg-muted opacity-60 animate-pulse border-2 border-accent' : 'bg-card', // Added gold border animation
                 'transition-all duration-300 ease-in-out',
                 "relative" // Ensure relative positioning for children if needed
             )}
@@ -308,7 +321,7 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
                 className="h-5 w-5 text-destructive hover:text-destructive/80 focus-visible:ring-1 focus-visible:ring-ring rounded"
                 onClick={handleDeleteTask}
                 aria-label="Delete task"
-                disabled={isCompleted} // Optionally disable delete for completed tasks
+                // disabled={isCompleted} // Removing disable on complete for now
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -325,12 +338,12 @@ export function CalendarView({
     deleteTask,
     updateTaskOrder,
     toggleTaskCompletion,
-    completedTasks,
+    completedTasks, // This is now a Set of completion keys `${taskId}_${dateStr}`
     updateTaskDetails,
     updateTask // Destructure new prop
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null); // Can be `${taskId}_${dateStr}`
   const [isClient, setIsClient] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null); // State for task being edited
@@ -373,8 +386,6 @@ export function CalendarView({
            console.error("Tasks data is invalid:", tasks);
            return groupedTasks;
        }
-       // Ensure completedTasks is a Set before using .has()
-       const safeCompletedTasks = completedTasks instanceof Set ? completedTasks : new Set<string>();
 
        days.forEach(day => {
            const dateStr = format(day, 'yyyy-MM-dd');
@@ -383,16 +394,13 @@ export function CalendarView({
                groupedTasks[dateStr] = [];
                return;
            }
-
-            const currentDayOfWeek = day.getDay(); // 0 for Sunday, 1 for Monday, etc.
-
+           const currentDayOfWeek = day.getDay(); // 0 for Sunday, 1 for Monday, etc.
 
            groupedTasks[dateStr] = tasks
             .filter(task => {
                 if (!task || !task.date) return false;
                 const taskDate = parseISOStrict(task.date);
                 if (!taskDate) return false; // Skip if date is invalid
-
 
                 if (task.recurring) {
                     const taskStartDayOfWeek = taskDate.getDay();
@@ -404,8 +412,12 @@ export function CalendarView({
                 }
            })
             .sort((a, b) => { // Sort within the filtered tasks for the day
-                const aCompleted = safeCompletedTasks.has(a.id);
-                const bCompleted = safeCompletedTasks.has(b.id);
+                 // Check completion status for this specific day instance
+                 const aCompletionKey = `${a.id}_${dateStr}`;
+                 const bCompletionKey = `${b.id}_${dateStr}`;
+                 const aCompleted = completedTasks.has(aCompletionKey);
+                 const bCompleted = completedTasks.has(bCompletionKey);
+
 
                 if (aCompleted !== bCompleted) {
                     return aCompleted ? 1 : -1; // Completed tasks go to the bottom
@@ -428,7 +440,13 @@ export function CalendarView({
      }, [tasks, days, completedTasks, parseISOStrict]); // Rerun when tasks, days, or completedTasks change
 
 
-   const activeTask = useMemo(() => tasks.find(task => task && task.id === activeId), [tasks, activeId]);
+    // Find the active task based on the original taskId part of activeId
+    const activeTask = useMemo(() => {
+        if (!activeId) return null;
+        const taskId = activeId.split('_')[0]; // Extract original task ID
+        return tasks.find(task => task && task.id === taskId);
+    }, [tasks, activeId]);
+
 
    // Configure pointer sensor for drag-and-drop activation
    const pointerSensor = useSensor(PointerSensor, {
@@ -453,60 +471,65 @@ export function CalendarView({
 
 
   const handleDragStart = (event: any) => {
-    setActiveId(event.active.id as string);
+    setActiveId(event.active.id as string); // active.id is now `${taskId}_${dateStr}`
   };
 
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-     setActiveId(null);
+    const activeIdStr = active.id as string;
+    const overIdStr = over?.id as string | undefined;
 
+    setActiveId(null);
 
-    if (over && active.id !== over.id) {
-       // Determine the date string from the 'over' element's context
-       // The containerId should be the date string 'yyyy-MM-dd' we set on SortableContext
-       const overSortableContextId = over.data?.current?.sortable?.containerId;
+    if (over && overIdStr && activeIdStr !== overIdStr) {
+        // Extract date string from the active element's ID
+        const activeDateStr = activeIdStr.substring(activeIdStr.lastIndexOf('_') + 1);
+        // Determine the date string from the 'over' element's context
+        const overSortableContextId = over.data?.current?.sortable?.containerId;
 
         if (!overSortableContextId || typeof overSortableContextId !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(overSortableContextId)) {
              console.warn("Could not determine the valid date context of the drop target.", over.data?.current?.sortable);
              return; // Don't proceed if we can't identify the target day
          }
 
-       const overDateStr = overSortableContextId;
+        const overDateStr = overSortableContextId;
+
+        // Ensure drag happens within the same day column for simplicity
+        if (activeDateStr !== overDateStr) {
+            console.log("Drag across different days is not supported yet.");
+            return;
+        }
 
         // Get the current task IDs *for that specific day* from the memoized tasksByDay
-        // Use optional chaining and provide a default empty array
-        const currentTaskIdsForDate = (tasksByDay?.[overDateStr] || []).map(task => task.id);
+        const currentTaskIdsForDate = (tasksByDay?.[overDateStr] || []).map(task => task.id); // Use original task IDs
 
-       // Find the old and new indices within this specific day's task list
-       const oldIndex = currentTaskIdsForDate.indexOf(active.id as string);
-       const newIndex = currentTaskIdsForDate.indexOf(over.id as string);
+        // Find the old and new indices using the original task IDs within this specific day's task list
+        const activeTaskId = activeIdStr.split('_')[0]; // Original task ID
+        const overTaskId = overIdStr.split('_')[0];   // Original task ID
 
+        const oldIndex = currentTaskIdsForDate.indexOf(activeTaskId);
+        const newIndex = currentTaskIdsForDate.indexOf(overTaskId);
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-         // Perform the array move *only on the IDs for this day*
-         const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, newIndex);
-         // Call updateTaskOrder with the specific date and the reordered list for that date
-         updateTaskOrder(overDateStr, reorderedTaskIds);
-      } else {
-          // Handle edge case: Dragged onto the container itself (e.g., empty space) or index not found
-          console.warn(`Could not find oldIndex (${oldIndex}) or newIndex (${newIndex}) for task ${active.id} in date ${overDateStr}`);
-           // If dropped onto the container (over.id might be the dateStr) and oldIndex is valid, move to end
-           if (over.id === overDateStr && oldIndex !== -1) {
-               console.log(`Task ${active.id} dropped onto container ${overDateStr}. Moving to end.`);
-               const targetIndex = currentTaskIdsForDate.length; // Move to the end
-               // Ensure moving from oldIndex to targetIndex-1 because arrayMove is inclusive of the target
-               const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, targetIndex);
-               updateTaskOrder(overDateStr, reorderedTaskIds);
-           }
-           // If newIndex is -1 but over.id is a task ID (shouldn't normally happen with closestCenter), log it
-           else if (newIndex === -1 && currentTaskIdsForDate.includes(over.id as string)) {
-               console.error(`Task ${active.id} drag failed: newIndex is -1 but over.id (${over.id}) exists.`);
-           }
-      }
-
+        if (oldIndex !== -1 && newIndex !== -1) {
+            // Perform the array move *only on the original IDs for this day*
+            const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, newIndex);
+            // Call updateTaskOrder with the specific date and the reordered list of original task IDs
+            updateTaskOrder(overDateStr, reorderedTaskIds);
+        } else {
+            // Handle edge case: Dragged onto the container itself or index not found
+            console.warn(`Could not find oldIndex (${oldIndex}) or newIndex (${newIndex}) for task ${activeTaskId} in date ${overDateStr}`);
+            // If dropped onto the container (over.id might be the dateStr) and oldIndex is valid, move to end
+            if (overIdStr === overDateStr && oldIndex !== -1) {
+                 console.log(`Task ${activeTaskId} dropped onto container ${overDateStr}. Moving to end.`);
+                 const targetIndex = currentTaskIdsForDate.length; // Move to the end
+                 const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, targetIndex);
+                 updateTaskOrder(overDateStr, reorderedTaskIds);
+            }
+        }
     }
-  };
+};
+
 
   const handleDragCancel = () => {
       setActiveId(null);
@@ -592,24 +615,29 @@ export function CalendarView({
                      {/* SortableContext needs a stable ID based on the day */}
                      <SortableContext
                          id={dateStr} // Use the date string as the stable ID for the droppable container
-                         items={dayTasks.map(task => task.id)} // Provide the IDs of the sortable items
+                         // items need to be unique per instance: `${taskId}_${dateStr}`
+                         items={dayTasks.map(task => `${task.id}_${dateStr}`)}
                          strategy={verticalListSortingStrategy}
                        >
                          {dayTasks.length === 0 ? (
                            <p className="text-[10px] text-muted-foreground text-center pt-4">No tasks</p>
                          ) : (
                              // Map over the tasks for this day
-                             dayTasks.map((task) => (
-                               <SortableTask
-                                 key={task.id}
-                                 task={task}
-                                 isCompleted={completedTasks?.has(task.id) ?? false} // Check completion status safely
-                                 toggleTaskCompletion={toggleTaskCompletion}
-                                 deleteTask={deleteTask}
-                                 onTaskClick={handleTaskClick} // Changed from onTaskDoubleClick
-                                 onEditClick={handleEditClick} // Pass edit handler
-                               />
-                             ))
+                             dayTasks.map((task) => {
+                                const completionKey = `${task.id}_${dateStr}`;
+                                return (
+                                   <SortableTask
+                                     key={`${task.id}_${dateStr}`} // Unique key per instance
+                                     task={task}
+                                     dateStr={dateStr} // Pass the date string
+                                     isCompleted={completedTasks?.has(completionKey) ?? false} // Check completion using the key
+                                     toggleTaskCompletion={toggleTaskCompletion}
+                                     deleteTask={deleteTask}
+                                     onTaskClick={handleTaskClick} // Changed from onTaskDoubleClick
+                                     onEditClick={handleEditClick} // Pass edit handler
+                                   />
+                                );
+                             })
                          )}
                        </SortableContext>
                   </CardContent>
@@ -621,19 +649,26 @@ export function CalendarView({
       </div>
         {/* DragOverlay renders the item being dragged */}
         <DragOverlay dropAnimation={dropAnimation}>
-            {activeId && activeTask ? (
-                <TaskItem
-                    task={activeTask}
-                    isCompleted={completedTasks?.has(activeId) ?? false} // Check completion status safely
-                    isDragging // Add a prop to style the dragged item differently
-                    // Provide dummy functions or context if needed by TaskItem for display
-                    toggleTaskCompletion={() => {}}
-                    deleteTask={() => {}}
-                    onTaskClick={() => {}} // Changed from onTaskDoubleClick
-                    onEditClick={() => {}} // Add dummy edit handler
-                />
-            ) : null}
+            {activeId && activeTask ? (() => {
+                const activeDateStr = activeId.substring(activeId.lastIndexOf('_') + 1);
+                const completionKey = `${activeTask.id}_${activeDateStr}`;
+                const isCompleted = completedTasks?.has(completionKey) ?? false;
+                return (
+                    <TaskItem
+                        task={activeTask}
+                        dateStr={activeDateStr}
+                        isCompleted={isCompleted}
+                        isDragging // Add a prop to style the dragged item differently
+                        // Provide dummy functions or context if needed by TaskItem for display
+                        toggleTaskCompletion={() => {}}
+                        deleteTask={() => {}}
+                        onTaskClick={() => {}} // Changed from onTaskDoubleClick
+                        onEditClick={() => {}} // Add dummy edit handler
+                    />
+                );
+            })() : null}
         </DragOverlay>
+
         {/* Task Details Display Dialog (for single click) */}
         <TaskDetailsDisplayDialog
             task={selectedTaskForDetails}

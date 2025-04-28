@@ -39,11 +39,18 @@ import { Badge } from '@/components/ui/badge';
 
 export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
+  // completedTaskIds now stores strings in the format: `${taskId}_${dateStr}`
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
-  // Calculate completed count
-  const completedCount = useMemo(() => completedTaskIds.length, [completedTaskIds]);
+  // Calculate completed count based on unique task IDs present in completedTaskIds
+  const completedCount = useMemo(() => {
+      const uniqueTaskIds = new Set(completedTaskIds.map(key => key.split('_')[0]));
+      // Count based on unique tasks ever completed, might need adjustment based on exact requirement
+      // For now, just count the number of completion entries
+      return completedTaskIds.length;
+  }, [completedTaskIds]);
+
 
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -134,18 +141,20 @@ export default function Home() {
    }, [setTasks, toast]);
 
 
-  const deleteTask = useCallback((id: string) => {
-    const taskToDelete = tasks.find(task => task.id === id);
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
-    setCompletedTaskIds(prevIds => prevIds.filter(taskId => taskId !== id));
-     if (taskToDelete) {
-        toast({
-          title: "Task Deleted",
-          description: `"${taskToDelete.name}" has been removed.`,
-          variant: "destructive",
-        });
-     }
-  }, [setTasks, setCompletedTaskIds, tasks, toast]);
+    const deleteTask = useCallback((id: string) => {
+        const taskToDelete = tasks.find(task => task.id === id);
+        setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+        // Remove all completion entries associated with this task ID
+        setCompletedTaskIds(prevIds => prevIds.filter(completionKey => !completionKey.startsWith(`${id}_`)));
+        if (taskToDelete) {
+            toast({
+                title: "Task Deleted",
+                description: `"${taskToDelete.name}" has been removed.`,
+                variant: "destructive",
+            });
+        }
+    }, [tasks, setTasks, setCompletedTaskIds, toast]);
+
 
     const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => {
         setTasks(prevTasks => {
@@ -184,17 +193,42 @@ export default function Home() {
       setTasks(prevTasks => {
           const tasksForDate = prevTasks.filter(task => {
               const taskDateObj = parseISOStrict(task.date);
-              return taskDateObj && format(taskDateObj, 'yyyy-MM-dd') === date;
+              // Consider recurring tasks appearing on this date as well
+              if (!taskDateObj) return false;
+               const currentDay = parseISOStrict(date);
+               if (!currentDay) return false;
+
+               if (task.recurring) {
+                   const taskStartDayOfWeek = taskDateObj.getDay();
+                   const currentDayOfWeek = currentDay.getDay();
+                   return taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj;
+               } else {
+                    return format(taskDateObj, 'yyyy-MM-dd') === date;
+               }
           });
           const otherTasks = prevTasks.filter(task => {
-              const taskDateObj = parseISOStrict(task.date);
-              return !taskDateObj || format(taskDateObj, 'yyyy-MM-dd') !== date;
+             const taskDateObj = parseISOStrict(task.date);
+             if (!taskDateObj) return true; // Keep tasks without dates
+             const currentDay = parseISOStrict(date);
+             if (!currentDay) return true; // Keep if target date is invalid
+
+             if (task.recurring) {
+                 const taskStartDayOfWeek = taskDateObj.getDay();
+                 const currentDayOfWeek = currentDay.getDay();
+                 // Exclude if it's recurring and matches the target date's day of week
+                 return !(taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj);
+             } else {
+                 // Exclude if it matches the target date directly
+                 return format(taskDateObj, 'yyyy-MM-dd') !== date;
+             }
           });
 
           const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
           const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
 
           const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
+
+          // Keep the existing sort logic, which should place reordered tasks correctly at the end
           combinedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
@@ -209,14 +243,42 @@ export default function Home() {
                 const taskADateStr = dateA ? format(dateA, 'yyyy-MM-dd') : '';
                 const taskBDateStr = dateB ? format(dateB, 'yyyy-MM-dd') : '';
 
-               if (taskADateStr === date && taskBDateStr === date) {
+                // Check if both tasks are for the specific date being reordered
+                const targetDateA = parseISOStrict(date);
+                const targetDateB = parseISOStrict(date);
+                let aIsForTargetDate = false;
+                let bIsForTargetDate = false;
+
+                if (targetDateA) {
+                    if (a.recurring) {
+                        const taskStartDayOfWeekA = dateA.getDay();
+                        const targetDayOfWeekA = targetDateA.getDay();
+                        aIsForTargetDate = taskStartDayOfWeekA === targetDayOfWeekA && targetDateA >= dateA;
+                    } else {
+                        aIsForTargetDate = taskADateStr === date;
+                    }
+                }
+                 if (targetDateB) {
+                    if (b.recurring) {
+                        const taskStartDayOfWeekB = dateB.getDay();
+                        const targetDayOfWeekB = targetDateB.getDay();
+                        bIsForTargetDate = taskStartDayOfWeekB === targetDayOfWeekB && targetDateB >= dateB;
+                    } else {
+                        bIsForTargetDate = taskBDateStr === date;
+                    }
+                 }
+
+
+               if (aIsForTargetDate && bIsForTargetDate) {
                    const aIndex = orderedTaskIds.indexOf(a.id);
                    const bIndex = orderedTaskIds.indexOf(b.id);
+                   // If both tasks are found in the reordered list for the date, use that order
                    if (aIndex !== -1 && bIndex !== -1) {
                        return aIndex - bIndex;
                    }
                }
 
+               // Fallback to original overall order if not part of the specific reorder
                const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
                const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
                 if (originalAIndex === -1 && originalBIndex === -1) return 0;
@@ -228,32 +290,35 @@ export default function Home() {
 
           return combinedTasks;
       });
-  }, [setTasks]);
+  }, [setTasks, parseISOStrict]);
 
 
-  const toggleTaskCompletion = useCallback((id: string) => {
-      const task = tasks.find(t => t.id === id);
-      if (!task) return;
+    const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
 
-      const currentCompletedIds = new Set(completedTaskIds);
+        const completionKey = `${taskId}_${dateStr}`;
+        const currentCompletedKeys = new Set(completedTaskIds);
 
-      if (currentCompletedIds.has(id)) {
-          currentCompletedIds.delete(id);
-          toast({
-              title: "Task Incomplete",
-              description: `"${task.name}" marked as incomplete.`,
-          });
-      } else {
-          currentCompletedIds.add(id);
-          toast({
-              title: "Task Completed!",
-              description: `"${task.name}" marked as complete.`,
-          });
-      }
-      setCompletedTaskIds(Array.from(currentCompletedIds));
-      setTasks(prevTasks => [...prevTasks]); // Trigger re-render by creating a new array
+        if (currentCompletedKeys.has(completionKey)) {
+            currentCompletedKeys.delete(completionKey);
+            toast({
+                title: "Task Incomplete",
+                description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as incomplete.`,
+            });
+        } else {
+            currentCompletedKeys.add(completionKey);
+            toast({
+                title: "Task Completed!",
+                description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as complete.`,
+            });
+        }
+        setCompletedTaskIds(Array.from(currentCompletedKeys));
+        // Trigger re-render by creating a new array - might not be needed if CalendarView reacts to completedTasks change
+        // setTasks(prevTasks => [...prevTasks]);
 
-  }, [tasks, completedTaskIds, setCompletedTaskIds, toast, setTasks]);
+    }, [tasks, completedTaskIds, setCompletedTaskIds, toast, parseISOStrict]);
+
 
    const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => {
      setTasks(prevTasks => {
@@ -295,8 +360,8 @@ export default function Home() {
                 tasks={tasks}
                 deleteTask={deleteTask}
                 updateTaskOrder={updateTaskOrder}
-                toggleTaskCompletion={toggleTaskCompletion}
-                completedTasks={completedTasks}
+                toggleTaskCompletion={toggleTaskCompletion} // Pass the modified function
+                completedTasks={completedTasks} // Pass the Set of completion keys
                 updateTaskDetails={updateTaskDetails}
                 updateTask={updateTask}
               />
