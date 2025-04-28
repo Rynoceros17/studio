@@ -8,6 +8,7 @@ export type Task = {
   details?: string;
   dueDate?: string; // Optional due date (yyyy-MM-dd format)
   files?: FileMetaData[]; // Optional array for file metadata
+  highPriority?: boolean; // Optional: Flag for high priority tasks
 };
 
 // Simple interface for file metadata (as we aren't handling uploads yet)

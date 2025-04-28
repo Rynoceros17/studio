@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Save } from 'lucide-react';
+import { Calendar as CalendarIcon, Save, Star } from 'lucide-react'; // Added Star
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Added FormDescription
 import {
   Dialog as ShadDialog, // Use ShadDialog alias
   DialogContent as ShadDialogContent,
@@ -33,6 +33,7 @@ const editFormSchema = z.object({
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
   recurring: z.boolean().optional(),
+  highPriority: z.boolean().optional(), // Add highPriority field
 });
 
 type EditTaskFormValues = z.infer<typeof editFormSchema>;
@@ -54,6 +55,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
       description: '',
       date: undefined,
       recurring: false,
+      highPriority: false, // Initialize highPriority
     },
   });
 
@@ -65,6 +67,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
         description: task.description || '',
         date: task.date ? parseISO(task.date + 'T00:00:00') : undefined, // Ensure parsing includes time part
         recurring: task.recurring || false,
+        highPriority: task.highPriority || false, // Reset highPriority
       });
     } else if (!isOpen) {
        // Optionally reset to defaults when closing if task is null
@@ -79,6 +82,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
         description: data.description,
         date: format(data.date, 'yyyy-MM-dd'), // Format date before updating
         recurring: data.recurring,
+        highPriority: data.highPriority, // Include high priority status
       };
       updateTask(task.id, updates);
       onClose(); // Close dialog after successful update
@@ -162,26 +166,56 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="recurring"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/30">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Repeat Weekly
-                      </FormLabel>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
+
+             {/* Combined Recurring and High Priority Options */}
+             <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="recurring"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/30 h-full justify-center">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            id="edit-recurring-checkbox"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <Label htmlFor="edit-recurring-checkbox">
+                            Repeat Weekly
+                          </Label>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={form.control}
+                    name="highPriority"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/30 h-full justify-center">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            id="edit-high-priority-checkbox"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <Label htmlFor="edit-high-priority-checkbox">
+                            High Priority
+                          </Label>
+                          <FormDescription className="text-xs text-muted-foreground flex items-center">
+                             <Star className="h-3 w-3 mr-1 text-accent fill-accent" /> Mark as important
+                          </FormDescription>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+             </div>
+
               <ShadDialogFooter className="pt-4">
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                     <Save className="mr-2 h-4 w-4" /> Save Changes

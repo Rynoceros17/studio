@@ -107,6 +107,7 @@ export default function Home() {
            details: newTaskData.details ?? '',
            dueDate: newTaskData.dueDate,
            recurring: newTaskData.recurring ?? false,
+           highPriority: newTaskData.highPriority ?? false, // Add high priority
        };
        setTasks((prevTasks) => {
            const updatedTasks = [...prevTasks, newTask];
@@ -121,6 +122,12 @@ export default function Home() {
                const dateComparison = dateA.getTime() - dateB.getTime();
                if (dateComparison !== 0) return dateComparison;
 
+               // Sort by priority within the same day (High priority first)
+               if (a.highPriority !== b.highPriority) {
+                    return a.highPriority ? -1 : 1;
+               }
+
+               // Keep original order if dates and priority are the same
                const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
                const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
                if (originalAIndex === -1 && originalBIndex === -1) return 0;
@@ -162,7 +169,7 @@ export default function Home() {
             const updatedTasks = prevTasks.map(task => {
                 if (task.id === id) {
                     const updatedTask = { ...task, ...updates };
-                    if (updates.date && updates.date !== task.date) {
+                    if ((updates.date && updates.date !== task.date) || (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)) {
                         needsResort = true;
                     }
                     return updatedTask;
@@ -177,7 +184,14 @@ export default function Home() {
                     if (!dateA && !dateB) return 0;
                     if (!dateA) return 1;
                     if (!dateB) return -1;
-                    return dateA.getTime() - dateB.getTime();
+                    const dateComparison = dateA.getTime() - dateB.getTime();
+                    if (dateComparison !== 0) return dateComparison;
+
+                     // Sort by priority within the same day (High priority first)
+                    if (a.highPriority !== b.highPriority) {
+                        return a.highPriority ? -1 : 1;
+                    }
+                    return 0; // Maintain relative order otherwise
                 });
             }
             return updatedTasks;
@@ -186,7 +200,7 @@ export default function Home() {
             title: "Task Updated",
             description: "Core task details have been updated.",
         });
-    }, [setTasks, toast]);
+    }, [setTasks, toast, parseISOStrict]);
 
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
@@ -229,7 +243,7 @@ export default function Home() {
           const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
 
           // Keep the existing sort logic, which should place reordered tasks correctly at the end
-          combinedTasks.sort((a, b) => {
+           combinedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
 
@@ -240,45 +254,25 @@ export default function Home() {
                const dateComparison = dateA.getTime() - dateB.getTime();
                if (dateComparison !== 0) return dateComparison;
 
-                const taskADateStr = dateA ? format(dateA, 'yyyy-MM-dd') : '';
-                const taskBDateStr = dateB ? format(dateB, 'yyyy-MM-dd') : '';
-
-                // Check if both tasks are for the specific date being reordered
-                const targetDateA = parseISOStrict(date);
-                const targetDateB = parseISOStrict(date);
-                let aIsForTargetDate = false;
-                let bIsForTargetDate = false;
-
-                if (targetDateA) {
-                    if (a.recurring) {
-                        const taskStartDayOfWeekA = dateA.getDay();
-                        const targetDayOfWeekA = targetDateA.getDay();
-                        aIsForTargetDate = taskStartDayOfWeekA === targetDayOfWeekA && targetDateA >= dateA;
-                    } else {
-                        aIsForTargetDate = taskADateStr === date;
-                    }
-                }
-                 if (targetDateB) {
-                    if (b.recurring) {
-                        const taskStartDayOfWeekB = dateB.getDay();
-                        const targetDayOfWeekB = targetDateB.getDay();
-                        bIsForTargetDate = taskStartDayOfWeekB === targetDayOfWeekB && targetDateB >= dateB;
-                    } else {
-                        bIsForTargetDate = taskBDateStr === date;
-                    }
-                 }
-
+               // Within the same date, check if these tasks belong to the day being reordered
+               const aIsForTargetDate = tasksForDate.some(t => t.id === a.id);
+               const bIsForTargetDate = tasksForDate.some(t => t.id === b.id);
 
                if (aIsForTargetDate && bIsForTargetDate) {
+                   // If both tasks are for the specific date being reordered, use the provided order
                    const aIndex = orderedTaskIds.indexOf(a.id);
                    const bIndex = orderedTaskIds.indexOf(b.id);
-                   // If both tasks are found in the reordered list for the date, use that order
                    if (aIndex !== -1 && bIndex !== -1) {
                        return aIndex - bIndex;
                    }
                }
 
-               // Fallback to original overall order if not part of the specific reorder
+               // If not part of the reorder for this specific date, sort by priority
+                if (a.highPriority !== b.highPriority) {
+                    return a.highPriority ? -1 : 1;
+                }
+
+               // Fallback to original overall order if dates and priority are the same
                const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
                const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
                 if (originalAIndex === -1 && originalBIndex === -1) return 0;
@@ -320,20 +314,46 @@ export default function Home() {
     }, [tasks, completedTaskIds, setCompletedTaskIds, toast, parseISOStrict]);
 
 
-   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => {
+   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files' | 'highPriority'>>) => { // Added highPriority
      setTasks(prevTasks => {
-       return prevTasks.map(task => {
+        let needsResort = false;
+       const updatedTasks = prevTasks.map(task => {
          if (task.id === id) {
-           return { ...task, ...updates };
+             const updatedTask = { ...task, ...updates };
+             // Check if priority changed, requiring a resort
+             if (updates.highPriority !== undefined && updates.highPriority !== task.highPriority) {
+                needsResort = true;
+             }
+           return updatedTask;
          }
          return task;
        });
+
+        if (needsResort) {
+             updatedTasks.sort((a, b) => {
+                 const dateA = parseISOStrict(a.date);
+                 const dateB = parseISOStrict(b.date);
+                 if (!dateA && !dateB) return 0;
+                 if (!dateA) return 1;
+                 if (!dateB) return -1;
+                 const dateComparison = dateA.getTime() - dateB.getTime();
+                 if (dateComparison !== 0) return dateComparison;
+
+                  // Sort by priority within the same day (High priority first)
+                 if (a.highPriority !== b.highPriority) {
+                     return a.highPriority ? -1 : 1;
+                 }
+                 return 0; // Maintain relative order otherwise
+             });
+         }
+
+       return updatedTasks;
      });
      toast({
        title: "Task Details Updated",
        description: "Additional details have been updated.",
      });
-   }, [setTasks, toast]);
+   }, [setTasks, toast, parseISOStrict]);
 
   return (
     // Wrap the relevant part in DndContext for the timer
@@ -362,7 +382,7 @@ export default function Home() {
                 updateTaskOrder={updateTaskOrder}
                 toggleTaskCompletion={toggleTaskCompletion} // Pass the modified function
                 completedTasks={completedTasks} // Pass the Set of completion keys
-                updateTaskDetails={updateTaskDetails}
+                updateTaskDetails={updateTaskDetails} // Pass the modified updateTaskDetails
                 updateTask={updateTask}
               />
           )}

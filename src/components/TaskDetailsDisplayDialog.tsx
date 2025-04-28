@@ -4,7 +4,7 @@
 import type * as React from 'react';
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Trash2, Paperclip } from 'lucide-react'; // Added Paperclip
+import { Calendar as CalendarIcon, Trash2, Paperclip, Star } from 'lucide-react'; // Added Paperclip, Star
 
 import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import { Calendar } from '@/components/ui/calendar';
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge"; // Import Badge
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import {
   Dialog as ShadDialog, // Renamed to avoid conflict
   DialogContent as ShadDialogContent,
@@ -27,7 +28,7 @@ import { cn } from '@/lib/utils';
 interface TaskDetailsDisplayDialogProps {
   task: Task | null;
   onClose: () => void;
-  updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
+  updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files' | 'highPriority'>>) => void; // Added highPriority
 }
 
 export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: TaskDetailsDisplayDialogProps) {
@@ -37,6 +38,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<FileMetaData[]>(task?.files || []); // State for file metadata
+  const [highPriority, setHighPriority] = useState(task?.highPriority || false); // State for high priority
 
   // Effect to update internal state when the task prop changes
   useEffect(() => {
@@ -44,11 +46,13 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
           setTaskDetails(task.details || '');
           setDueDate(task.dueDate ? parseISO(task.dueDate + 'T00:00:00') : undefined);
           setUploadedFiles(task.files || []);
+          setHighPriority(task.highPriority || false); // Update high priority state
       } else {
           // Reset state when dialog closes (task is null)
           setTaskDetails('');
           setDueDate(undefined);
           setUploadedFiles([]);
+          setHighPriority(false); // Reset high priority state
       }
   }, [task]); // Depend only on task
 
@@ -74,13 +78,18 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
 
   const handleSave = () => {
     if (task) {
-      const updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>> = {
+      const updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files' | 'highPriority'>> = { // Added highPriority
           details: taskDetails,
           dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
           files: uploadedFiles,
+          highPriority: highPriority, // Include high priority status
       };
       // Only save if changes were actually made
-      if (updates.details !== task.details || updates.dueDate !== task.dueDate || JSON.stringify(updates.files) !== JSON.stringify(task.files)) {
+      if (updates.details !== task.details ||
+          updates.dueDate !== task.dueDate ||
+          JSON.stringify(updates.files) !== JSON.stringify(task.files) ||
+          updates.highPriority !== task.highPriority)
+        {
         updateTaskDetails(task.id, updates);
       }
       onClose(); // Close regardless of whether changes were saved
@@ -91,8 +100,16 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
     <ShadDialog open={!!task} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <ShadDialogContent className="sm:max-w-md">
         <ShadDialogHeader>
-          <ShadDialogTitle className="text-primary">{task?.name}</ShadDialogTitle>
-          {task?.description && <ShadDialogDesc className="pt-1">{task.description}</ShadDialogDesc>}
+           <div className="flex justify-between items-start">
+                <div>
+                    <ShadDialogTitle className="text-primary">{task?.name}</ShadDialogTitle>
+                     {task?.description && <ShadDialogDesc className="pt-1">{task.description}</ShadDialogDesc>}
+                </div>
+                {task?.highPriority && (
+                    <Star className="h-5 w-5 text-accent fill-accent shrink-0 ml-2" aria-label="High priority"/>
+                )}
+           </div>
+
            {/* Display original date */}
            {task?.date && (
                 // Changed <p> to <div> to fix invalid HTML nesting (div inside p)
@@ -104,39 +121,60 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
         </ShadDialogHeader>
         {task ? (
           <div className="grid gap-4 py-4">
-              {/* Due Date Selector */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="dueDateDisplay" className="text-right text-sm font-medium text-primary">
-                    Due Date:
-                  </Label>
-                   <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                      <PopoverTrigger asChild>
-                          <Button
-                              id="dueDateDisplay"
-                              variant={"outline"}
-                              className={cn(
-                                  "col-span-3 justify-start text-left font-normal h-9", // Adjusted height
-                                  !dueDate && "text-muted-foreground"
-                              )}
-                              >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {dueDate ? format(dueDate, "PPP") : <span>Pick a due date</span>}
-                           </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                              mode="single"
-                              selected={dueDate}
-                              onSelect={(date) => {
-                                  setDueDate(date);
-                                  setIsCalendarOpen(false); // Close popover on date select
-                              }}
-                             // removed initialFocus
-                              disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} // Optional: disable past dates
-                          />
-                      </PopoverContent>
-                  </Popover>
-              </div>
+
+              {/* Row for Due Date and High Priority */}
+              <div className="grid grid-cols-2 items-center gap-4">
+                  {/* Due Date Selector */}
+                   <div className="flex flex-col gap-1">
+                        <Label htmlFor="dueDateDisplay" className="text-sm font-medium text-primary">
+                            Due Date:
+                        </Label>
+                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    id="dueDateDisplay"
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal h-9", // Adjusted height
+                                        !dueDate && "text-muted-foreground"
+                                    )}
+                                    >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {dueDate ? format(dueDate, "PPP") : <span>Pick date</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={dueDate}
+                                    onSelect={(date) => {
+                                        setDueDate(date);
+                                        setIsCalendarOpen(false); // Close popover on date select
+                                    }}
+                                // removed initialFocus
+                                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} // Optional: disable past dates
+                                />
+                            </PopoverContent>
+                        </Popover>
+                   </div>
+
+                   {/* High Priority Checkbox */}
+                   <div className="flex items-center space-x-2 pt-5"> {/* Added pt-5 for alignment */}
+                       <Checkbox
+                            id="highPriorityDisplay"
+                            checked={highPriority}
+                            onCheckedChange={(checked) => setHighPriority(Boolean(checked))}
+                       />
+                       <Label
+                           htmlFor="highPriorityDisplay"
+                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-1 text-primary"
+                       >
+                           <Star className={cn("h-4 w-4", highPriority ? "text-accent fill-accent" : "text-muted-foreground")}/>
+                           High Priority
+                       </Label>
+                   </div>
+               </div>
+
 
             {/* Additional Details Textarea */}
             <div className="grid grid-cols-4 items-start gap-4"> {/* Use items-start */}

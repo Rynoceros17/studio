@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, PlusCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, PlusCircle, Star } from 'lucide-react'; // Added Star
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox"; // Added Checkbox
 import { Label } from "@/components/ui/label"; // Added Label
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Added FormDescription
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
   recurring: z.boolean().optional().default(false), // Add recurring field with default
+  highPriority: z.boolean().optional().default(false), // Add highPriority field
 });
 
 type TaskFormValues = z.infer<typeof formSchema>;
@@ -44,6 +45,7 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
       description: "",
       date: undefined, // Initialize date as undefined
       recurring: false, // Initialize recurring as false
+      highPriority: false, // Initialize highPriority as false
     },
   });
 
@@ -53,6 +55,7 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
       description: data.description,
       date: format(data.date, 'yyyy-MM-dd'), // Format date before adding
       recurring: data.recurring, // Include recurring status
+      highPriority: data.highPriority, // Include high priority status
        // Initialize other optional fields
        details: '',
        dueDate: undefined,
@@ -134,26 +137,57 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
             </FormItem>
           )}
         />
-         <FormField
-            control={form.control}
-            name="recurring"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/30">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>
-                    Repeat Weekly
-                  </FormLabel>
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
+
+         {/* Combined Recurring and High Priority Options */}
+         <div className="grid grid-cols-2 gap-4">
+            <FormField
+                control={form.control}
+                name="recurring"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/30 h-full justify-center">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        id="recurring-checkbox" // Add id for label association
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <Label htmlFor="recurring-checkbox">
+                        Repeat Weekly
+                      </Label>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+             />
+             <FormField
+                control={form.control}
+                name="highPriority"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm bg-secondary/30 h-full justify-center">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        id="high-priority-checkbox" // Add id for label association
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <Label htmlFor="high-priority-checkbox">
+                        High Priority
+                      </Label>
+                       <FormDescription className="text-xs text-muted-foreground flex items-center">
+                          <Star className="h-3 w-3 mr-1 text-accent fill-accent" /> Mark as important
+                       </FormDescription>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+         </div>
+
+
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
           <PlusCircle className="mr-2 h-4 w-4" /> Add Task
         </Button>

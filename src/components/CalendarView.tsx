@@ -12,7 +12,7 @@ import {
   isSameDay,
   parseISO,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil } from 'lucide-react'; // Added Pencil
+import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star } from 'lucide-react'; // Added Pencil, Star
 import {
   DndContext,
   closestCenter,
@@ -28,8 +28,8 @@ import {
   PointerActivationConstraint, // Import PointerActivationConstraint
 } from '@dnd-kit/core';
 import {
-    restrictToVerticalAxis,
-    restrictToWindowEdges,
+  restrictToVerticalAxis,
+  restrictToWindowEdges,
 } from '@dnd-kit/modifiers';
 import {
   arrayMove,
@@ -65,7 +65,7 @@ interface CalendarViewProps {
     toggleTaskCompletion: (taskId: string, dateStr: string) => void;
     // Set of completion keys (e.g., `${taskId}_${dateStr}`)
     completedTasks: Set<string>;
-    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
+    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files' | 'highPriority'>>) => void; // Added highPriority
     updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => void;
 }
 
@@ -145,9 +145,13 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
             "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words", // Added min-h
             isCompleted ? 'bg-muted opacity-60' : 'bg-card',
             isDragging && 'shadow-lg scale-105 border-2 border-primary animate-pulse',
-            'transition-all duration-300 ease-in-out'
+            'transition-all duration-300 ease-in-out',
+            'relative' // Added for absolute positioning of star
           )}
         >
+           {task.highPriority && !isCompleted && (
+                <Star className="absolute top-1 right-1 h-3 w-3 text-accent fill-accent z-10" aria-label="High priority"/>
+            )}
           <div className="flex items-start justify-between gap-1 flex-grow">
              <div className="pt-0.5 text-muted-foreground cursor-grab shrink-0">
                 <GripVertical className="h-3 w-3" />
@@ -190,6 +194,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
 }
 
 function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, deleteTask, onTaskClick, onEditClick }: SortableTaskProps) {
+  const [isCompletedAnim, setIsCompletedAnim] = useState(false);
   const {
     attributes,
     listeners,
@@ -220,6 +225,20 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
         handleResize(); // Initial set
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Trigger animation when isCompleted changes to true
+     useEffect(() => {
+         if (isCompleted && !isCompletedAnim) {
+           setIsCompletedAnim(true);
+           // Remove animation class after duration
+           const timer = setTimeout(() => setIsCompletedAnim(false), 500); // Match animation duration
+           return () => clearTimeout(timer);
+         }
+          // If task becomes incomplete, remove animation state immediately (optional)
+         // if (!isCompleted && isCompletedAnim) {
+         //    setIsCompletedAnim(false);
+         // }
+       }, [isCompleted, isCompletedAnim]); // Depend on isCompleted and isCompletedAnim
 
   const handleToggleCompletion = (e: React.MouseEvent) => {
       e.preventDefault();
@@ -253,17 +272,21 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
         style={style}
         data-testid={`task-${task.id}-${dateStr}`} // Use unique test ID
         {...attributes} // Keep dnd attributes here
-        className="mb-1 touch-none"
-        onClick={handleClick} // Changed from onDoubleClick
+        className="mb-1 touch-none" // Added touch-none
+        onClick={handleClick}
     >
         <Card
             className={cn(
-                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer", // Added cursor-pointer
-                isCompleted ? 'bg-muted opacity-60' : 'bg-card', // Removed gold border and pulse animation
+                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer", // Added cursor-pointer, min-h
+                isCompleted ? 'bg-muted opacity-60' : 'bg-card', // No gold border here
+                isCompletedAnim && 'animate-task-complete border-accent', // Apply animation class and border
                 'transition-all duration-300 ease-in-out',
-                "relative" // Ensure relative positioning for children if needed
+                "relative" // Ensure relative positioning for star
             )}
         >
+           {task.highPriority && !isCompleted && (
+                <Star className="absolute top-1 right-1 h-3 w-3 text-accent fill-accent z-10" aria-label="High priority"/>
+            )}
           <div className="flex items-start justify-between gap-1 flex-grow">
              <button
                 {...listeners} // Apply drag listeners only to the handle
@@ -423,7 +446,15 @@ export function CalendarView({
                     return aCompleted ? 1 : -1; // Completed tasks go to the bottom
                 }
 
-                // If completion status is the same, maintain original relative order *within this day*
+                // If completion status is the same, prioritize high priority tasks if not completed
+                if (!aCompleted && !bCompleted) {
+                    if (a.highPriority !== b.highPriority) {
+                        return a.highPriority ? -1 : 1; // High priority tasks go to the top
+                    }
+                }
+
+
+                // If completion status and priority are the same, maintain original relative order *within this day*
                 // This requires finding their original index *among all tasks*
                 const originalAIndex = tasks.findIndex(t => t && t.id === a.id);
                 const originalBIndex = tasks.findIndex(t => t && t.id === b.id);
@@ -449,10 +480,13 @@ export function CalendarView({
 
 
    // Configure pointer sensor for drag-and-drop activation
+   // Adjust activation constraints if needed
    const pointerSensor = useSensor(PointerSensor, {
        activationConstraint: {
          distance: 5, // Start dragging after moving 5 pixels
-       } satisfies PointerActivationConstraint, // Use PointerActivationConstraint type
+         // delay: 150, // Optional: start drag after 150ms press
+         // tolerance: 5, // Optional: allow 5px tolerance before activation
+       } satisfies PointerActivationConstraint,
      });
 
    // Configure keyboard sensor
@@ -465,7 +499,7 @@ export function CalendarView({
 
     const modifiers = useMemo(() => [
         restrictToVerticalAxis, // Only allow vertical movement
-        // restrictToParentElement // Restrict movement within the SortableContext container (day column)
+        // restrictToParentElement, // Restrict movement within the SortableContext container (day column) - May cause issues if columns resize
         restrictToWindowEdges, // Prevent dragging outside the window entirely (fallback)
       ], []);
 
@@ -502,30 +536,31 @@ export function CalendarView({
         }
 
         // Get the current task IDs *for that specific day* from the memoized tasksByDay
-        const currentTaskIdsForDate = (tasksByDay?.[overDateStr] || []).map(task => task.id); // Use original task IDs
+        const currentTaskIdsForDate = (tasksByDay?.[overDateStr] || []).map(task => `${task.id}_${overDateStr}`); // Use unique instance IDs
 
-        // Find the old and new indices using the original task IDs within this specific day's task list
-        const activeTaskId = activeIdStr.split('_')[0]; // Original task ID
-        const overTaskId = overIdStr.split('_')[0];   // Original task ID
+        // Find the old and new indices using the unique instance IDs
+        const oldIndex = currentTaskIdsForDate.indexOf(activeIdStr);
+        const newIndex = currentTaskIdsForDate.indexOf(overIdStr);
 
-        const oldIndex = currentTaskIdsForDate.indexOf(activeTaskId);
-        const newIndex = currentTaskIdsForDate.indexOf(overTaskId);
 
         if (oldIndex !== -1 && newIndex !== -1) {
-            // Perform the array move *only on the original IDs for this day*
-            const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, newIndex);
+            // Perform the array move *only on the unique instance IDs for this day*
+            const reorderedInstanceIds = arrayMove(currentTaskIdsForDate, oldIndex, newIndex);
+             // Extract the original task IDs in the new order
+            const reorderedTaskIds = reorderedInstanceIds.map(instanceId => instanceId.split('_')[0]);
             // Call updateTaskOrder with the specific date and the reordered list of original task IDs
             updateTaskOrder(overDateStr, reorderedTaskIds);
         } else {
             // Handle edge case: Dragged onto the container itself or index not found
-            console.warn(`Could not find oldIndex (${oldIndex}) or newIndex (${newIndex}) for task ${activeTaskId} in date ${overDateStr}`);
-            // If dropped onto the container (over.id might be the dateStr) and oldIndex is valid, move to end
-            if (overIdStr === overDateStr && oldIndex !== -1) {
-                 console.log(`Task ${activeTaskId} dropped onto container ${overDateStr}. Moving to end.`);
-                 const targetIndex = currentTaskIdsForDate.length; // Move to the end
-                 const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, targetIndex);
-                 updateTaskOrder(overDateStr, reorderedTaskIds);
-            }
+            console.warn(`Could not find oldIndex (${oldIndex}) or newIndex (${newIndex}) for task instance ${activeIdStr} in date ${overDateStr}`);
+             // If dropped onto the container (over.id might be the dateStr) and oldIndex is valid, move to end
+             if (overIdStr === overDateStr && oldIndex !== -1) {
+                  console.log(`Task ${activeIdStr} dropped onto container ${overDateStr}. Moving to end.`);
+                  const targetIndex = currentTaskIdsForDate.length; // Move to the end
+                  const reorderedInstanceIds = arrayMove(currentTaskIdsForDate, oldIndex, targetIndex);
+                  const reorderedTaskIds = reorderedInstanceIds.map(instanceId => instanceId.split('_')[0]);
+                  updateTaskOrder(overDateStr, reorderedTaskIds);
+             }
         }
     }
 };
@@ -543,7 +578,7 @@ export function CalendarView({
     setCurrentDate(addDays(weekStart, 7));
   };
 
-    const handleTaskClick = (task: Task) => { // Changed from handleTaskDoubleClick
+    const handleTaskClick = (task: Task) => {
         setSelectedTaskForDetails(task);
     };
 
@@ -590,7 +625,7 @@ export function CalendarView({
           {days.map((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
              // Ensure tasksByDay is accessed only after initialization and is an object
-             const dayTasks = (tasksByDay && typeof tasksByDay === 'object' && tasksByDay[dateStr]) ? tasksByDay[dateStr] : [];
+            const dayTasks = (tasksByDay && typeof tasksByDay === 'object' && tasksByDay[dateStr]) ? tasksByDay[dateStr] : [];
             const isToday = isSameDay(day, new Date());
 
 
@@ -633,7 +668,7 @@ export function CalendarView({
                                      isCompleted={completedTasks?.has(completionKey) ?? false} // Check completion using the key
                                      toggleTaskCompletion={toggleTaskCompletion}
                                      deleteTask={deleteTask}
-                                     onTaskClick={handleTaskClick} // Changed from onTaskDoubleClick
+                                     onTaskClick={handleTaskClick}
                                      onEditClick={handleEditClick} // Pass edit handler
                                    />
                                 );
@@ -662,7 +697,7 @@ export function CalendarView({
                         // Provide dummy functions or context if needed by TaskItem for display
                         toggleTaskCompletion={() => {}}
                         deleteTask={() => {}}
-                        onTaskClick={() => {}} // Changed from onTaskDoubleClick
+                        onTaskClick={() => {}}
                         onEditClick={() => {}} // Add dummy edit handler
                     />
                 );
@@ -685,4 +720,3 @@ export function CalendarView({
     </DndContext>
   );
 }
-
