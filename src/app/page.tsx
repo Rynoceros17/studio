@@ -53,6 +53,9 @@ export default function Home() {
            ...newTaskData,
            id: crypto.randomUUID(),
            files: newTaskData.files ?? [], // Initialize files array
+           details: newTaskData.details ?? '', // Initialize details
+           dueDate: newTaskData.dueDate, // Keep dueDate if provided
+           recurring: newTaskData.recurring ?? false, // Initialize recurring
        };
        setTasks((prevTasks) => {
            const updatedTasks = [...prevTasks, newTask];
@@ -88,7 +91,7 @@ export default function Home() {
            description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
        });
        setIsFormOpen(false);
-   }, [setTasks, toast]);
+   }, [setTasks, toast, parseISOStrict]);
 
 
   const deleteTask = useCallback((id: string) => {
@@ -103,6 +106,44 @@ export default function Home() {
         });
      }
   }, [setTasks, setCompletedTaskIds, tasks, toast]);
+
+    // Function to update core task properties (name, description, date, recurring)
+    const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => {
+        setTasks(prevTasks => {
+            let needsResort = false;
+            const updatedTasks = prevTasks.map(task => {
+                if (task.id === id) {
+                    const updatedTask = { ...task, ...updates };
+                    // Check if the date changed, as that requires resorting
+                    if (updates.date && updates.date !== task.date) {
+                        needsResort = true;
+                    }
+                    return updatedTask;
+                }
+                return task;
+            });
+
+            if (needsResort) {
+                // Re-sort if the date was changed
+                updatedTasks.sort((a, b) => {
+                    const dateA = parseISOStrict(a.date);
+                    const dateB = parseISOStrict(b.date);
+                    if (!dateA && !dateB) return 0;
+                    if (!dateA) return 1;
+                    if (!dateB) return -1;
+                    return dateA.getTime() - dateB.getTime();
+                    // Note: Maintaining original order for same date is less crucial here,
+                    // but could be added back if needed.
+                });
+            }
+            return updatedTasks;
+        });
+        toast({
+            title: "Task Updated",
+            description: "Core task details have been updated.",
+        });
+    }, [setTasks, toast, parseISOStrict]);
+
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
       setTasks(prevTasks => {
@@ -132,7 +173,10 @@ export default function Home() {
                if (dateComparison !== 0) return dateComparison;
 
                 // If dates are the same, use the provided order for the specific date
-               if (a.date === date && b.date === date) {
+                const taskADateStr = dateA ? format(dateA, 'yyyy-MM-dd') : '';
+                const taskBDateStr = dateB ? format(dateB, 'yyyy-MM-dd') : '';
+
+               if (taskADateStr === date && taskBDateStr === date) {
                    const aIndex = orderedTaskIds.indexOf(a.id);
                    const bIndex = orderedTaskIds.indexOf(b.id);
                    if (aIndex !== -1 && bIndex !== -1) {
@@ -143,6 +187,9 @@ export default function Home() {
                // Fallback for tasks not on the reordered date (shouldn't be needed if logic is correct)
                const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
                const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
+                if (originalAIndex === -1 && originalBIndex === -1) return 0;
+                if (originalAIndex === -1) return 1;
+                if (originalBIndex === -1) return -1;
                return originalAIndex - originalBIndex;
           });
 
@@ -178,6 +225,7 @@ export default function Home() {
 
   }, [tasks, completedTaskIds, setCompletedTaskIds, toast, setTasks]);
 
+   // Function to update only 'details', 'dueDate', and 'files'
    const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => {
      setTasks(prevTasks => {
        return prevTasks.map(task => {
@@ -188,8 +236,8 @@ export default function Home() {
        });
      });
      toast({
-       title: "Task Updated",
-       description: "Task details have been updated.",
+       title: "Task Details Updated",
+       description: "Additional details have been updated.",
      });
    }, [setTasks, toast]);
 
@@ -209,7 +257,8 @@ export default function Home() {
               updateTaskOrder={updateTaskOrder}
               toggleTaskCompletion={toggleTaskCompletion}
               completedTasks={completedTasks}
-              updateTaskDetails={updateTaskDetails}
+              updateTaskDetails={updateTaskDetails} // Pass details update function
+              updateTask={updateTask} // Pass core update function
             />
         )}
 

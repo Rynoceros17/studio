@@ -11,7 +11,7 @@ import {
   isSameDay,
   parseISO,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil } from 'lucide-react'; // Added Pencil
 import {
   DndContext,
   closestCenter,
@@ -28,7 +28,7 @@ import {
 import {
     restrictToVerticalAxis,
     restrictToWindowEdges,
-} from '@dnd-kit/modifiers'; // Corrected import path
+} from '@dnd-kit/modifiers';
 import {
   arrayMove,
   SortableContext,
@@ -38,7 +38,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,16 +46,14 @@ import { Badge } from "@/components/ui/badge";
 import type { Task, FileMetaData } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog as ShadDialog, // Use ShadDialog alias to avoid conflict
+  DialogContent as ShadDialogContent,
+  DialogHeader as ShadDialogHeader,
+  DialogTitle as ShadDialogTitle,
+  DialogDescription as ShadDialogDesc, // Renamed to avoid conflict
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input"; // Import Input
-import { Label } from "@/components/ui/label"; // Import Label
-import { Calendar } from "@/components/ui/calendar"; // Import Calendar
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover
+import { EditTaskDialog } from './EditTaskDialog'; // Import the renamed EditTaskDialog
+import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog'; // Import the new TaskDetailsDisplayDialog
 
 
 const dropAnimation: DropAnimation = {
@@ -76,6 +73,7 @@ interface CalendarViewProps {
   toggleTaskCompletion: (id: string) => void;
   completedTasks: Set<string>;
   updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
+  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => void; // Add updateTask prop
 }
 
 interface SortableTaskProps {
@@ -85,6 +83,7 @@ interface SortableTaskProps {
   deleteTask: (id: string) => void;
   isDragging?: boolean;
   onTaskDoubleClick: (task: Task) => void;
+  onEditClick: (task: Task) => void; // Add handler for edit click
 }
 
 // Determine max lengths based on viewport width (example breakpoints)
@@ -116,7 +115,7 @@ const truncateText = (text: string | undefined, maxLength: number): string => {
 };
 
 
-function TaskItem({ task, isCompleted, isDragging, onTaskDoubleClick }: SortableTaskProps) {
+function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     const [titleLimit, setTitleLimit] = useState(getMaxLength('title'));
     const [descLimit, setDescLimit] = useState(getMaxLength('desc'));
 
@@ -172,6 +171,10 @@ function TaskItem({ task, isCompleted, isDragging, onTaskDoubleClick }: Sortable
                <div className="h-5 w-5 flex items-center justify-center">
                   {isCompleted ? <CheckCircle className="h-3 w-3 text-green-600" /> : <Circle className="h-3 w-3" />}
                 </div>
+               {/* Edit and Delete Icons Placeholder for DragOverlay */}
+               <div className="h-5 w-5 flex items-center justify-center">
+                 <Pencil className="h-3 w-3 text-muted-foreground" />
+               </div>
                <div className="h-5 w-5 flex items-center justify-center">
                   <Trash2 className="h-3 w-3 text-destructive" />
                 </div>
@@ -181,7 +184,7 @@ function TaskItem({ task, isCompleted, isDragging, onTaskDoubleClick }: Sortable
     );
 }
 
-function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onTaskDoubleClick }: SortableTaskProps) {
+function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onTaskDoubleClick, onEditClick }: SortableTaskProps) {
   const {
     attributes,
     listeners,
@@ -214,13 +217,22 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
 
   const handleToggleCompletion = (e: React.MouseEvent) => {
       e.preventDefault();
+      e.stopPropagation(); // Prevent double click event
       toggleTaskCompletion(task.id);
   };
 
   const handleDeleteTask = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent double click event
     deleteTask(task.id);
   }
+
+    const handleEditClickInternal = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent double click event
+        onEditClick(task);
+    };
+
 
   const nameDisplay = truncateText(task.name, titleLimit);
   const descriptionDisplay = truncateText(task.description, descLimit);
@@ -284,6 +296,15 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
               <Button
                 variant="ghost"
                 size="icon"
+                className="h-5 w-5 text-primary hover:text-primary/80 focus-visible:ring-1 focus-visible:ring-ring rounded"
+                onClick={handleEditClickInternal} // Use internal handler
+                aria-label="Edit task details"
+               >
+                 <Pencil className="h-3 w-3" />
+               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-5 w-5 text-destructive hover:text-destructive/80 focus-visible:ring-1 focus-visible:ring-ring rounded"
                 onClick={handleDeleteTask}
                 aria-label="Delete task"
@@ -298,176 +319,22 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onT
   );
 }
 
-interface TaskDetailsDialogProps {
-  task: Task | null;
-  onClose: () => void;
-  updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
-}
 
-function TaskDetailsDialog({ task, onClose, updateTaskDetails }: TaskDetailsDialogProps) {
-  const [taskDetails, setTaskDetails] = useState(task?.details || '');
-  const [dueDate, setDueDate] = useState<Date | undefined>(
-      task?.dueDate ? parseISO(task.dueDate) : undefined
-  );
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<FileMetaData[]>(task?.files || []); // State for file metadata
-
-
-  useEffect(() => {
-      // Reset state when task changes or dialog opens
-      if (task) {
-          setTaskDetails(task.details || '');
-          setDueDate(task.dueDate ? parseISO(task.dueDate) : undefined);
-          setUploadedFiles(task.files || []);
-      } else {
-          // Optionally reset when dialog closes (task is null)
-          setTaskDetails('');
-          setDueDate(undefined);
-          setUploadedFiles([]);
-      }
-  }, [task]); // Depend on task
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      if (event.target.files) {
-          const newFiles: FileMetaData[] = Array.from(event.target.files).map(file => ({
-              name: file.name,
-              type: file.type,
-              size: file.size,
-          }));
-          // NOTE: In a real app, you'd trigger an upload here and store URLs/IDs.
-          // For this example, we just store the metadata.
-          setUploadedFiles(prevFiles => [...prevFiles, ...newFiles]);
-          // Clear the input value to allow uploading the same file again if needed
-          event.target.value = '';
-      }
-  };
-
-  const removeFile = (fileName: string) => {
-      setUploadedFiles(prevFiles => prevFiles.filter(file => file.name !== fileName));
-      // NOTE: In a real app, you'd also trigger a delete request to your storage.
-  };
-
-
-  const handleSave = () => {
-    if (task) {
-      const updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>> = {
-          details: taskDetails,
-          dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
-          files: uploadedFiles,
-      };
-      updateTaskDetails(task.id, updates);
-      onClose();
-    }
-  };
-
-  return (
-    <Dialog open={!!task} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="sm:max-w-md"> {/* Adjusted width slightly */}
-        <DialogHeader>
-          <DialogTitle className="text-primary">Task Details: {task?.name}</DialogTitle>
-          {task?.description && <p className="text-sm text-muted-foreground pt-1">{task.description}</p>}
-        </DialogHeader>
-        {task ? (
-          <div className="grid gap-4 py-4">
-              {/* Due Date Selector */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="dueDate" className="text-right text-sm font-medium text-primary">
-                    Due Date:
-                  </Label>
-                   <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                      <PopoverTrigger asChild>
-                          <Button
-                              variant={"outline"}
-                              className={cn(
-                                  "col-span-3 justify-start text-left font-normal h-9", // Adjusted height
-                                  !dueDate && "text-muted-foreground"
-                              )}
-                              >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {dueDate ? format(dueDate, "PPP") : <span>Pick a due date</span>}
-                           </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                              mode="single"
-                              selected={dueDate}
-                              onSelect={(date) => {
-                                  setDueDate(date);
-                                  setIsCalendarOpen(false); // Close popover on date select
-                              }}
-                              initialFocus
-                          />
-                      </PopoverContent>
-                  </Popover>
-              </div>
-
-            {/* Additional Details Textarea */}
-            <div className="grid grid-cols-4 items-start gap-4"> {/* Use items-start */}
-              <Label
-                htmlFor="details"
-                className="text-right text-sm font-medium leading-none text-primary pt-2" /* Add padding top */
-              >
-                Details:
-              </Label>
-              <div className="col-span-3">
-                <Textarea
-                  id="details"
-                  value={taskDetails}
-                  onChange={(e) => setTaskDetails(e.target.value)}
-                  placeholder="Add links, notes, etc."
-                  className="min-h-[100px]" // Ensure decent height
-                />
-              </div>
-            </div>
-
-             {/* Files Upload */}
-             <div className="grid grid-cols-4 items-center gap-4">
-                 <Label htmlFor="files" className="text-right text-sm font-medium text-primary">
-                     Files:
-                 </Label>
-                 <div className="col-span-3">
-                      <Input
-                        id="files"
-                        type="file"
-                        multiple
-                        onChange={handleFileChange}
-                        className="h-9 text-xs" // Adjusted height and text size
-                      />
-                       {/* Display uploaded file names */}
-                       {uploadedFiles.length > 0 && (
-                           <div className="mt-2 space-y-1">
-                               {uploadedFiles.map(file => (
-                                   <div key={file.name} className="flex items-center justify-between text-xs bg-muted p-1 rounded">
-                                       <span className="truncate" title={file.name}>{file.name}</span>
-                                       <Button variant="ghost" size="icon" className="h-4 w-4 text-destructive shrink-0" onClick={() => removeFile(file.name)}>
-                                            <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                   </div>
-                               ))}
-                           </div>
-                        )}
-                  </div>
-             </div>
-
-
-            <Button onClick={handleSave} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground mt-4">
-              Save Details
-            </Button>
-          </div>
-        ) : (
-          <p>No task selected.</p>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-
-export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCompletion, completedTasks, updateTaskDetails }: CalendarViewProps) {
+export function CalendarView({
+    tasks,
+    deleteTask,
+    updateTaskOrder,
+    toggleTaskCompletion,
+    completedTasks,
+    updateTaskDetails,
+    updateTask // Destructure new prop
+}: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null); // State for task being edited
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false); // State for edit dialog visibility
 
 
   useEffect(() => {
@@ -556,7 +423,7 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
             });
        });
        return groupedTasks;
-     }, [tasks, days, completedTasks]); // Rerun when tasks, days, or completedTasks change
+     }, [tasks, days, completedTasks, parseISOStrict]); // Rerun when tasks, days, or completedTasks change
 
 
    const activeTask = useMemo(() => tasks.find(task => task && task.id === activeId), [tasks, activeId]);
@@ -649,12 +516,24 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
   };
 
     const handleTaskDoubleClick = (task: Task) => {
-        setSelectedTask(task);
+        setSelectedTaskForDetails(task);
     };
 
+    const handleEditClick = (task: Task) => {
+        setEditingTask(task);
+        setIsEditDialogOpen(true); // Open the edit dialog
+    };
+
+
   const handleCloseTaskDetails = () => {
-    setSelectedTask(null);
+    setSelectedTaskForDetails(null);
   };
+
+   const handleCloseEditDialog = () => {
+      setEditingTask(null);
+      setIsEditDialogOpen(false);
+   };
+
 
   return (
     <DndContext
@@ -682,7 +561,8 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-1 w-full"> {/* Reduced gap */}
           {days.map((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
-             const dayTasks = tasksByDay?.[dateStr] ?? []; // Use nullish coalescing for safety
+             // Ensure tasksByDay is accessed only after initialization and is an object
+             const dayTasks = (tasksByDay && typeof tasksByDay === 'object' && tasksByDay[dateStr]) ? tasksByDay[dateStr] : [];
             const isToday = isSameDay(day, new Date());
 
 
@@ -722,6 +602,7 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
                                  toggleTaskCompletion={toggleTaskCompletion}
                                  deleteTask={deleteTask}
                                  onTaskDoubleClick={handleTaskDoubleClick} // Pass handler
+                                 onEditClick={handleEditClick} // Pass edit handler
                                />
                              ))
                          )}
@@ -744,14 +625,22 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
                     toggleTaskCompletion={() => {}}
                     deleteTask={() => {}}
                     onTaskDoubleClick={() => {}}
+                    onEditClick={() => {}} // Add dummy edit handler
                 />
             ) : null}
         </DragOverlay>
-        {/* Task Details Dialog */}
-        <TaskDetailsDialog
-            task={selectedTask}
+        {/* Task Details Display Dialog (for double click) */}
+        <TaskDetailsDisplayDialog
+            task={selectedTaskForDetails}
             onClose={handleCloseTaskDetails}
-            updateTaskDetails={updateTaskDetails} // Pass the update function
+            updateTaskDetails={updateTaskDetails}
+        />
+         {/* Edit Task Dialog (for edit icon click) */}
+        <EditTaskDialog
+            task={editingTask}
+            isOpen={isEditDialogOpen}
+            onClose={handleCloseEditDialog}
+            updateTask={updateTask} // Pass the core update function
         />
     </DndContext>
   );
