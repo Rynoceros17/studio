@@ -33,7 +33,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers'; // Import modifiers directly
 
 
 import { Button } from '@/components/ui/button';
@@ -61,7 +61,7 @@ interface CalendarViewProps {
   deleteTask: (id: string) => void;
   updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
   toggleTaskCompletion: (id: string) => void;
-  completedTasks: Set<string>;
+  completedTasks: Set<string>; // Ensure this is expected as a Set
   activeId: string | null; // Add activeId to props
   handleDragStart: (event: any) => void; // Add handleDragStart
   handleDragEnd: (event: DragEndEvent) => void; // Add handleDragEnd
@@ -77,41 +77,51 @@ interface SortableTaskProps {
   isDragging?: boolean; // Add isDragging prop for styling during DragOverlay
 }
 
+// Helper function to truncate text
+const truncateText = (text: string, maxLength: number): string => {
+    if (text.length <= maxLength) {
+        return text;
+    }
+    return text.slice(0, maxLength) + '...';
+}
 
 // Non-sortable Task Item for DragOverlay
 function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
+    const nameDisplay = truncateText(task.name, 20); // Limit name length
+    const descriptionDisplay = task.description ? truncateText(task.description, 30) : ''; // Limit description length
+
     return (
         <Card
           className={cn(
-            "p-3 rounded-md shadow-sm w-full overflow-hidden", // Base styles, ensure overflow is hidden
+            "p-3 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[70px] flex flex-col justify-between", // Ensure height allows content, flex layout
             isCompleted ? 'bg-muted opacity-60' : 'bg-card',
             isDragging && 'shadow-lg scale-105 border-2 border-primary animate-pulse', // Style for DragOverlay
             'transition-all duration-300 ease-in-out' // Smooth transition for completion animation
           )}
         >
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-2 flex-grow">
             {/* Drag Handle Area (no functionality needed in static item) */}
-             <div className="p-1 -ml-1 text-muted-foreground cursor-grab">
+             <div className="pt-1 text-muted-foreground cursor-grab shrink-0">
                 <GripVertical className="h-4 w-4" />
              </div>
             {/* Task Content */}
-            <div className="flex-grow min-w-0"> {/* Ensure flex item can shrink */}
+            <div className="flex-grow min-w-0 pr-1"> {/* Ensure flex item can shrink, added padding */}
               <p className={cn(
-                  "text-sm font-medium truncate", // Apply truncate
+                  "text-sm font-medium break-words whitespace-normal", // Allow wrapping
                   isCompleted && 'line-through'
                  )}
                  title={task.name} // Add title attribute for full text on hover
                >
-                {task.name}
+                {nameDisplay}
               </p>
-              {task.description && (
+              {descriptionDisplay && (
                 <p className={cn(
-                    "text-xs text-muted-foreground truncate", // Apply truncate
+                    "text-xs text-muted-foreground mt-1 break-words whitespace-normal", // Allow wrapping
                      isCompleted && 'line-through'
                     )}
                     title={task.description} // Add title attribute for full text on hover
                  >
-                  {task.description}
+                  {descriptionDisplay}
                 </p>
               )}
             </div>
@@ -158,47 +168,53 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
     deleteTask(task.id);
   }
 
+  const nameDisplay = truncateText(task.name, 20); // Limit name length
+  const descriptionDisplay = task.description ? truncateText(task.description, 30) : ''; // Limit description length
+
+
   return (
-    <div ref={setNodeRef} style={style} data-testid={`task-${task.id}`} {...attributes}>
+    // The div itself handles the dragging and positioning
+    <div ref={setNodeRef} style={style} data-testid={`task-${task.id}`} {...attributes} className="mb-2 touch-none">
+        {/* The Card is the visual representation */}
         <Card
             className={cn(
-                "p-3 rounded-md shadow-sm w-full overflow-hidden", // Added w-full, overflow-hidden
+                "p-3 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[70px] flex flex-col justify-between", // Ensure height allows content, flex layout
                 isCompleted ? 'bg-muted opacity-60' : 'bg-card',
                 // isDragging && 'shadow-lg scale-105 border-2 border-primary animate-pulse', // Style moved to DragOverlay item
-                isCompleted ? 'border-2 border-accent' : '', // Gold border on completion
+                isCompleted ? 'border-2 border-accent animate-pulse' : '', // Gold border on completion with subtle pulse
                 'transition-all duration-300 ease-in-out', // Smooth transition for completion animation
-                "relative mb-2" // Added margin-bottom for spacing
+                "relative" // Keep relative positioning if needed for internal elements
             )}
         >
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-2 flex-grow">
              {/* Drag Handle */}
              <button
                 {...listeners} // Attach drag listeners here
-                className="cursor-grab p-1 -ml-1 text-muted-foreground hover:text-foreground touch-none focus-visible:ring-2 focus-visible:ring-ring rounded" // Added touch-none and focus style
+                className="cursor-grab pt-1 text-muted-foreground hover:text-foreground touch-none focus-visible:ring-2 focus-visible:ring-ring rounded shrink-0" // Added touch-none and focus style
                 aria-label="Drag task"
               >
                 <GripVertical className="h-4 w-4" />
              </button>
             {/* Task Content */}
-             <div className="flex-grow min-w-0"> {/* Ensure flex item can shrink */}
+             <div className="flex-grow min-w-0 pr-1"> {/* Ensure flex item can shrink, added padding */}
                <p
                  className={cn(
-                   "text-sm font-medium truncate", // Apply truncate
+                   "text-sm font-medium break-words whitespace-normal", // Allow wrapping
                    isCompleted && 'line-through'
                  )}
                  title={task.name} // Add title attribute for full text on hover
                >
-                 {task.name}
+                 {nameDisplay}
                </p>
-               {task.description && (
+               {descriptionDisplay && (
                  <p
                    className={cn(
-                     "text-xs text-muted-foreground truncate", // Apply truncate
+                     "text-xs text-muted-foreground mt-1 break-words whitespace-normal", // Allow wrapping
                      isCompleted && 'line-through'
                    )}
                    title={task.description} // Add title attribute for full text on hover
                  >
-                   {task.description}
+                   {descriptionDisplay}
                  </p>
                )}
              </div>
@@ -231,10 +247,15 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
   );
 }
 
-
+// Omit the props that will be managed internally by this component's state hooks
 export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCompletion, completedTasks }: Omit<CalendarViewProps, 'activeId' | 'handleDragStart' | 'handleDragEnd' | 'handleDragCancel'>) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false); // State to track client-side rendering
+
+  useEffect(() => {
+      setIsClient(true); // Set to true once component mounts
+  }, []);
 
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start week on Monday
@@ -255,19 +276,27 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
 
   // Memoize tasks grouped by day
   const tasksByDay = useMemo(() => {
-      console.log("Recalculating tasksByDay"); // Debug log
+      // console.log("Recalculating tasksByDay, completedTasks:", completedTasks); // Debug log
       const groupedTasks: { [key: string]: Task[] } = {};
       days.forEach(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
+        const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() -1; // Adjust Sunday (0) to 6, Monday (1) to 0 etc. to match ISO week day
+
         groupedTasks[dateStr] = tasks.filter(task => {
             // Ensure tasks are correctly filtered for the day
             if (!task.date) return false;
             try {
-                // Handle potential recurring tasks by checking if the task's date's day of the week matches the current day's day of the week within the view
-                const taskDate = parseISO(task.date); // Parse once
-                 if (task.recurring) {
-                    // If recurring, check if the day of the week matches AND the task's start date is on or before the current week's end
-                     return taskDate.getDay() === day.getDay() && taskDate <= weekEnd;
+                const taskDate = parseISO(task.date + 'T00:00:00'); // Ensure local timezone parsing
+                 if (isNaN(taskDate.getTime())) {
+                     console.error("Invalid task date detected:", task.date);
+                     return false;
+                 }
+
+                if (task.recurring) {
+                    // Check if the task's original day of the week matches the current day's day of the week
+                    // AND the task's start date is on or before the current day being checked
+                    const taskDayOfWeek = taskDate.getDay() === 0 ? 6 : taskDate.getDay() - 1; // Adjust Sunday (0) to 6
+                    return taskDayOfWeek === dayOfWeek && taskDate <= day;
                  }
                  // If not recurring, check for exact date match
                  return isSameDay(taskDate, day);
@@ -278,18 +307,21 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
         });
 
         // Sort tasks within the day: non-completed first, then completed
+        // This sorting should respect the order potentially modified by updateTaskOrder
          groupedTasks[dateStr].sort((a, b) => {
-             const aCompleted = completedTasks.has(a.id);
-             const bCompleted = completedTasks.has(b.id);
-             if (aCompleted === bCompleted) {
-                 // If completion status is the same, maintain original order (or sort by name/time if needed)
-                 // We rely on the stable sort nature or initial load order here.
-                 // Re-find original index if needed, but arrayMove handles order persistence mostly.
-                 const originalAIndex = tasks.findIndex(t => t.id === a.id);
-                 const originalBIndex = tasks.findIndex(t => t.id === b.id);
-                 return originalAIndex - originalBIndex;
+             const aCompleted = completedTasks?.has(a.id); // Safely access .has
+             const bCompleted = completedTasks?.has(b.id); // Safely access .has
+
+             // If completion status is different, sort by it (incomplete first)
+             if (aCompleted !== bCompleted) {
+                 return aCompleted ? 1 : -1; // Non-completed (false) comes before completed (true)
              }
-             return aCompleted ? 1 : -1; // Non-completed tasks first (false is -1)
+
+            // If completion status is the same, maintain the current relative order
+            // Find index in the *original* tasks array before filtering, to preserve DnD order somewhat stably
+             const originalAIndex = tasks.findIndex(t => t.id === a.id);
+             const originalBIndex = tasks.findIndex(t => t.id === b.id);
+             return originalAIndex - originalBIndex;
          });
 
 
@@ -328,34 +360,41 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
 
 
     if (over && active.id !== over.id) {
-       const activeDateStr = tasks.find(t => t.id === active.id)?.date;
-       const overSortableContextId = over.data?.current?.sortable?.containerId; // ID of the SortableContext (day column)
+       // Find the date string associated with the *over* element's sortable context
+       const overSortableContextId = over.data?.current?.sortable?.containerId;
 
-        if (!activeDateStr || !overSortableContextId) {
-            console.warn("Could not determine date string or over container ID");
-            return;
-        }
+        if (!overSortableContextId || typeof overSortableContextId !== 'string') {
+             console.warn("Could not determine the date context of the drop target.");
+             return;
+         }
 
-      // Find the date associated with the 'over' container
-      // This assumes the droppable container has an ID like 'droppable-yyyy-MM-dd'
-      const overDateStr = overSortableContextId; // Assuming SortableContext ID is the date string
+       const overDateStr = overSortableContextId; // The ID of the SortableContext is the date string
 
-      const currentTasksForDate = tasksByDay[overDateStr] || [];
-      const oldIndex = currentTasksForDate.findIndex(task => task.id === active.id);
-      const newIndex = currentTasksForDate.findIndex(task => task.id === over.id);
+       // Get the current list of task IDs for the target date from tasksByDay
+       const currentTaskIdsForDate = (tasksByDay[overDateStr] || []).map(task => task.id);
+
+       const oldIndex = currentTaskIdsForDate.indexOf(active.id as string);
+       const newIndex = currentTaskIdsForDate.indexOf(over.id as string);
 
 
       if (oldIndex !== -1 && newIndex !== -1) {
-         // Ensure we are operating on the correct day's task list
-         if (tasksByDay[overDateStr]) {
-             const reorderedTaskIds = arrayMove(tasksByDay[overDateStr], oldIndex, newIndex).map(task => task.id);
-             console.log(`Reordering tasks for date ${overDateStr}:`, reorderedTaskIds); // Debug log
-             updateTaskOrder(overDateStr, reorderedTaskIds);
-         } else {
-            console.warn(`No tasks found for date ${overDateStr} in tasksByDay`);
-         }
+         const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, newIndex);
+         console.log(`Reordering tasks for date ${overDateStr}:`, reorderedTaskIds); // Debug log
+         updateTaskOrder(overDateStr, reorderedTaskIds);
       } else {
           console.warn(`Could not find oldIndex (${oldIndex}) or newIndex (${newIndex}) for task ${active.id} in date ${overDateStr}`);
+          // Handle potential case where item is dragged to an empty list?
+          // Or if the over.id is the container itself?
+          // This might require adjusting how indices are found or how arrayMove is used.
+          // For now, we log a warning. If dragging onto the container itself is the issue,
+          // check over.id structure.
+          if (over.id === overDateStr && oldIndex !== -1) {
+              // Attempting to drop onto the container (e.g., end of list)
+              // Calculate newIndex based on desired drop position (e.g., end)
+              const targetIndex = currentTaskIdsForDate.length; // Place at the end
+              const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, targetIndex);
+              updateTaskOrder(overDateStr, reorderedTaskIds);
+          }
       }
 
     }
@@ -373,6 +412,38 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
     setCurrentDate(addDays(weekStart, 7)); // Go forward 7 days
   };
 
+  // Avoid rendering DndContext on server or during hydration mismatch
+  if (!isClient) {
+      // Render a placeholder or null during server render / initial client render
+      // to prevent hydration errors related to DndContext setup
+      return (
+           <div className="p-4 md:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  {/* Placeholder buttons or simplified header */}
+                  <span className="w-10 h-10 bg-muted rounded"></span>
+                  <h2 className="text-xl md:text-2xl font-semibold text-primary">Loading...</h2>
+                  <span className="w-10 h-10 bg-muted rounded"></span>
+                </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 md:gap-4">
+                    {/* Render skeleton loaders for days */}
+                    {Array.from({ length: 7 }).map((_, index) => (
+                        <Card key={index} className="flex flex-col h-[400px] md:h-[500px] overflow-hidden bg-secondary/50">
+                            <CardHeader className="p-3 text-center shrink-0">
+                                <div className="h-4 bg-muted rounded w-1/2 mx-auto mb-1"></div>
+                                <div className="h-6 bg-muted rounded w-1/4 mx-auto"></div>
+                            </CardHeader>
+                            <Separator className="shrink-0"/>
+                            <CardContent className="p-3 space-y-2 flex-grow">
+                                <div className="h-16 bg-muted rounded w-full mb-2"></div>
+                                <div className="h-16 bg-muted rounded w-full"></div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+      );
+  }
+
 
   return (
     <DndContext
@@ -381,7 +452,7 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
-      modifiers={[restrictToVerticalAxis, restrictToParentElement]} // Restrict movement
+      modifiers={[restrictToVerticalAxis, restrictToWindowEdges]} // Use imported modifiers
     >
       <div className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
@@ -402,7 +473,7 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
             // Use the memoized tasksByDay
              const dayTasks = tasksByDay[dateStr] || [];
             const isToday = isSameDay(day, new Date());
-            // console.log(`Rendering day ${dateStr}, tasks:`, dayTasks.length); // Debug log
+            // console.log(`Rendering day ${dateStr}, tasks:`, dayTasks.length, completedTasks); // Debug log
 
 
             return (
@@ -432,7 +503,8 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
                                <SortableTask
                                  key={task.id}
                                  task={task}
-                                 isCompleted={completedTasks.has(task.id)}
+                                 // Ensure completedTasks is valid before calling .has
+                                 isCompleted={completedTasks?.has(task.id) ?? false}
                                  toggleTaskCompletion={toggleTaskCompletion}
                                  deleteTask={deleteTask}
                                />
@@ -451,7 +523,8 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
             {activeId && activeTask ? (
                 <TaskItem
                     task={activeTask}
-                    isCompleted={completedTasks.has(activeId)}
+                    // Ensure completedTasks is valid before calling .has
+                    isCompleted={completedTasks?.has(activeId) ?? false}
                     isDragging // Pass isDragging to apply overlay styles
                     // Provide dummy functions for actions as they are not needed in overlay
                     toggleTaskCompletion={() => {}}
@@ -462,3 +535,4 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
     </DndContext>
   );
 }
+
