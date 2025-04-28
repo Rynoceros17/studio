@@ -1,3 +1,4 @@
+
 "use client";
 
 import type * as React from 'react';
@@ -5,12 +6,13 @@ import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Calendar as CalendarIcon, Trash2, Paperclip } from 'lucide-react'; // Added Paperclip
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge"; // Import Badge
 import {
   Dialog as ShadDialog, // Renamed to avoid conflict
   DialogContent as ShadDialogContent,
