@@ -75,20 +75,36 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
   useEffect(() => {
     // Ensure this runs only on the client
     if (typeof window !== 'undefined') {
-        audioRef.current = new Audio('/sounds/timer-end.mp3'); // Ensure file exists in public/sounds/
-        if (audioRef.current) {
+        try {
+            // Ensure the sound file exists in the public/sounds/ directory
+            audioRef.current = new Audio('/sounds/timer-end.mp3');
+            if (!audioRef.current) {
+                console.error("Failed to create Audio element. Audio context might be unavailable.");
+                return;
+            }
             audioRef.current.preload = 'auto'; // Preload the audio
+
+            // Error handling for loading the audio source
+            audioRef.current.addEventListener('error', (e) => {
+                 console.error("Error loading audio source '/sounds/timer-end.mp3':", e);
+                 // Check network tab for 404 if the file is missing
+            });
+             audioRef.current.addEventListener('canplaythrough', () => {
+                 console.log("Audio '/sounds/timer-end.mp3' can play through.");
+             });
+
+
              // Attempt to play and pause immediately to potentially activate audio context early
              // This might be needed on some browsers for the sound to play later automatically
              audioRef.current.play().then(() => {
                  audioRef.current?.pause();
                  audioRef.current!.currentTime = 0; // Reset time after test play/pause
-             }).catch(() => {
+             }).catch((err) => {
                  // Ignore errors here, likely due to browser restrictions before user interaction
-                 console.warn("Pre-play/pause for audio context activation failed.");
+                 console.warn("Pre-play/pause for audio context activation failed. User interaction might be required to enable sound.", err.name, err.message);
              });
-        } else {
-            console.error("Failed to create Audio element.");
+        } catch (error) {
+             console.error("Error initializing Audio element:", error);
         }
     }
   }, []);
@@ -98,12 +114,12 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
     if (audioRef.current) {
       audioRef.current.currentTime = 0; // Rewind to start
       audioRef.current.play().catch(error => {
-          console.error("Error attempting to play sound:", error);
+          console.error("Error attempting to play sound '/sounds/timer-end.mp3':", error.name, error.message);
           // Inform user potentially? e.g., via a subtle UI change or toast
           // "Audio playback failed, browser may require interaction."
       });
     } else {
-        console.warn("Audio element not available to play sound.");
+        console.warn("Audio element not available or not loaded correctly. Cannot play sound.");
     }
   }, []);
 
@@ -197,11 +213,16 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
                  console.log("Audio context likely resumed by user interaction.");
                  startTimerCallbackRef.current(); // Now start the timer logic
             }).catch(error => {
-                 console.warn("Could not resume audio context on start click:", error);
+                 console.warn("Could not resume audio context on start click:", error.name, error.message);
                  startTimerCallbackRef.current(); // Start timer anyway
             });
         } else {
-             console.log("Audio context already active, not available, or already playing. Starting timer.");
+             // If audioRef.current is null here, log it
+             if (!audioRef.current) {
+                console.warn("Audio element not available or not loaded. Starting timer without sound pre-activation.");
+             } else {
+                console.log("Audio context already active, not available, or already playing. Starting timer.");
+             }
              startTimerCallbackRef.current(); // Start timer logic
         }
      };
@@ -216,12 +237,17 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
   useEffect(() => {
     // Reset timer only if mode changes or durations for the current mode change
     // Avoid resetting if only the duration for the *other* mode changed
-    setTimeLeft(durations[mode]);
-    // If the timer was active, stop it, as the duration changed.
+    const newDuration = durations[mode];
+    // Check if the new duration is different before resetting
+    if (timeLeft !== newDuration || !isActive) { // Also reset if not active
+      setTimeLeft(newDuration);
+    }
+    // If the timer was active, stop it, as the duration changed or mode switched.
     if (isActive) {
         stopTimer();
     }
-  }, [mode, durations]); // Removed stopTimer from deps to avoid loop, stopTimer is stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, durations]); // Intentionally excluding timeLeft and isActive to control reset logic
 
 
   // Cleanup interval on unmount
