@@ -130,7 +130,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                                   setDueDate(date);
                                   setIsCalendarOpen(false); // Close popover on date select
                               }}
-                              initialFocus
+                             // removed initialFocus
                               disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} // Optional: disable past dates
                           />
                       </PopoverContent>

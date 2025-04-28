@@ -125,7 +125,8 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
                       field.onChange(date);
                       setIsCalendarOpen(false); // Close popover on date select
                     }}
-                    initialFocus
+                    // removed initialFocus
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} // Optional: disable past dates
                   />
                 </PopoverContent>
               </Popover>
