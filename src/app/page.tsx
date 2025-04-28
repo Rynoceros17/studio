@@ -314,21 +314,20 @@ export default function Home() {
     }, [tasks, completedTaskIds, setCompletedTaskIds, toast, parseISOStrict]);
 
 
-   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files' | 'highPriority'>>) => { // Added highPriority
+   // Removed highPriority from updates type
+   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => {
      setTasks(prevTasks => {
-        let needsResort = false;
+        let needsResort = false; // Keep for potential future use or if other updates require resorting
        const updatedTasks = prevTasks.map(task => {
          if (task.id === id) {
              const updatedTask = { ...task, ...updates };
-             // Check if priority changed, requiring a resort
-             if (updates.highPriority !== undefined && updates.highPriority !== task.highPriority) {
-                needsResort = true;
-             }
+             // Removed check if priority changed
            return updatedTask;
          }
          return task;
        });
 
+        // Keep the sorting logic in case other updates might require it in the future
         if (needsResort) {
              updatedTasks.sort((a, b) => {
                  const dateA = parseISOStrict(a.date);

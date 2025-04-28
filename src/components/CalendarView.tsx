@@ -68,7 +68,8 @@ interface CalendarViewProps {
     toggleTaskCompletion: (taskId: string, dateStr: string) => void;
     // Set of completion keys (e.g., `${taskId}_${dateStr}`)
     completedTasks: Set<string>;
-    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files' | 'highPriority'>>) => void; // Added highPriority
+    // Removed highPriority from the updateTaskDetails type definition here
+    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
     updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => void;
 }
 
@@ -722,4 +723,3 @@ export function CalendarView({
     </DndContext>
   );
 }
-
