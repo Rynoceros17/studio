@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X, Play, Pause, RotateCw, Settings, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,20 +22,28 @@ interface PomodoroTimerProps {
 enum TimerMode {
   Pomodoro = 'pomodoro',
   ShortBreak = 'shortBreak',
-  LongBreak = 'longBreak',
+  // LongBreak = 'longBreak', // Removed LongBreak
 }
 
+// Updated default durations, removing LongBreak
 const defaultDurations = {
   [TimerMode.Pomodoro]: 25 * 60, // 25 minutes
   [TimerMode.ShortBreak]: 5 * 60, // 5 minutes
-  [TimerMode.LongBreak]: 15 * 60, // 15 minutes
 };
 
 export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
   const [durations, setDurations] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedDurations = localStorage.getItem('pomodoro-durations');
-      return savedDurations ? JSON.parse(savedDurations) : defaultDurations;
+      try {
+         const parsed = savedDurations ? JSON.parse(savedDurations) : defaultDurations;
+         // Ensure saved durations have the correct keys, otherwise fallback
+         if (parsed[TimerMode.Pomodoro] && parsed[TimerMode.ShortBreak]) {
+             return parsed;
+         }
+      } catch (e) {
+          console.error("Failed to parse saved durations:", e);
+      }
     }
     return defaultDurations;
   });
@@ -43,11 +51,11 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
   const [timeLeft, setTimeLeft] = useState(durations[mode]);
   const [isActive, setIsActive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsInput, setSettingsInput] = useState({
+  // Updated settingsInput state, removing LongBreak
+  const [settingsInput, setSettingsInput] = useState(() => ({
     pomodoro: Math.floor(durations[TimerMode.Pomodoro] / 60),
     shortBreak: Math.floor(durations[TimerMode.ShortBreak] / 60),
-    longBreak: Math.floor(durations[TimerMode.LongBreak] / 60),
-  });
+  }));
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -69,7 +77,6 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
   // Effect to handle audio element on client
   useEffect(() => {
     audioRef.current = new Audio('/sounds/timer-end.mp3'); // Ensure you have this sound file in public/sounds
-    // Preload the audio
     if (audioRef.current) {
       audioRef.current.preload = 'auto';
     }
@@ -90,28 +97,53 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
     setIsActive(false);
   }, []);
 
+    // Explicitly define startTimer before its use in useEffect or callbacks
+    const startTimerCallback = useCallback(() => {
+        if (isActive || timeLeft <= 0) return;
+
+        setIsActive(true);
+        intervalRef.current = setInterval(() => {
+            setTimeLeft((prevTime) => {
+                if (prevTime <= 1) {
+                    playSound(); // Play sound on completion
+                    stopTimer(); // Clear the interval first
+
+                    // Switch mode and reset/start next timer
+                    if (mode === TimerMode.Pomodoro) {
+                        console.log("Pomodoro finished, starting short break.");
+                        setMode(TimerMode.ShortBreak);
+                        setTimeLeft(durations[TimerMode.ShortBreak]);
+                        // Automatically start the short break
+                        setTimeout(() => startTimerCallbackRef.current(), 0); // Use timeout to ensure state updates
+                    } else { // ShortBreak finished
+                        console.log("Short break finished, resetting to Pomodoro.");
+                        setMode(TimerMode.Pomodoro);
+                        setTimeLeft(durations[TimerMode.Pomodoro]);
+                        // Don't auto-start next pomodoro
+                    }
+                    // Return the new time left (will be set immediately by setTimeLeft above)
+                    // but needs a return value here to satisfy setTimeLeft update function
+                    return 0; // Or return the new duration directly, though setTimeLeft handles it
+                }
+                return prevTime - 1;
+            });
+        }, 1000);
+    }, [isActive, timeLeft, stopTimer, playSound, durations, mode]); // Removed setMode from deps, handled internally
+
+    // Ref to hold the latest startTimerCallback
+    const startTimerCallbackRef = useRef(startTimerCallback);
+    useEffect(() => {
+        startTimerCallbackRef.current = startTimerCallback;
+    }, [startTimerCallback]);
+
+    const startTimer = () => startTimerCallbackRef.current();
+
+
   const resetTimer = useCallback(() => {
     stopTimer();
     setTimeLeft(durations[mode]);
   }, [stopTimer, durations, mode]);
 
-  const startTimer = useCallback(() => {
-    if (isActive || timeLeft <= 0) return;
-
-    setIsActive(true);
-    intervalRef.current = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
-          stopTimer();
-          playSound();
-          // Optional: Automatically switch modes or handle completion
-          // For now, just stops and resets
-          return durations[mode]; // Reset to full duration after finishing
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
-  }, [isActive, timeLeft, stopTimer, playSound, durations, mode]);
 
   useEffect(() => {
     resetTimer(); // Reset timer when mode or durations change
@@ -128,8 +160,13 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleModeChange = (newMode: TimerMode) => {
-    setMode(newMode);
+  const handleModeChange = (newModeValue: string) => {
+      const newMode = newModeValue as TimerMode;
+      if (Object.values(TimerMode).includes(newMode)) {
+          setMode(newMode);
+      } else {
+          console.warn("Attempted to switch to invalid mode:", newModeValue);
+      }
   };
 
   const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,14 +177,17 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
     }));
   };
 
+  // Updated saveSettings, removing LongBreak
   const saveSettings = () => {
       const newDurations = {
         [TimerMode.Pomodoro]: settingsInput.pomodoro * 60,
         [TimerMode.ShortBreak]: settingsInput.shortBreak * 60,
-        [TimerMode.LongBreak]: settingsInput.longBreak * 60,
       };
       setDurations(newDurations);
-      setTimeLeft(newDurations[mode]); // Update current time left based on new duration
+      // Reset time left only if the timer is not active or settings change affects current mode
+       if (!isActive || (mode === TimerMode.Pomodoro && timeLeft > newDurations[TimerMode.Pomodoro]) || (mode === TimerMode.ShortBreak && timeLeft > newDurations[TimerMode.ShortBreak])) {
+          setTimeLeft(newDurations[mode]);
+       }
       localStorage.setItem('pomodoro-durations', JSON.stringify(newDurations));
       setShowSettings(false);
   };
@@ -180,7 +220,8 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
          {showSettings ? (
             <div className="space-y-4 pt-2">
               <h3 className="text-center font-medium text-muted-foreground text-sm">Set Durations (minutes)</h3>
-              <div className="grid grid-cols-3 gap-2">
+              {/* Updated settings grid, removing LongBreak */}
+              <div className="grid grid-cols-2 gap-2">
                  <div>
                     <Label htmlFor="pomodoro-duration" className="text-xs">Pomodoro</Label>
                     <Input id="pomodoro-duration" name="pomodoro" type="number" value={settingsInput.pomodoro} onChange={handleSettingsChange} min="1" className="h-8 text-center" />
@@ -189,10 +230,7 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
                     <Label htmlFor="shortBreak-duration" className="text-xs">Short Break</Label>
                     <Input id="shortBreak-duration" name="shortBreak" type="number" value={settingsInput.shortBreak} onChange={handleSettingsChange} min="1" className="h-8 text-center"/>
                  </div>
-                  <div>
-                     <Label htmlFor="longBreak-duration" className="text-xs">Long Break</Label>
-                     <Input id="longBreak-duration" name="longBreak" type="number" value={settingsInput.longBreak} onChange={handleSettingsChange} min="1" className="h-8 text-center"/>
-                  </div>
+                  {/* Removed Long Break Input */}
               </div>
                <Button onClick={saveSettings} className="w-full h-8" size="sm">
                   <Save className="mr-2 h-4 w-4" /> Save Settings
@@ -200,11 +238,12 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
             </div>
           ) : (
             <>
-            <Tabs value={mode} onValueChange={(value) => handleModeChange(value as TimerMode)} className="mb-4">
-              <TabsList className="grid w-full grid-cols-3 h-8">
+            {/* Updated TabsList grid, removing LongBreak */}
+            <Tabs value={mode} onValueChange={handleModeChange} className="mb-4">
+              <TabsList className="grid w-full grid-cols-2 h-8"> {/* Changed grid-cols-3 to grid-cols-2 */}
                 <TabsTrigger value={TimerMode.Pomodoro} className="text-xs px-1 h-6">Pomodoro</TabsTrigger>
                 <TabsTrigger value={TimerMode.ShortBreak} className="text-xs px-1 h-6">Short Break</TabsTrigger>
-                <TabsTrigger value={TimerMode.LongBreak} className="text-xs px-1 h-6">Long Break</TabsTrigger>
+                {/* Removed Long Break TabTrigger */}
               </TabsList>
               {/* No TabsContent needed if only switching modes */}
             </Tabs>
