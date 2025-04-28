@@ -12,7 +12,7 @@ import {
   isSameDay,
   parseISO,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star } from 'lucide-react'; // Added Pencil, Star
+import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil } from 'lucide-react'; // Removed Star
 import {
   DndContext,
   closestCenter,
@@ -25,7 +25,10 @@ import {
   defaultDropAnimationSideEffects,
   type DropAnimation,
   MeasuringStrategy,
-  PointerActivationConstraint, // Import PointerActivationConstraint
+  type PointerActivationConstraint, // Import PointerActivationConstraint
+  useDraggable,
+  useDroppable,
+  UniqueIdentifier,
 } from '@dnd-kit/core';
 import {
   restrictToVerticalAxis,
@@ -143,15 +146,17 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
         <Card
           className={cn(
             "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words", // Added min-h
-            isCompleted ? 'bg-muted opacity-60' : 'bg-card',
+            isCompleted
+              ? 'bg-muted opacity-60'
+              : task.highPriority
+                ? 'bg-accent/30' // Apply gold background for high priority
+                : 'bg-card',      // Default background
             isDragging && 'shadow-lg scale-105 border-2 border-primary animate-pulse',
-            'transition-all duration-300 ease-in-out',
-            'relative' // Added for absolute positioning of star
+            'transition-all duration-300 ease-in-out'
+            // Removed 'relative' - no longer needed for star
           )}
         >
-           {task.highPriority && !isCompleted && (
-                <Star className="absolute top-1 right-1 h-3 w-3 text-accent fill-accent z-10" aria-label="High priority"/>
-            )}
+          {/* Removed Star Icon */}
           <div className="flex items-start justify-between gap-1 flex-grow">
              <div className="pt-0.5 text-muted-foreground cursor-grab shrink-0">
                 <GripVertical className="h-3 w-3" />
@@ -278,15 +283,18 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
         <Card
             className={cn(
                 "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer", // Added cursor-pointer, min-h
-                isCompleted ? 'bg-muted opacity-60' : 'bg-card', // No gold border here
-                isCompletedAnim && 'animate-task-complete border-accent', // Apply animation class and border
-                'transition-all duration-300 ease-in-out',
-                "relative" // Ensure relative positioning for star
+                isCompleted
+                  ? 'bg-muted opacity-60' // Completed style
+                  : task.highPriority
+                    ? 'bg-accent/30' // High priority, not completed: gold background
+                    : 'bg-card',       // Default background
+                isCompletedAnim && !isCompleted && 'animate-task-complete', // Apply animation ONLY if completing (isCompletedAnim is true and isCompleted is becoming true) - border removed
+                 // Removed gold border from completion animation
+                'transition-all duration-300 ease-in-out'
+                // Removed 'relative' - no longer needed for star
             )}
         >
-           {task.highPriority && !isCompleted && (
-                <Star className="absolute top-1 right-1 h-3 w-3 text-accent fill-accent z-10" aria-label="High priority"/>
-            )}
+            {/* Removed Star Icon */}
           <div className="flex items-start justify-between gap-1 flex-grow">
              <button
                 {...listeners} // Apply drag listeners only to the handle
@@ -625,7 +633,7 @@ export function CalendarView({
           {days.map((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
              // Ensure tasksByDay is accessed only after initialization and is an object
-            const dayTasks = (tasksByDay && typeof tasksByDay === 'object' && tasksByDay[dateStr]) ? tasksByDay[dateStr] : [];
+            const dayTasks = (isClient && tasksByDay && typeof tasksByDay === 'object' && tasksByDay[dateStr]) ? tasksByDay[dateStr] : [];
             const isToday = isSameDay(day, new Date());
 
 
@@ -654,7 +662,7 @@ export function CalendarView({
                          items={dayTasks.map(task => `${task.id}_${dateStr}`)}
                          strategy={verticalListSortingStrategy}
                        >
-                         {dayTasks.length === 0 ? (
+                         {!isClient || dayTasks.length === 0 ? (
                            <p className="text-[10px] text-muted-foreground text-center pt-4">No tasks</p>
                          ) : (
                              // Map over the tasks for this day
@@ -720,3 +728,4 @@ export function CalendarView({
     </DndContext>
   );
 }
+

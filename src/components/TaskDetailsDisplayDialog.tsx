@@ -4,7 +4,7 @@
 import type * as React from 'react';
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Trash2, Paperclip, Star } from 'lucide-react'; // Added Paperclip, Star
+import { Calendar as CalendarIcon, Trash2, Paperclip, Star } from 'lucide-react'; // Star still used for checkbox label
 
 import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import { Calendar } from '@/components/ui/calendar';
@@ -105,9 +105,8 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                     <ShadDialogTitle className="text-primary">{task?.name}</ShadDialogTitle>
                      {task?.description && <ShadDialogDesc className="pt-1">{task.description}</ShadDialogDesc>}
                 </div>
-                {task?.highPriority && (
-                    <Star className="h-5 w-5 text-accent fill-accent shrink-0 ml-2" aria-label="High priority"/>
-                )}
+                {/* Removed Star Icon from header */}
+                {/* High priority is indicated by the task box color in CalendarView */}
            </div>
 
            {/* Display original date */}
@@ -239,3 +238,4 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
     </ShadDialog>
   );
 }
+
