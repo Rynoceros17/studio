@@ -55,7 +55,7 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
   }));
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Removed audioRef
 
   // Draggable setup
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -71,57 +71,9 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
     touchAction: 'none', // Prevent default touch actions like scrolling
   };
 
-  // Effect to handle audio element on client
-  useEffect(() => {
-    // Ensure this runs only on the client
-    if (typeof window !== 'undefined') {
-        try {
-            // Ensure the sound file exists in the public/sounds/ directory
-            audioRef.current = new Audio('/sounds/timer-end.mp3');
-            if (!audioRef.current) {
-                console.error("Failed to create Audio element. Audio context might be unavailable.");
-                return;
-            }
-            audioRef.current.preload = 'auto'; // Preload the audio
+  // Removed useEffect for audio element
 
-            // Error handling for loading the audio source
-            audioRef.current.addEventListener('error', (e) => {
-                 console.error("Error loading audio source '/sounds/timer-end.mp3':", e);
-                 // Check network tab for 404 if the file is missing
-            });
-             audioRef.current.addEventListener('canplaythrough', () => {
-                 console.log("Audio '/sounds/timer-end.mp3' can play through.");
-             });
-
-
-             // Attempt to play and pause immediately to potentially activate audio context early
-             // This might be needed on some browsers for the sound to play later automatically
-             audioRef.current.play().then(() => {
-                 audioRef.current?.pause();
-                 audioRef.current!.currentTime = 0; // Reset time after test play/pause
-             }).catch((err) => {
-                 // Ignore errors here, likely due to browser restrictions before user interaction
-                 console.warn("Pre-play/pause for audio context activation failed. User interaction might be required to enable sound.", err.name, err.message);
-             });
-        } catch (error) {
-             console.error("Error initializing Audio element:", error);
-        }
-    }
-  }, []);
-
-
-  const playSound = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0; // Rewind to start
-      audioRef.current.play().catch(error => {
-          console.error("Error attempting to play sound '/sounds/timer-end.mp3':", error.name, error.message);
-          // Inform user potentially? e.g., via a subtle UI change or toast
-          // "Audio playback failed, browser may require interaction."
-      });
-    } else {
-        console.warn("Audio element not available or not loaded correctly. Cannot play sound.");
-    }
-  }, []);
+  // Removed playSound useCallback
 
   const stopTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -137,7 +89,7 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
         setTimeLeft((prevTime) => {
             if (prevTime <= 1) {
                 stopTimer(); // Clear the interval first
-                playSound(); // Play sound on completion
+                // Removed playSound call
 
                 // Switch mode and reset/start next timer
                 if (mode === TimerMode.Pomodoro) {
@@ -167,7 +119,7 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
             }
             return prevTime - 1; // Decrement time
         });
-    }, [stopTimer, playSound, mode, durations, setMode, setTimeLeft]); // Dependencies for timerTick
+    }, [stopTimer, mode, durations, setMode, setTimeLeft]); // Removed playSound dependency
 
 
     const startTimerCallback = useCallback(() => {
@@ -203,29 +155,9 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
 
 
     const startTimer = () => {
-        // Attempt to resume audio context on user interaction (clicking start)
-        if (audioRef.current && audioRef.current.paused) {
-            // Only try to play/pause if it's paused and exists
-            audioRef.current.play().then(() => {
-                 // It played, pause it immediately
-                 audioRef.current?.pause();
-                 audioRef.current!.currentTime = 0; // Reset time after test play/pause
-                 console.log("Audio context likely resumed by user interaction.");
-                 startTimerCallbackRef.current(); // Now start the timer logic
-            }).catch(error => {
-                 console.warn("Could not resume audio context on start click:", error.name, error.message);
-                 startTimerCallbackRef.current(); // Start timer anyway
-            });
-        } else {
-             // If audioRef.current is null here, log it
-             if (!audioRef.current) {
-                console.warn("Audio element not available or not loaded. Starting timer without sound pre-activation.");
-             } else {
-                console.log("Audio context already active, not available, or already playing. Starting timer.");
-             }
-             startTimerCallbackRef.current(); // Start timer logic
-        }
-     };
+       // Removed audio context resume attempt
+       startTimerCallbackRef.current(); // Directly start the timer logic
+    };
 
 
   const resetTimer = useCallback(() => {
