@@ -95,10 +95,11 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
           {task?.description && <ShadDialogDesc className="pt-1">{task.description}</ShadDialogDesc>}
            {/* Display original date */}
            {task?.date && (
-                <p className="text-xs text-muted-foreground pt-1">
+                // Changed <p> to <div> to fix invalid HTML nesting (div inside p)
+                <div className="text-xs text-muted-foreground pt-1">
                     Scheduled for: {format(parseISO(task.date + 'T00:00:00'), 'PPP')}
                     {task.recurring && <Badge variant="secondary" className="ml-2 text-xs">Weekly</Badge>}
-                </p>
+                </div>
            )}
         </ShadDialogHeader>
         {task ? (
