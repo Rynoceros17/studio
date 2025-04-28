@@ -1,15 +1,22 @@
+
 "use client";
 
 import type * as React from 'react';
 import { useCallback, useState, useMemo, useEffect } from 'react';
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor, // Import PointerSensor
+  useSensor, // Import useSensor
+  useSensors, // Import useSensors
+} from '@dnd-kit/core';
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
+import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
 import type { Task } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -23,10 +30,10 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet"; // Import Sheet components
-import { TaskListSheet } from '@/components/TaskListSheet'; // Import the TaskListSheet component
-import { Plus, List } from 'lucide-react'; // Added List icon
-import { format, parseISO, startOfWeek, endOfWeek, addDays, isSameDay } from 'date-fns';
+} from "@/components/ui/sheet";
+import { TaskListSheet } from '@/components/TaskListSheet';
+import { Plus, List, Timer as TimerIcon } from 'lucide-react'; // Added TimerIcon
+import { format, parseISO } from 'date-fns';
 
 
 export default function Home() {
@@ -36,22 +43,46 @@ export default function Home() {
 
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isTaskListOpen, setIsTaskListOpen] = useState(false); // State for task list sheet
+  const [isTaskListOpen, setIsTaskListOpen] = useState(false);
+  const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
+  const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
   const [isClient, setIsClient] = useState(false);
 
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
+  useEffect(() => {
+    setIsClient(true);
+    // Initial position slightly offset from top-right corner
+    const initialX = typeof window !== 'undefined' ? window.innerWidth - 300 - 24 : 0; // Adjust 300 based on timer width
+    const initialY = 24;
+    setTimerPosition({ x: initialX, y: initialY });
+  }, []);
+
+  // Configure sensors for dragging the timer
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      // Require the mouse to move by 10 pixels before activating
+      activationConstraint: {
+        distance: 10,
+      },
+    })
+  );
+
+  const handleTimerDragEnd = (event: DragEndEvent) => {
+    if (event.active.id === 'pomodoro-timer') {
+      setTimerPosition((prev) => ({
+        x: prev.x + event.delta.x,
+        y: prev.y + event.delta.y,
+      }));
+    }
+  };
 
 
     const parseISOStrict = (dateString: string | undefined): Date | null => {
         if (!dateString) return null;
-        // Ensure the input is just the date part before appending time
         const datePart = dateString.split('T')[0];
-        const date = parseISO(datePart + 'T00:00:00'); // Add time part for consistent parsing
+        const date = parseISO(datePart + 'T00:00:00');
         if (isNaN(date.getTime())) {
             console.error("Invalid date string received:", dateString);
-            return null; // Return null for invalid dates
+            return null;
         }
         return date;
     }
@@ -61,34 +92,30 @@ export default function Home() {
        const newTask: Task = {
            ...newTaskData,
            id: crypto.randomUUID(),
-           files: newTaskData.files ?? [], // Initialize files array
-           details: newTaskData.details ?? '', // Initialize details
-           dueDate: newTaskData.dueDate, // Keep dueDate if provided
-           recurring: newTaskData.recurring ?? false, // Initialize recurring
+           files: newTaskData.files ?? [],
+           details: newTaskData.details ?? '',
+           dueDate: newTaskData.dueDate,
+           recurring: newTaskData.recurring ?? false,
        };
        setTasks((prevTasks) => {
            const updatedTasks = [...prevTasks, newTask];
-           // Sort primarily by date, then maintain original insertion order for same date
            updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
 
                if (!dateA && !dateB) return 0;
-               if (!dateA) return 1; // Put tasks without valid dates at the end
+               if (!dateA) return 1;
                if (!dateB) return -1;
 
                const dateComparison = dateA.getTime() - dateB.getTime();
                if (dateComparison !== 0) return dateComparison;
 
-               // If dates are the same, find original indices (less efficient but maintains order)
-               // This part might be less critical if CalendarView handles daily sorting
-               const originalAIndex = prevTasks.findIndex(t => t.id === a.id); // Check original list
+               const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
                const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
-                // Handle cases where one or both tasks are new
-               if (originalAIndex === -1 && originalBIndex === -1) return 0; // Both new, keep relative order
-               if (originalAIndex === -1) return 1; // New task B comes after A
-               if (originalBIndex === -1) return -1; // New task A comes before B
-               return originalAIndex - originalBIndex; // Sort by original position
+               if (originalAIndex === -1 && originalBIndex === -1) return 0;
+               if (originalAIndex === -1) return 1;
+               if (originalBIndex === -1) return -1;
+               return originalAIndex - originalBIndex;
 
            });
            return updatedTasks;
@@ -100,7 +127,7 @@ export default function Home() {
            description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
        });
        setIsFormOpen(false);
-   }, [setTasks, toast]); // Removed parseISOStrict from dependency array
+   }, [setTasks, toast]);
 
 
   const deleteTask = useCallback((id: string) => {
@@ -116,14 +143,12 @@ export default function Home() {
      }
   }, [setTasks, setCompletedTaskIds, tasks, toast]);
 
-    // Function to update core task properties (name, description, date, recurring)
     const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => {
         setTasks(prevTasks => {
             let needsResort = false;
             const updatedTasks = prevTasks.map(task => {
                 if (task.id === id) {
                     const updatedTask = { ...task, ...updates };
-                    // Check if the date changed, as that requires resorting
                     if (updates.date && updates.date !== task.date) {
                         needsResort = true;
                     }
@@ -133,7 +158,6 @@ export default function Home() {
             });
 
             if (needsResort) {
-                // Re-sort if the date was changed
                 updatedTasks.sort((a, b) => {
                     const dateA = parseISOStrict(a.date);
                     const dateB = parseISOStrict(b.date);
@@ -141,8 +165,6 @@ export default function Home() {
                     if (!dateA) return 1;
                     if (!dateB) return -1;
                     return dateA.getTime() - dateB.getTime();
-                    // Note: Maintaining original order for same date is less crucial here,
-                    // but could be added back if needed.
                 });
             }
             return updatedTasks;
@@ -151,7 +173,7 @@ export default function Home() {
             title: "Task Updated",
             description: "Core task details have been updated.",
         });
-    }, [setTasks, toast]); // Removed parseISOStrict from dependency array
+    }, [setTasks, toast]);
 
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
@@ -168,7 +190,6 @@ export default function Home() {
           const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
           const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
 
-          // Combine and re-sort the entire list to maintain overall date order
           const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
           combinedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
@@ -181,7 +202,6 @@ export default function Home() {
                const dateComparison = dateA.getTime() - dateB.getTime();
                if (dateComparison !== 0) return dateComparison;
 
-                // If dates are the same, use the provided order for the specific date
                 const taskADateStr = dateA ? format(dateA, 'yyyy-MM-dd') : '';
                 const taskBDateStr = dateB ? format(dateB, 'yyyy-MM-dd') : '';
 
@@ -193,7 +213,6 @@ export default function Home() {
                    }
                }
 
-               // Fallback for tasks not on the reordered date (shouldn't be needed if logic is correct)
                const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
                const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
                 if (originalAIndex === -1 && originalBIndex === -1) return 0;
@@ -205,7 +224,7 @@ export default function Home() {
 
           return combinedTasks;
       });
-  }, [setTasks]); // Removed parseISOStrict from dependency array
+  }, [setTasks]);
 
 
   const toggleTaskCompletion = useCallback((id: string) => {
@@ -228,18 +247,15 @@ export default function Home() {
           });
       }
       setCompletedTaskIds(Array.from(currentCompletedIds));
-
-      // Trigger re-sort after toggling completion
-      setTasks(prevTasks => [...prevTasks]); // Create new array reference to trigger re-render/re-sort in CalendarView
+      setTasks(prevTasks => [...prevTasks]);
 
   }, [tasks, completedTaskIds, setCompletedTaskIds, toast, setTasks]);
 
-   // Function to update only 'details', 'dueDate', and 'files'
    const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => {
      setTasks(prevTasks => {
        return prevTasks.map(task => {
          if (task.id === id) {
-           return { ...task, ...updates }; // Merge updates
+           return { ...task, ...updates };
          }
          return task;
        });
@@ -251,68 +267,91 @@ export default function Home() {
    }, [setTasks, toast]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative">
-      <div className="w-full max-w-7xl space-y-4">
-        <header className="text-center py-2">
-          <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
-          <p className="text-sm text-muted-foreground mt-1">Your Weekly Task Planner</p>
-        </header>
+    // Wrap the relevant part in DndContext for the timer
+    <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
+      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden"> {/* Added overflow-hidden */}
+        <div className="w-full max-w-7xl space-y-4">
+          <header className="text-center py-2 relative z-10"> {/* Ensure header is above timer */}
+            <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
+            <p className="text-sm text-muted-foreground mt-1">Your Weekly Task Planner</p>
+          </header>
 
-        {/* Conditionally render CalendarView only on the client */}
-        {isClient && (
-            <CalendarView
-              tasks={tasks}
-              deleteTask={deleteTask}
-              updateTaskOrder={updateTaskOrder}
-              toggleTaskCompletion={toggleTaskCompletion}
-              completedTasks={completedTasks}
-              updateTaskDetails={updateTaskDetails} // Pass details update function
-              updateTask={updateTask} // Pass core update function
-            />
+          {/* Conditionally render CalendarView only on the client */}
+          {isClient && (
+              <CalendarView
+                tasks={tasks}
+                deleteTask={deleteTask}
+                updateTaskOrder={updateTaskOrder}
+                toggleTaskCompletion={toggleTaskCompletion}
+                completedTasks={completedTasks}
+                updateTaskDetails={updateTaskDetails}
+                updateTask={updateTask}
+              />
+          )}
+
+          {/* Add New Task Dialog */}
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="default"
+                size="icon"
+                className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
+                aria-label="Add new task"
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="text-primary">Add New Task</DialogTitle>
+              </DialogHeader>
+              <TaskForm addTask={addTask} onTaskAdded={() => setIsFormOpen(false)}/>
+            </DialogContent>
+          </Dialog>
+
+          {/* Task List Sheet */}
+           <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
+              <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="fixed bottom-4 left-4 md:bottom-6 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary"
+                    aria-label="View scratchpad"
+                  >
+                    <List className="h-6 w-6 text-primary" />
+                  </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                  <SheetHeader className="p-4 border-b shrink-0">
+                    <SheetTitle className="text-primary">Scratchpad</SheetTitle>
+                  </SheetHeader>
+                   <TaskListSheet />
+              </SheetContent>
+           </Sheet>
+
+           {/* Pomodoro Timer Trigger */}
+           <Button
+             variant="outline"
+             size="icon"
+             className="fixed top-4 right-4 md:top-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary"
+             aria-label="Toggle Pomodoro Timer"
+             onClick={() => setIsTimerVisible(!isTimerVisible)}
+           >
+             <TimerIcon className="h-6 w-6 text-primary" />
+           </Button>
+
+        </div>
+
+        {/* Render Pomodoro Timer if visible and on client */}
+        {isClient && isTimerVisible && (
+          <PomodoroTimer
+            position={timerPosition}
+            onClose={() => setIsTimerVisible(false)}
+          />
         )}
 
-        {/* Add New Task Dialog */}
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="default"
-              size="icon"
-              className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
-              aria-label="Add new task"
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle className="text-primary">Add New Task</DialogTitle>
-            </DialogHeader>
-            <TaskForm addTask={addTask} onTaskAdded={() => setIsFormOpen(false)}/>
-          </DialogContent>
-        </Dialog>
-
-        {/* Task List Sheet */}
-         <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
-            <SheetTrigger asChild>
-                <Button
-                  variant="outline" // Use outline or another variant
-                  size="icon"
-                  className="fixed bottom-4 left-4 md:bottom-6 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary"
-                  aria-label="View scratchpad"
-                >
-                  <List className="h-6 w-6 text-primary" />
-                </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col"> {/* Adjust width, remove padding, add flex */}
-                <SheetHeader className="p-4 border-b shrink-0"> {/* Add padding back to header, make non-flexible */}
-                  <SheetTitle className="text-primary">Scratchpad</SheetTitle>
-                </SheetHeader>
-                {/* Pass necessary props - none needed for freeform text */}
-                 <TaskListSheet />
-            </SheetContent>
-         </Sheet>
-
-      </div>
-    </main>
+      </main>
+    </DndContext>
   );
 }
+
