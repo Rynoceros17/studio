@@ -82,8 +82,10 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
              // This might be needed on some browsers for the sound to play later automatically
              audioRef.current.play().then(() => {
                  audioRef.current?.pause();
+                 audioRef.current!.currentTime = 0; // Reset time after test play/pause
              }).catch(() => {
                  // Ignore errors here, likely due to browser restrictions before user interaction
+                 console.warn("Pre-play/pause for audio context activation failed.");
              });
         } else {
             console.error("Failed to create Audio element.");
@@ -109,6 +111,7 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+      console.log("Timer stopped. Interval cleared.");
     }
     setIsActive(false);
   }, []);
@@ -123,14 +126,16 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
                 // Switch mode and reset/start next timer
                 if (mode === TimerMode.Pomodoro) {
                     console.log("Pomodoro finished, switching to short break.");
-                    setMode(TimerMode.ShortBreak);
                     const newDuration = durations[TimerMode.ShortBreak];
-                    setTimeLeft(newDuration);
+                    setMode(TimerMode.ShortBreak); // Update mode state first
+                    setTimeLeft(newDuration); // Set time for break
+
                     // Automatically start the short break using the ref
                     // Add a small delay to ensure state updates propagate before starting next timer
                     setTimeout(() => {
                          if(startTimerCallbackRef.current) {
                              console.log("Starting short break timer automatically.");
+                             // IMPORTANT: Call the start function directly here to initiate the break
                              startTimerCallbackRef.current();
                          } else {
                              console.error("startTimerCallbackRef.current is null, cannot start break timer.");
@@ -138,8 +143,8 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
                      }, 100); // Small delay (e.g., 100ms)
                 } else { // ShortBreak finished
                     console.log("Short break finished, resetting to Pomodoro.");
-                    setMode(TimerMode.Pomodoro);
-                    setTimeLeft(durations[TimerMode.Pomodoro]);
+                    setMode(TimerMode.Pomodoro); // Reset mode
+                    setTimeLeft(durations[TimerMode.Pomodoro]); // Reset time
                     // Don't auto-start next pomodoro - isActive remains false
                 }
                 return 0; // Return 0 to indicate timer reached end
@@ -150,18 +155,28 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
 
 
     const startTimerCallback = useCallback(() => {
-        if (isActive || timeLeft <= 0) return; // Prevent multiple intervals or starting at 0
+        // Allow starting even if isActive is true if the timer reached 0 (handled by stopTimer in tick)
+        if (isActive && timeLeft > 0) {
+            console.log("Timer already active and time > 0, returning.");
+            return;
+        }
+        // Prevent starting if time is already 0 or less unless it's the auto-start scenario
+        if (timeLeft <= 0 && !isActive) { // Check !isActive to distinguish manual start at 0
+            console.log("Timer at 0 and not active, cannot start manually.");
+            return;
+        }
 
-        console.log(`Starting ${mode} timer for ${timeLeft} seconds.`);
-        setIsActive(true);
+        console.log(`Starting ${mode} timer for ${timeLeft > 0 ? timeLeft : durations[mode]} seconds.`);
+        setIsActive(true); // Set active *before* setting interval
         // Clear any existing interval just in case
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
+            console.log("Cleared existing interval before starting new one.");
         }
         // Start the new interval
         intervalRef.current = setInterval(timerTick, 1000);
 
-    }, [isActive, timeLeft, mode, timerTick]); // Dependencies for startTimerCallback
+    }, [isActive, timeLeft, mode, timerTick, durations]); // Added durations dependency
 
 
     // Ref to hold the latest startTimerCallback and timerTick
@@ -171,28 +186,25 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
     }, [startTimerCallback]);
 
 
-  const startTimer = () => {
-      // Attempt to resume audio context on user interaction (clicking start)
-       if (audioRef.current && audioRef.current.paused && audioRef.current.readyState >= 3) { // Check if ready
-           audioRef.current.play().then(() => {
-                // It played, pause it immediately if timer isn't supposed to be running yet
-                // Or just let it play if the intent is to start sound *now*
-               audioRef.current?.pause(); // Pause after ensuring context is active
-               console.log("Audio context likely resumed by user interaction.");
-               startTimerCallbackRef.current(); // Now start the timer logic
-           }).catch(error => {
-               console.warn("Could not resume audio context on start click:", error);
-                startTimerCallbackRef.current(); // Start timer anyway
-           });
-       } else if (audioRef.current && audioRef.current.readyState < 3) {
-            console.warn("Audio not ready, starting timer without attempting play.");
-            startTimerCallbackRef.current(); // Start timer logic
-       }
-       else {
-            console.log("Audio context already active or not available, starting timer.");
-            startTimerCallbackRef.current(); // Start timer logic
-       }
-   };
+    const startTimer = () => {
+        // Attempt to resume audio context on user interaction (clicking start)
+        if (audioRef.current && audioRef.current.paused) {
+            // Only try to play/pause if it's paused and exists
+            audioRef.current.play().then(() => {
+                 // It played, pause it immediately
+                 audioRef.current?.pause();
+                 audioRef.current!.currentTime = 0; // Reset time after test play/pause
+                 console.log("Audio context likely resumed by user interaction.");
+                 startTimerCallbackRef.current(); // Now start the timer logic
+            }).catch(error => {
+                 console.warn("Could not resume audio context on start click:", error);
+                 startTimerCallbackRef.current(); // Start timer anyway
+            });
+        } else {
+             console.log("Audio context already active, not available, or already playing. Starting timer.");
+             startTimerCallbackRef.current(); // Start timer logic
+        }
+     };
 
 
   const resetTimer = useCallback(() => {
@@ -209,7 +221,8 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
     if (isActive) {
         stopTimer();
     }
-  }, [mode, durations, stopTimer]); // Removed resetTimer from deps, simplified logic
+  }, [mode, durations]); // Removed stopTimer from deps to avoid loop, stopTimer is stable
+
 
   // Cleanup interval on unmount
   useEffect(() => {
@@ -262,13 +275,17 @@ export function PomodoroTimer({ position, onClose }: PomodoroTimerProps) {
            } else if (mode === TimerMode.ShortBreak && timeLeft > newDurations[TimerMode.ShortBreak]) {
                setTimeLeft(newDurations[TimerMode.ShortBreak]);
            }
+           // If active and time needs resetting, stop the timer
+           stopTimer(); // Stop timer if duration changes while active
+           setTimeLeft(newDurations[mode]); // Update display time immediately
        }
       localStorage.setItem('pomodoro-durations', JSON.stringify(newDurations));
       setShowSettings(false);
   };
 
 
-  const progress = ((durations[mode] - timeLeft) / durations[mode]) * 100;
+  const progress = durations[mode] > 0 ? ((durations[mode] - timeLeft) / durations[mode]) * 100 : 0;
+
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="select-none"> {/* Prevent text selection */}
