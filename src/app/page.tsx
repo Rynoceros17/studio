@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 
 export default function Home() {
@@ -30,6 +30,7 @@ export default function Home() {
       ...newTaskData,
       id: crypto.randomUUID(), // Generate unique ID
     };
+    // Add the new task and re-sort all tasks by date
     setTasks((prevTasks) => [...prevTasks, newTask].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     toast({
         title: "Task Added",
@@ -39,14 +40,16 @@ export default function Home() {
   }, [setTasks, toast]);
 
   // Helper function to parse ISO string safely
-  const parseISOStrict = (dateString: string): Date => {
-      const date = new Date(dateString + 'T00:00:00'); // Ensure parsing as local date
-      if (isNaN(date.getTime())) {
-          console.error("Invalid date string received:", dateString);
-          return new Date(); // Fallback to today if invalid
-      }
-      return date;
-  }
+    const parseISOStrict = (dateString: string): Date => {
+        // Add time component to ensure it parses as local date, not UTC midnight
+        const date = parseISO(dateString + 'T00:00:00');
+        if (isNaN(date.getTime())) {
+            console.error("Invalid date string received:", dateString);
+            // Fallback to today if invalid, though ideally the form prevents this
+            return new Date();
+        }
+        return date;
+    }
 
 
   const deleteTask = useCallback((id: string) => {
@@ -61,6 +64,25 @@ export default function Home() {
      }
   }, [setTasks, tasks, toast]);
 
+  const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
+    setTasks(prevTasks => {
+      const tasksForDate = prevTasks.filter(task => task.date === date);
+      const otherTasks = prevTasks.filter(task => task.date !== date);
+
+      // Create a map for quick lookup
+      const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
+
+      // Reorder tasks based on the new order
+      const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
+
+       // Combine and sort the full list: other tasks first (implicitly sorted by date), then reordered tasks for the specific date
+      return [...otherTasks, ...reorderedTasksForDate].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    });
+     // Optional: Add a toast notification for reordering
+     // toast({ title: "Tasks Reordered", description: `Order updated for ${format(parseISOStrict(date), 'PPP')}.` });
+  }, [setTasks]);
+
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-4 md:p-8 bg-secondary/30 relative">
       <div className="w-full max-w-7xl space-y-8"> {/* Increased max-width */}
@@ -70,7 +92,7 @@ export default function Home() {
         </header>
 
         {/* Calendar View takes full width */}
-        <CalendarView tasks={tasks} deleteTask={deleteTask} />
+        <CalendarView tasks={tasks} deleteTask={deleteTask} updateTaskOrder={updateTaskOrder} />
 
         {/* Task Form Dialog */}
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -97,3 +119,4 @@ export default function Home() {
     </main>
   );
 }
+
