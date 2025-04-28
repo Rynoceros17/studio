@@ -32,14 +32,18 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
-import { Plus, List, Timer as TimerIcon } from 'lucide-react'; // Added TimerIcon
+import { Plus, List, Timer as TimerIcon, CheckSquare } from 'lucide-react'; // Added TimerIcon and CheckSquare
 import { format, parseISO } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 
 export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
+
+  // Calculate completed count
+  const completedCount = useMemo(() => completedTaskIds.length, [completedTaskIds]);
 
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -247,7 +251,7 @@ export default function Home() {
           });
       }
       setCompletedTaskIds(Array.from(currentCompletedIds));
-      setTasks(prevTasks => [...prevTasks]);
+      setTasks(prevTasks => [...prevTasks]); // Trigger re-render by creating a new array
 
   }, [tasks, completedTaskIds, setCompletedTaskIds, toast, setTasks]);
 
@@ -271,9 +275,15 @@ export default function Home() {
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden"> {/* Added overflow-hidden */}
         <div className="w-full max-w-7xl space-y-4">
-          <header className="text-center py-2 relative z-10"> {/* Ensure header is above timer */}
+          <header className="text-center py-2 relative z-10 flex flex-col sm:flex-row items-center justify-center gap-2"> {/* Ensure header is above timer and use flex for layout */}
             <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
-            <p className="text-sm text-muted-foreground mt-1">Your Weekly Task Planner</p>
+            {isClient && ( // Render counter only on client
+                <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-1 text-xs mt-1 sm:mt-0">
+                    <CheckSquare className="h-3 w-3" />
+                    {completedCount} Completed
+                </Badge>
+            )}
+            {/* <p className="text-sm text-muted-foreground mt-1 sm:ml-4">Your Weekly Task Planner</p> */}
           </header>
 
           {/* Conditionally render CalendarView only on the client */}
@@ -354,4 +364,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
