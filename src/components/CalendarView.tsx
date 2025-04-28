@@ -259,7 +259,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
         <Card
             className={cn(
                 "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer", // Added cursor-pointer
-                isCompleted ? 'bg-muted opacity-60 animate-pulse border-2 border-accent' : 'bg-card', // Added gold border animation
+                isCompleted ? 'bg-muted opacity-60' : 'bg-card', // Removed gold border and pulse animation
                 'transition-all duration-300 ease-in-out',
                 "relative" // Ensure relative positioning for children if needed
             )}
@@ -685,3 +685,4 @@ export function CalendarView({
     </DndContext>
   );
 }
+
