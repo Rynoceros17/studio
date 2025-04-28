@@ -1,8 +1,7 @@
-
 "use client";
 
 import type * as React from 'react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   addDays,
   subDays,
@@ -28,9 +27,9 @@ import {
 } from '@dnd-kit/core';
 import {
   restrictToVerticalAxis,
-  restrictToWindowEdges,
   restrictToParentElement,
-} from '@dnd-kit/modifiers'; // Correct import path
+  restrictToWindowEdges,
+} from '@dnd-kit/modifiers';
 import {
   arrayMove,
   SortableContext,
@@ -48,9 +47,16 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 
 
-// Define the drop animation configuration
 const dropAnimation: DropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
       styles: {
@@ -66,30 +72,28 @@ interface CalendarViewProps {
   deleteTask: (id: string) => void;
   updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
   toggleTaskCompletion: (id: string) => void;
-  completedTasks: Set<string>; // Ensure this is expected as a Set
+  completedTasks: Set<string>;
+  updateTaskDetails: (id: string, details: string) => void;
 }
-
 
 interface SortableTaskProps {
   task: Task;
   isCompleted: boolean;
   toggleTaskCompletion: (id: string) => void;
   deleteTask: (id: string) => void;
-  isDragging?: boolean; // Add isDragging prop for styling during DragOverlay
+  isDragging?: boolean;
+  onTaskDoubleClick: (task: Task) => void;
 }
 
-// Helper function to truncate text dynamically
 const truncateText = (text: string | undefined, maxLength: number): string => {
     if (!text) return '';
     return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
 };
 
-// Base character limits (adjust as needed)
 const BASE_TITLE_LIMIT = 15;
 const BASE_DESC_LIMIT = 25;
 
-// Non-sortable Task Item for DragOverlay
-function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
+function TaskItem({ task, isCompleted, isDragging, onTaskDoubleClick }: SortableTaskProps) {
     const titleLimit = BASE_TITLE_LIMIT;
     const descLimit = BASE_DESC_LIMIT;
 
@@ -99,7 +103,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     return (
         <Card
           className={cn(
-            "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words", // Added break-words
+            "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
             isCompleted ? 'bg-muted opacity-60' : 'bg-card',
             isDragging && 'shadow-lg scale-105 border-2 border-primary animate-pulse',
             'transition-all duration-300 ease-in-out'
@@ -109,21 +113,21 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
              <div className="pt-0.5 text-muted-foreground cursor-grab shrink-0">
                 <GripVertical className="h-3 w-3" />
              </div>
-            <div className="flex-grow min-w-0 pr-1 overflow-hidden"> {/* Added overflow-hidden */}
+            <div className="flex-grow min-w-0 pr-1 overflow-hidden">
               <p className={cn(
-                  "text-xs font-medium break-words", // Keep break-words
+                  "text-xs font-medium break-words",
                   isCompleted && 'line-through'
                  )}
-                 title={task.name} // Keep full title for tooltip
+                 title={task.name}
                >
                 {nameDisplay}
               </p>
               {descriptionDisplay && (
                 <p className={cn(
-                    "text-[10px] text-muted-foreground mt-0.5 break-words", // Keep break-words
+                    "text-[10px] text-muted-foreground mt-0.5 break-words",
                      isCompleted && 'line-through'
                     )}
-                    title={task.description} // Keep full description for tooltip
+                    title={task.description}
                  >
                   {descriptionDisplay}
                 </p>
@@ -142,9 +146,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     );
 }
 
-
-// Component for individual sortable task item
-function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: SortableTaskProps) {
+function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask, onTaskDoubleClick }: SortableTaskProps) {
   const {
     attributes,
     listeners,
@@ -158,7 +160,6 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
     transform: CSS.Transform.toString(transform),
     transition: transition || 'transform 250ms ease',
     opacity: isDragging ? 0 : 1,
-    // Removed width setting from here - let flexbox handle it
   };
 
   const handleToggleCompletion = (e: React.MouseEvent) => {
@@ -177,16 +178,19 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
   const nameDisplay = truncateText(task.name, titleLimit);
   const descriptionDisplay = truncateText(task.description, descLimit);
 
+  const handleDoubleClick = () => {
+    onTaskDoubleClick(task);
+  };
 
   return (
-    <div ref={setNodeRef} style={style} data-testid={`task-${task.id}`} {...attributes} className="mb-1 touch-none">
+    <div ref={setNodeRef} style={style} data-testid={`task-${task.id}`} {...attributes} className="mb-1 touch-none" onDoubleClick={handleDoubleClick}>
         <Card
             className={cn(
-                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words", // Added break-words
+                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
                 isCompleted ? 'bg-muted opacity-60' : 'bg-card',
-                 isCompleted ? 'animate-pulse border-2 border-accent' : '', // Animation on completion
+                 isCompleted ? 'animate-pulse border-2 border-accent' : '',
                  'transition-all duration-300 ease-in-out',
-                 "relative" // Ensure relative positioning for children if needed
+                 "relative"
             )}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
@@ -197,23 +201,23 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
               >
                 <GripVertical className="h-3 w-3" />
              </button>
-             <div className="flex-grow min-w-0 pr-1 overflow-hidden"> {/* Added overflow-hidden */}
+             <div className="flex-grow min-w-0 pr-1 overflow-hidden">
                <p
                  className={cn(
-                   "text-xs font-medium break-words", // Keep break-words
+                   "text-xs font-medium break-words",
                    isCompleted && 'line-through'
                  )}
-                 title={task.name} // Keep full title for tooltip
+                 title={task.name}
                >
                  {nameDisplay}
                </p>
                {descriptionDisplay && (
                  <p
                    className={cn(
-                     "text-[10px] text-muted-foreground mt-0.5 break-words", // Keep break-words
+                     "text-[10px] text-muted-foreground mt-0.5 break-words",
                      isCompleted && 'line-through'
                    )}
-                   title={task.description} // Keep full description for tooltip
+                   title={task.description}
                  >
                    {descriptionDisplay}
                  </p>
@@ -247,22 +251,73 @@ function SortableTask({ task, isCompleted, toggleTaskCompletion, deleteTask }: S
   );
 }
 
-// Omit the props that will be managed internally by this component's state hooks
-export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCompletion, completedTasks }: CalendarViewProps) {
+interface TaskDetailsDialogProps {
+  task: Task | null;
+  onClose: () => void;
+  updateTaskDetails: (id: string, details: string) => void;
+}
+
+function TaskDetailsDialog({ task, onClose, updateTaskDetails }: TaskDetailsDialogProps) {
+  const [taskDetails, setTaskDetails] = useState(task?.details || '');
+
+  const handleSave = () => {
+    if (task) {
+      updateTaskDetails(task.id, taskDetails);
+      onClose();
+    }
+  };
+
+  return (
+    <Dialog open={!!task} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="text-primary">Task Details</DialogTitle>
+        </DialogHeader>
+        {task ? (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label
+                htmlFor="details"
+                className="text-right text-sm font-medium leading-none text-primary"
+              >
+                Additional Details:
+              </label>
+              <div className="col-span-3">
+                <Textarea
+                  id="details"
+                  value={taskDetails}
+                  onChange={(e) => setTaskDetails(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <Button onClick={handleSave} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+              Save Details
+            </Button>
+          </div>
+        ) : (
+          <p>No task selected.</p>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCompletion, completedTasks, updateTaskDetails }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false); // State to track client-side rendering
+  const [isClient, setIsClient] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   useEffect(() => {
-      setIsClient(true); // Set to true once component mounts
+      setIsClient(true);
   }, []);
 
 
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start week on Monday
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
 
-
-  // Memoize the days array
   const days = useMemo(() => {
       const daysArray = [];
       let day = weekStart;
@@ -271,41 +326,36 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
         day = addDays(day, 1);
       }
       return daysArray;
-    }, [weekStart, weekEnd]); // Recalculate only when weekStart/weekEnd changes
+    }, [weekStart, weekEnd]);
 
 
-  // Memoize tasks grouped by day
    const tasksByDay = useMemo(() => {
        const groupedTasks: { [key: string]: Task[] } = {};
        if (!tasks || !Array.isArray(tasks)) {
            console.error("Tasks data is invalid:", tasks);
-           return groupedTasks; // Return empty if tasks are invalid
+           return groupedTasks;
        }
        if (!(completedTasks instanceof Set)) {
           console.warn("completedTasks is not a Set, defaulting to empty set");
-          completedTasks = new Set(); // Ensure completedTasks is a Set
+          completedTasks = new Set();
        }
 
        days.forEach(day => {
          const dateStr = format(day, 'yyyy-MM-dd');
-         // Ensure day is valid before proceeding
          if (isNaN(day.getTime())) {
              console.error("Invalid day generated:", day);
              groupedTasks[dateStr] = [];
              return;
          }
-         const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Monday is 0, Sunday is 6
+         const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1;
 
          groupedTasks[dateStr] = tasks.filter(task => {
-             if (!task || !task.date) return false; // Basic validation for task object and date
+             if (!task || !task.date) return false;
              try {
-                 // Ensure task.date is a valid date string before parsing
                  if (typeof task.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(task.date)) {
                     console.warn("Invalid task date format detected:", task.date, "for task:", task.id);
                     return false;
                  }
-
-                 // Parse with explicit time to avoid timezone issues if date is just 'yyyy-MM-dd'
                  const taskDate = parseISO(task.date + 'T00:00:00');
                   if (isNaN(taskDate.getTime())) {
                       console.error("Invalid task date parsed:", task.date, "for task:", task.id);
@@ -314,11 +364,8 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
 
                  if (task.recurring) {
                      const taskStartDayOfWeek = taskDate.getDay() === 0 ? 6 : taskDate.getDay() - 1;
-                     // Check if the recurring task's start day matches the current day of the week
-                     // AND if the current day is on or after the task's start date
                      return taskStartDayOfWeek === dayOfWeek && taskDate <= day;
                   }
-                  // For non-recurring tasks, check if the date is the same
                   return isSameDay(taskDate, day);
              } catch (e) {
                  console.error("Error processing task date:", task.date, "for task:", task.id, e);
@@ -326,22 +373,19 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
              }
          });
 
-          // Sort tasks within the day: non-completed first, then completed, maintaining DnD order within status
           groupedTasks[dateStr]?.sort((a, b) => {
               const aCompleted = completedTasks.has(a.id);
               const bCompleted = completedTasks.has(b.id);
 
               if (aCompleted !== bCompleted) {
-                  return aCompleted ? 1 : -1; // Non-completed first
+                  return aCompleted ? 1 : -1;
               }
 
-              // If completion status is the same, maintain relative order from the main `tasks` array
-              const originalAIndex = tasks.findIndex(t => t && t.id === a.id); // Add check for t
-              const originalBIndex = tasks.findIndex(t => t && t.id === b.id); // Add check for t
+              const originalAIndex = tasks.findIndex(t => t && t.id === a.id);
+              const originalBIndex = tasks.findIndex(t => t && t.id === b.id);
 
-                // Handle cases where index might not be found (shouldn't happen with valid data)
                if (originalAIndex === -1 || originalBIndex === -1) {
-                   return 0; // Maintain original order or place unfound items at the end
+                   return 0;
                }
 
               return originalAIndex - originalBIndex;
@@ -350,17 +394,15 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
 
        });
        return groupedTasks;
-     }, [tasks, days, completedTasks]); // completedTasks is now guaranteed to be a Set
+     }, [tasks, days, completedTasks]);
 
 
-   // Find the active task details when activeId changes
    const activeTask = useMemo(() => tasks.find(task => task && task.id === activeId), [tasks, activeId]);
-
 
   const sensors = useSensors(
       useSensor(PointerSensor, {
         activationConstraint: {
-          distance: 5, // Start drag after moving 5px
+          distance: 5,
         },
       }),
       useSensor(KeyboardSensor, {
@@ -368,11 +410,10 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
       })
   );
 
-    // Define modifiers for DndContext
     const modifiers = useMemo(() => [
         restrictToVerticalAxis,
-        restrictToParentElement, // Keep item within its SortableContext parent
-        restrictToWindowEdges // Fallback for edge cases
+        restrictToParentElement,
+        restrictToWindowEdges
       ], []);
 
 
@@ -383,14 +424,12 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-     setActiveId(null); // Reset activeId
+     setActiveId(null);
 
 
     if (over && active.id !== over.id) {
-       // Determine the date context (container ID) of the drop target
        const overSortableContextId = over.data?.current?.sortable?.containerId;
 
-        // Ensure we have a valid date string as the container ID
         if (!overSortableContextId || typeof overSortableContextId !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(overSortableContextId)) {
              console.warn("Could not determine the valid date context of the drop target.", over.data?.current?.sortable);
              return;
@@ -398,7 +437,6 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
 
        const overDateStr = overSortableContextId;
 
-       // Get the current task IDs for that specific date, ensuring tasksByDay and the date exist
        const currentTaskIdsForDate = (tasksByDay?.[overDateStr] || []).map(task => task.id);
 
 
@@ -411,10 +449,9 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
          updateTaskOrder(overDateStr, reorderedTaskIds);
       } else {
           console.warn(`Could not find oldIndex (${oldIndex}) or newIndex (${newIndex}) for task ${active.id} in date ${overDateStr}`);
-           // Handle dropping onto the container itself (e.g., end of the list)
            if (over.id === overDateStr && oldIndex !== -1) {
                console.log(`Task ${active.id} dropped onto container ${overDateStr}. Moving to end.`);
-               const targetIndex = currentTaskIdsForDate.length; // Index to move to the end
+               const targetIndex = currentTaskIdsForDate.length;
                const reorderedTaskIds = arrayMove(currentTaskIdsForDate, oldIndex, targetIndex);
                updateTaskOrder(overDateStr, reorderedTaskIds);
            }
@@ -435,33 +472,13 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
     setCurrentDate(addDays(weekStart, 7));
   };
 
-  if (!isClient) {
-      return (
-           <div className="p-1 md:p-2"> {/* Reduced padding */}
-                <div className="flex items-center justify-between mb-1"> {/* Reduced margin */}
-                  <span className="w-8 h-8 bg-muted rounded"></span> {/* Smaller placeholder */}
-                  <h2 className="text-base md:text-lg font-semibold text-primary">Loading...</h2> {/* Slightly smaller text */}
-                  <span className="w-8 h-8 bg-muted rounded"></span> {/* Smaller placeholder */}
-                </div>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-1"> {/* Reduced gap */}
-                    {Array.from({ length: 7 }).map((_, index) => (
-                        <Card key={index} className="flex flex-col h-[450px] md:h-[600px] overflow-hidden bg-secondary/50"> {/* Increased height */}
-                            <CardHeader className="p-1 text-center shrink-0"> {/* Reduced padding */}
-                                <div className="h-3 bg-muted rounded w-1/2 mx-auto mb-0.5"></div> {/* Smaller skeleton */}
-                                <div className="h-5 bg-muted rounded w-1/4 mx-auto"></div> {/* Smaller skeleton */}
-                            </CardHeader>
-                            <Separator className="shrink-0 my-0.5"/> {/* Reduced margin */}
-                            <CardContent className="p-1 space-y-1 flex-grow"> {/* Reduced padding and space */}
-                                <div className="h-12 bg-muted rounded w-full mb-1"></div> {/* Smaller skeleton */}
-                                <div className="h-12 bg-muted rounded w-full"></div> {/* Smaller skeleton */}
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </div>
-      );
-  }
+    const handleTaskDoubleClick = (task: Task) => {
+        setSelectedTask(task);
+    };
 
+  const handleCloseTaskDetails = () => {
+    setSelectedTask(null);
+  };
 
   return (
     <DndContext
@@ -470,62 +487,62 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
-      modifiers={modifiers} // Apply modifiers here
-      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} // Ensure consistent measuring
+      modifiers={modifiers}
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
-      <div className="p-1 md:p-2 w-full"> {/* Reduced padding, ensure full width */}
-        <div className="flex items-center justify-between mb-1"> {/* Reduced margin */}
-          <Button variant="outline" size="icon" onClick={goToPreviousWeek} aria-label="Previous week" className="h-8 w-8"> {/* Smaller button */}
-            <ChevronLeft className="h-4 w-4" /> {/* Smaller icon */}
+      <div className="p-1 md:p-2 w-full">
+        <div className="flex items-center justify-between mb-1">
+          <Button variant="outline" size="icon" onClick={goToPreviousWeek} aria-label="Previous week" className="h-8 w-8">
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-          <h2 className="text-base md:text-lg font-semibold text-primary text-center flex-grow px-1"> {/* Slightly smaller text, reduced padding */}
+          <h2 className="text-base md:text-lg font-semibold text-primary text-center flex-grow px-1">
             {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
           </h2>
-          <Button variant="outline" size="icon" onClick={goToNextWeek} aria-label="Next week" className="h-8 w-8"> {/* Smaller button */}
-            <ChevronRight className="h-4 w-4" /> {/* Smaller icon */}
+          <Button variant="outline" size="icon" onClick={goToNextWeek} aria-label="Next week" className="h-8 w-8">
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-1 w-full"> {/* Reduced gap, ensure full width */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-1 w-full">
           {days.map((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
-             // Safely access tasks for the day, default to empty array if undefined
              const dayTasks = tasksByDay?.[dateStr] || [];
             const isToday = isSameDay(day, new Date());
 
 
             return (
               <Card key={dateStr} className={cn(
-                  "flex flex-col h-[450px] md:h-[600px] overflow-hidden", // Adjusted height
-                  isToday ? 'border-accent border-2 shadow-md' : 'bg-secondary/50 border-transparent' // Use transparent border for non-today
+                  "flex flex-col h-[500px] md:h-[600px] overflow-hidden",
+                  isToday ? 'border-accent border-2 shadow-md' : 'bg-secondary/50 border-transparent'
                   )}>
-                <CardHeader className="p-1 text-center shrink-0"> {/* Reduced padding */}
-                  <CardTitle className="text-xs font-medium"> {/* Smaller text */}
+                <CardHeader className="p-1 text-center shrink-0">
+                  <CardTitle className="text-xs font-medium">
                     {format(day, 'EEE')}
                   </CardTitle>
-                  <CardDescription className={cn("text-sm font-bold", isToday ? 'text-accent' : 'text-foreground')}> {/* Slightly smaller text */}
+                  <CardDescription className={cn("text-sm font-bold", isToday ? 'text-accent' : 'text-foreground')}>
                     {format(day, 'd')}
                   </CardDescription>
-                  {isToday && <Badge variant="outline" className="border-accent text-accent mt-0.5 px-1 py-0 text-[9px]">Today</Badge>} {/* Adjusted badge styles */}
+                  {isToday && <Badge variant="outline" className="border-accent text-accent mt-0.5 px-1 py-0 text-[9px]">Today</Badge>}
                 </CardHeader>
-                <Separator className="shrink-0 my-0.5"/> {/* Reduced margin */}
+                <Separator className="shrink-0 my-0.5"/>
                 <ScrollArea className="flex-grow">
-                  <CardContent className="p-1 space-y-1" data-testid={`day-content-${dateStr}`}> {/* Reduced padding and space */}
+                  <CardContent className="p-1 space-y-1" data-testid={`day-content-${dateStr}`}>
                      <SortableContext
-                         id={dateStr} // Use the date string as the ID for the context
-                         items={dayTasks.map(task => task.id)} // Pass task IDs
+                         id={dateStr}
+                         items={dayTasks.map(task => task.id)}
                          strategy={verticalListSortingStrategy}
                        >
                          {dayTasks.length === 0 ? (
-                           <p className="text-[10px] text-muted-foreground text-center pt-4">No tasks</p> /* Smaller text */
+                           <p className="text-[10px] text-muted-foreground text-center pt-4">No tasks</p>
                          ) : (
                              dayTasks.map((task) => (
                                <SortableTask
                                  key={task.id}
                                  task={task}
-                                 isCompleted={completedTasks.has(task.id)} // Safely check Set
+                                 isCompleted={completedTasks.has(task.id)}
                                  toggleTaskCompletion={toggleTaskCompletion}
                                  deleteTask={deleteTask}
+                                 onTaskDoubleClick={handleTaskDoubleClick}
                                />
                              ))
                          )}
@@ -541,16 +558,19 @@ export function CalendarView({ tasks, deleteTask, updateTaskOrder, toggleTaskCom
             {activeId && activeTask ? (
                 <TaskItem
                     task={activeTask}
-                    isCompleted={completedTasks.has(activeId)} // Safely check Set
+                    isCompleted={completedTasks.has(activeId)}
                     isDragging
-                    // Dummy functions for overlay item
                     toggleTaskCompletion={() => {}}
                     deleteTask={() => {}}
+                    onTaskDoubleClick={() => {}}
                 />
             ) : null}
         </DragOverlay>
+        <TaskDetailsDialog
+            task={selectedTask}
+            onClose={handleCloseTaskDetails}
+            updateTaskDetails={updateTaskDetails}
+        />
     </DndContext>
   );
 }
-
-    

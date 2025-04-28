@@ -1,4 +1,3 @@
-
 "use client";
 
 import type * as React from 'react';
@@ -9,8 +8,8 @@ import type { Task } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
-import { Label } from "@/components/ui/label"; // Import Label
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -31,68 +30,59 @@ export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
 
 
-  // Helper function to parse ISO string safely
     const parseISOStrict = (dateString: string): Date => {
-        // Add time component to ensure it parses as local date, not UTC midnight
         const date = parseISO(dateString + 'T00:00:00');
         if (isNaN(date.getTime())) {
             console.error("Invalid date string received:", dateString);
-            // Fallback to today if invalid, though ideally the form prevents this
             return new Date();
         }
         return date;
     }
 
-  // Memoize tasks grouped by day - Define this *before* updateTaskOrder
    const tasksByDay = useMemo(() => {
        const grouped: { [key: string]: Task[] } = {};
        tasks.forEach(task => {
-           const dateKey = task.date; // Use the yyyy-MM-dd string as the key
+           const dateKey = task.date;
            if (!grouped[dateKey]) {
                grouped[dateKey] = [];
            }
            grouped[dateKey].push(task);
-            // Sort within the group: non-completed first, then completed, maintaining DnD order within status
             grouped[dateKey].sort((a, b) => {
                 const aCompleted = completedTasks.has(a.id);
                 const bCompleted = completedTasks.has(b.id);
                 if (aCompleted !== bCompleted) {
-                    return aCompleted ? 1 : -1; // Non-completed first
+                    return aCompleted ? 1 : -1;
                 }
-                // If completion status is the same, maintain relative order from `tasks` array
                 const originalAIndex = tasks.findIndex(t => t.id === a.id);
                 const originalBIndex = tasks.findIndex(t => t.id === b.id);
                 return originalAIndex - originalBIndex;
             });
        });
        return grouped;
-   }, [tasks, completedTasks]); // Depend on completedTasks set directly
+   }, [tasks, completedTasks]);
 
 
   const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
     const newTask: Task = {
       ...newTaskData,
-      id: crypto.randomUUID(), // Generate unique ID
+      id: crypto.randomUUID(),
     };
-    // Add the new task and re-sort all tasks by date, then by creation order implicitly
     setTasks((prevTasks) => [...prevTasks, newTask].sort((a, b) => {
         const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
         if (dateComparison !== 0) return dateComparison;
-        // If dates are the same, keep original relative order (new task at the end)
-        return 0; // Or return 1 to always put new tasks last if sort isn't stable
+        return 0;
     }));
     toast({
         title: "Task Added",
         description: `"${newTaskData.name}" added for ${format(parseISOStrict(newTaskData.date), 'PPP')}.`,
     });
-    setIsFormOpen(false); // Close dialog on successful add
+    setIsFormOpen(false);
   }, [setTasks, toast, parseISOStrict]);
 
 
   const deleteTask = useCallback((id: string) => {
     const taskToDelete = tasks.find(task => task.id === id);
     setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
-    // Also remove from completed set if it exists there
     setCompletedTaskIds(prevIds => prevIds.filter(taskId => taskId !== id));
      if (taskToDelete) {
         toast({
@@ -105,35 +95,27 @@ export default function Home() {
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
     setTasks(prevTasks => {
-      // Separate tasks for the specific date and others
       const tasksForDate = prevTasks.filter(task => task.date === date);
       const otherTasks = prevTasks.filter(task => task.date !== date);
 
-      // Create a map for quick lookup of tasks for the specific date
       const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
 
-      // Create the reordered list for the specific date based on IDs
       const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
 
-       // Combine and sort the full list
        const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
 
-       // Sort first by date, then maintain the new order for the specific date
        combinedTasks.sort((a, b) => {
            const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
            if (dateComparison !== 0) return dateComparison;
 
-           // If dates are the same and it's the date we reordered...
            if (a.date === date && b.date === date) {
                const aIndex = orderedTaskIds.indexOf(a.id);
                const bIndex = orderedTaskIds.indexOf(b.id);
-               // Should always find indices if logic is correct
                if (aIndex !== -1 && bIndex !== -1) {
                    return aIndex - bIndex;
                }
            }
 
-            // Fallback for tasks not on the reordered date (maintain original relative order)
             const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
             const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
             return originalAIndex - originalBIndex;
@@ -141,14 +123,13 @@ export default function Home() {
 
        return combinedTasks;
     });
-  }, [setTasks]); // Removed tasksByDay dependency as it's not needed
+  }, [setTasks]);
 
 
   const toggleTaskCompletion = useCallback((id: string) => {
       const task = tasks.find(t => t.id === id);
       if (!task) return;
 
-      // Clone the current set of IDs
       const currentCompletedIds = new Set(completedTaskIds);
 
       if (currentCompletedIds.has(id)) {
@@ -164,17 +145,30 @@ export default function Home() {
               description: `"${task.name}" marked as complete.`,
           });
       }
-      // Update local storage with the array version of the set
       setCompletedTaskIds(Array.from(currentCompletedIds));
-  }, [tasks, completedTaskIds, setCompletedTaskIds, toast]); // Depend on completedTaskIds array
+  }, [tasks, completedTaskIds, setCompletedTaskIds, toast]);
 
+   const updateTaskDetails = useCallback((id: string, details: string) => {
+     setTasks(prevTasks => {
+       return prevTasks.map(task => {
+         if (task.id === id) {
+           return { ...task, details: details };
+         }
+         return task;
+       });
+     });
+     toast({
+       title: "Task Updated",
+       description: "Task details have been updated.",
+     });
+   }, [setTasks, toast]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative"> {/* Reduced padding */}
-      <div className="w-full max-w-7xl space-y-4"> {/* Reduced space */}
-        <header className="text-center py-2"> {/* Reduced padding */}
-          <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1> {/* Slightly smaller on mobile */}
-          <p className="text-sm text-muted-foreground mt-1">Your Weekly Task Planner</p> {/* Slightly smaller text */}
+    <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative">
+      <div className="w-full max-w-7xl space-y-4">
+        <header className="text-center py-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
+          <p className="text-sm text-muted-foreground mt-1">Your Weekly Task Planner</p>
         </header>
 
         <CalendarView
@@ -182,7 +176,8 @@ export default function Home() {
           deleteTask={deleteTask}
           updateTaskOrder={updateTaskOrder}
           toggleTaskCompletion={toggleTaskCompletion}
-          completedTasks={completedTasks} // Pass the Set
+          completedTasks={completedTasks}
+          updateTaskDetails={updateTaskDetails}
         />
 
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -190,10 +185,10 @@ export default function Home() {
             <Button
               variant="default"
               size="icon"
-              className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50" // Slightly smaller FAB
+              className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
               aria-label="Add new task"
             >
-              <Plus className="h-6 w-6" /> {/* Slightly smaller icon */}
+              <Plus className="h-6 w-6" />
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
