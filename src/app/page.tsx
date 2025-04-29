@@ -416,17 +416,16 @@ export default function Home() {
         <div className="w-full max-w-7xl space-y-4">
           <header className="text-center py-2 relative z-10"> {/* Ensure header is above timer */}
             <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
-            {/* Counter moved outside header */}
-            {/* <p className="text-sm text-muted-foreground mt-1">Your Weekly Task Planner</p> */}
-          </header>
-
-           {/* Render counter only on client and position it */}
+             {/* Render counter only on client and position it under the title */}
             {isClient && (
-                <Badge variant="secondary" className="fixed top-6 left-6 z-50 flex items-center gap-1.5 px-2 py-1 text-xs">
+                <Badge variant="secondary" className="mt-1 mx-auto flex items-center justify-center gap-1.5 px-2 py-1 text-xs w-fit"> {/* Added mx-auto and w-fit */}
                     <CheckSquare className="h-3 w-3" />
                     {completedCount} Completed
                 </Badge>
             )}
+          </header>
+
+
 
           {/* Conditionally render CalendarView only on the client */}
           {isClient && (
@@ -461,13 +460,25 @@ export default function Home() {
             </DialogContent>
           </Dialog>
 
-          {/* Task List Sheet */}
+          {/* Pomodoro Timer Trigger - Positioned bottom-left */}
+           <Button
+             variant="outline"
+             size="icon"
+             className="fixed bottom-20 left-4 md:bottom-20 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary" // Adjusted bottom position
+             aria-label="Toggle Pomodoro Timer"
+             onClick={() => setIsTimerVisible(!isTimerVisible)}
+           >
+             <TimerIcon className="h-6 w-6 text-primary" />
+           </Button>
+
+
+          {/* Task List Sheet Trigger - Positioned bottom-left */}
            <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
               <SheetTrigger asChild>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="fixed bottom-4 left-4 md:bottom-6 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary"
+                    className="fixed bottom-4 left-4 md:bottom-6 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary" // Original position
                     aria-label="View scratchpad"
                   >
                     <List className="h-6 w-6 text-primary" />
@@ -481,16 +492,7 @@ export default function Home() {
               </SheetContent>
            </Sheet>
 
-           {/* Pomodoro Timer Trigger */}
-           <Button
-             variant="outline"
-             size="icon"
-             className="fixed top-4 right-4 md:top-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary"
-             aria-label="Toggle Pomodoro Timer"
-             onClick={() => setIsTimerVisible(!isTimerVisible)}
-           >
-             <TimerIcon className="h-6 w-6 text-primary" />
-           </Button>
+
 
         </div>
 
@@ -534,3 +536,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
