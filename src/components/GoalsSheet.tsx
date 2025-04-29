@@ -15,7 +15,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge"; // Import Badge
 import { Plus, Trash2, PlusCircle } from 'lucide-react'; // Added PlusCircle
 import { useToast } from "@/hooks/use-toast";
-import { cn } from '@/lib/utils';
+import { cn, truncateText } from '@/lib/utils'; // Import truncateText
 import type { Subtask, Goal } from '@/lib/types'; // Import types
 
 interface GoalsSheetProps {
@@ -196,7 +196,7 @@ export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
                                             <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/50 rounded-t-lg">
                                                 <AccordionTrigger className="flex-grow p-3 text-sm font-medium text-left">
                                                     <div className="flex items-center space-x-2 min-w-0">
-                                                        <span className="truncate" title={goal.name}>{goal.name}</span>
+                                                        <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 30)}</span> {/* Truncate goal name */}
                                                         <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0">{progress}%</Badge>
                                                     </div>
                                                 </AccordionTrigger>
@@ -234,10 +234,10 @@ export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
                                                                         />
                                                                         <Label
                                                                             htmlFor={`subtask-${subtask.id}`}
-                                                                            className={cn("text-xs truncate cursor-pointer", subtask.completed && "line-through text-muted-foreground")}
-                                                                            title={subtask.name}
+                                                                            className={cn("text-xs truncate whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer", subtask.completed && "line-through text-muted-foreground")}
+                                                                            title={subtask.name} // Full name as tooltip
                                                                         >
-                                                                            {subtask.name}
+                                                                            {truncateText(subtask.name, 30)} {/* Truncate subtask name */}
                                                                         </Label>
                                                                     </div>
                                                                     <div className="flex items-center shrink-0 space-x-1">

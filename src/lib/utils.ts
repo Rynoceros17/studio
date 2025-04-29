@@ -14,28 +14,34 @@ export const truncateText = (text: string | undefined, maxLength: number): strin
 };
 
 
-// Function to get max lengths based on viewport/container (can be adapted)
-// For dialogs, we might use larger fixed limits or pass them dynamically.
-// Example placeholder, adjust as needed for different contexts.
-export const getMaxLength = (limitType: 'title' | 'desc', context: 'calendar' | 'dialog' = 'calendar'): number => {
+// Function to get max lengths based on viewport/container
+// Added 'subtask' context
+export const getMaxLength = (limitType: 'title' | 'desc', context: 'calendar' | 'dialog' | 'subtask' = 'calendar'): number => {
     // Calendar limits (adjust based on column width)
     const CAL_TITLE_LIMIT_SM = 40; // Mobile (e.g., 1-2 cols)
     const CAL_DESC_LIMIT_SM = 40;
     const CAL_TITLE_LIMIT_MD = 25; // Tablet (e.g., 3-4 cols)
     const CAL_DESC_LIMIT_MD = 25;
-    const CAL_TITLE_LIMIT_LG = 25; // Desktop (7 cols) - Adjust based on actual column width
-    const CAL_DESC_LIMIT_LG = 17; // Desktop (7 cols) - Adjust based on actual column width
+    const CAL_TITLE_LIMIT_LG = 25; // Desktop (7 cols)
+    const CAL_DESC_LIMIT_LG = 17; // Desktop (7 cols)
 
-    // Dialog limits (can be more generous)
-    const DIALOG_TITLE_LIMIT = 60;
-    // Removed DIALOG_DESC_LIMIT as it's handled specifically in the dialog component now
+    // Dialog limits
+    const DIALOG_TITLE_LIMIT = 55; // Adjusted as per previous request
+    const DIALOG_DESC_LIMIT = 40; // Adjusted as per previous request
+
+    // Subtask limits
+    const SUBTASK_TITLE_LIMIT = 30; // New limit for subtasks
 
     if (context === 'dialog') {
-        // Dialog description limit is now handled directly in TaskDetailsDisplayDialog.tsx
-        return DIALOG_TITLE_LIMIT;
+        return limitType === 'title' ? DIALOG_TITLE_LIMIT : DIALOG_DESC_LIMIT;
     }
 
-    // Calendar context logic (remains the same)
+    if (context === 'subtask') {
+        // Only title limit is relevant for subtasks currently
+        return SUBTASK_TITLE_LIMIT;
+    }
+
+    // Calendar context logic
     if (typeof window !== 'undefined') {
         if (window.innerWidth < 640) { // sm screens
             return limitType === 'title' ? CAL_TITLE_LIMIT_SM : CAL_DESC_LIMIT_SM;
