@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type * as React from 'react';
@@ -16,7 +17,7 @@ import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTi
 import type { Task } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Sheet,
   SheetContent,
@@ -58,6 +69,8 @@ export default function Home() {
   const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
   const [isClient, setIsClient] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
+
 
   useEffect(() => {
     setIsClient(true);
@@ -87,7 +100,7 @@ export default function Home() {
   };
 
 
-    const parseISOStrict = (dateString: string | undefined): Date | null => {
+    const parseISOStrict = useCallback((dateString: string | undefined): Date | null => {
         if (!dateString) return null;
         const datePart = dateString.split('T')[0];
         const date = parseISO(datePart + 'T00:00:00');
@@ -96,7 +109,7 @@ export default function Home() {
             return null;
         }
         return date;
-    }
+    }, []); // Added useCallback with empty dependency array
 
 
    const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
@@ -108,6 +121,7 @@ export default function Home() {
            dueDate: newTaskData.dueDate,
            recurring: newTaskData.recurring ?? false,
            highPriority: newTaskData.highPriority ?? false, // Add high priority
+           exceptions: [], // Initialize exceptions array
        };
        setTasks((prevTasks) => {
            const updatedTasks = [...prevTasks, newTask];
@@ -145,10 +159,11 @@ export default function Home() {
            description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
        });
        setIsFormOpen(false);
-   }, [setTasks, toast]);
+   }, [setTasks, toast, parseISOStrict]);
 
 
-    const deleteTask = useCallback((id: string) => {
+    // Deletes the base task (and therefore all its occurrences)
+    const deleteAllOccurrences = useCallback((id: string) => {
         const taskToDelete = tasks.find(task => task.id === id);
         setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
         // Remove all completion entries associated with this task ID
@@ -156,14 +171,47 @@ export default function Home() {
         if (taskToDelete) {
             toast({
                 title: "Task Deleted",
-                description: `"${taskToDelete.name}" has been removed.`,
+                description: `"${taskToDelete.name}" and all its future occurrences have been removed.`,
                 variant: "destructive",
             });
         }
+         setDeleteConfirmation(null); // Close confirmation dialog
     }, [tasks, setTasks, setCompletedTaskIds, toast]);
 
+    // Adds an exception for a specific date instance of a recurring task
+    const deleteRecurringInstance = useCallback((taskId: string, dateStr: string) => {
+        const taskToModify = tasks.find(task => task.id === taskId);
+        setTasks(prevTasks => prevTasks.map(task => {
+            if (task.id === taskId) {
+                const updatedExceptions = [...(task.exceptions || []), dateStr];
+                return { ...task, exceptions: updatedExceptions };
+            }
+            return task;
+        }));
+        // Optionally remove completion entry if it exists for this specific instance
+        setCompletedTaskIds(prevIds => prevIds.filter(completionKey => completionKey !== `${taskId}_${dateStr}`));
 
-    const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => {
+        if (taskToModify) {
+            toast({
+                title: "Task Instance Skipped",
+                description: `"${taskToModify.name}" for ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} will be skipped.`,
+            });
+        }
+        setDeleteConfirmation(null); // Close confirmation dialog
+    }, [tasks, setTasks, setCompletedTaskIds, toast, parseISOStrict]);
+
+    // This function is called by CalendarView to initiate the deletion process
+    const requestDeleteTask = useCallback((task: Task, dateStr: string) => {
+        if (task.recurring) {
+            setDeleteConfirmation({ task, dateStr }); // Open confirmation dialog for recurring tasks
+        } else {
+            deleteAllOccurrences(task.id); // Delete non-recurring task directly
+        }
+    }, [deleteAllOccurrences]);
+
+
+
+    const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => {
         setTasks(prevTasks => {
             let needsResort = false;
             const updatedTasks = prevTasks.map(task => {
@@ -207,10 +255,13 @@ export default function Home() {
       setTasks(prevTasks => {
           const tasksForDate = prevTasks.filter(task => {
               const taskDateObj = parseISOStrict(task.date);
-              // Consider recurring tasks appearing on this date as well
-              if (!taskDateObj) return false;
                const currentDay = parseISOStrict(date);
-               if (!currentDay) return false;
+
+              // Skip if task date or current day is invalid
+               if (!taskDateObj || !currentDay) return false;
+
+               // Skip if the task has an exception for this date
+               if (task.exceptions?.includes(date)) return false;
 
                if (task.recurring) {
                    const taskStartDayOfWeek = taskDateObj.getDay();
@@ -225,6 +276,9 @@ export default function Home() {
              if (!taskDateObj) return true; // Keep tasks without dates
              const currentDay = parseISOStrict(date);
              if (!currentDay) return true; // Keep if target date is invalid
+
+             // Skip if the task has an exception for this date (already handled above but good for clarity)
+             if (task.exceptions?.includes(date)) return true;
 
              if (task.recurring) {
                  const taskStartDayOfWeek = taskDateObj.getDay();
@@ -377,7 +431,7 @@ export default function Home() {
           {isClient && (
               <CalendarView
                 tasks={tasks}
-                deleteTask={deleteTask}
+                requestDeleteTask={requestDeleteTask} // Pass the request function
                 updateTaskOrder={updateTaskOrder}
                 toggleTaskCompletion={toggleTaskCompletion} // Pass the modified function
                 completedTasks={completedTasks} // Pass the Set of completion keys
@@ -446,6 +500,33 @@ export default function Home() {
             onClose={() => setIsTimerVisible(false)}
           />
         )}
+
+         {/* Recurring Task Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Recurring Task</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Do you want to delete only this occurrence of "{deleteConfirmation?.task?.name}" on {deleteConfirmation?.dateStr ? format(parseISOStrict(deleteConfirmation.dateStr) ?? new Date(), 'PPP') : ''}, or all future occurrences?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
+                        className={buttonVariants({ variant: "outline" })}
+                    >
+                        Delete This Occurrence Only
+                    </AlertDialogAction>
+                    <AlertDialogAction
+                        onClick={() => deleteAllOccurrences(deleteConfirmation!.task.id)}
+                        className={buttonVariants({ variant: "destructive" })}
+                    >
+                        Delete All Occurrences
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 
       </main>
     </DndContext>

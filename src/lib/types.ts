@@ -9,6 +9,7 @@ export type Task = {
   dueDate?: string; // Optional due date (yyyy-MM-dd format)
   files?: FileMetaData[]; // Optional array for file metadata
   highPriority?: boolean; // Optional: Flag for high priority tasks
+  exceptions?: string[]; // Optional array of 'yyyy-MM-dd' dates to skip for recurring tasks
 };
 
 // Simple interface for file metadata (as we aren't handling uploads yet)

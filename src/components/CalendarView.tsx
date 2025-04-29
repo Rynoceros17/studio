@@ -26,9 +26,6 @@ import {
   type DropAnimation,
   MeasuringStrategy,
   type PointerActivationConstraint, // Import PointerActivationConstraint
-  useDraggable,
-  useDroppable,
-  UniqueIdentifier,
 } from '@dnd-kit/core';
 import {
   restrictToVerticalAxis,
@@ -43,7 +40,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -62,7 +59,8 @@ import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog'; // Import
 
 interface CalendarViewProps {
     tasks: Task[];
-    deleteTask: (id: string) => void;
+    // Updated prop for initiating delete process
+    requestDeleteTask: (task: Task, dateStr: string) => void;
     updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
     // Now accepts taskId and dateStr for completion logic
     toggleTaskCompletion: (taskId: string, dateStr: string) => void;
@@ -70,7 +68,7 @@ interface CalendarViewProps {
     completedTasks: Set<string>;
     // Removed highPriority from the updateTaskDetails type definition here
     updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
-    updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => void;
+    updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => void;
 }
 
 
@@ -89,7 +87,8 @@ interface SortableTaskProps {
   dateStr: string; // Add the specific date string for this instance of the task
   isCompleted: boolean;
   toggleTaskCompletion: (taskId: string, dateStr: string) => void; // Update signature
-  deleteTask: (id: string) => void;
+  // Updated prop: initiates the deletion process
+  requestDeleteTask: (task: Task, dateStr: string) => void;
   isDragging?: boolean;
   onTaskClick: (task: Task) => void; // Changed from onTaskDoubleClick
   onEditClick: (task: Task) => void; // Add handler for edit click
@@ -148,7 +147,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
           className={cn(
             "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words border", // Added border for base styling
             isCompleted
-              ? 'bg-muted opacity-60 border-border' // Completed styling
+              ? 'bg-muted opacity-60 border-transparent' // Completed styling - removed gold border
               : task.highPriority
                 ? 'bg-card border-accent border-2' // High priority, not completed: white bg, gold border
                 : 'bg-card border-border',      // Default background and border
@@ -199,7 +198,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     );
 }
 
-function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, deleteTask, onTaskClick, onEditClick }: SortableTaskProps) {
+function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, requestDeleteTask, onTaskClick, onEditClick }: SortableTaskProps) {
   const [isCompletedAnim, setIsCompletedAnim] = useState(false);
   const {
     attributes,
@@ -248,10 +247,11 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
       toggleTaskCompletion(task.id, dateStr); // Pass both task ID and date string
   };
 
+  // Updated to use requestDeleteTask
   const handleDeleteTask = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent click event propagation
-    deleteTask(task.id); // Delete task uses only the original ID
+    requestDeleteTask(task, dateStr); // Initiate deletion process with task and date
   }
 
     const handleEditClickInternal = (e: React.MouseEvent) => {
@@ -281,7 +281,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
             className={cn(
                 "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer border", // Base styles + border
                 isCompleted
-                  ? 'bg-muted opacity-60 border-border' // Completed style
+                  ? 'bg-muted opacity-60 border-transparent' // Completed style - removed gold border
                   : task.highPriority
                     ? 'bg-card border-accent border-2' // High priority, not completed: white bg, gold border
                     : 'bg-card border-border',       // Default background and border
@@ -346,7 +346,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
                 variant="ghost"
                 size="icon"
                 className="h-5 w-5 text-destructive hover:text-destructive/80 focus-visible:ring-1 focus-visible:ring-ring rounded"
-                onClick={handleDeleteTask}
+                onClick={handleDeleteTask} // Use the updated handler
                 aria-label="Delete task"
                 // disabled={isCompleted} // Removing disable on complete for now
               >
@@ -362,7 +362,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, delete
 
 export function CalendarView({
     tasks,
-    deleteTask,
+    requestDeleteTask, // Use the new prop
     updateTaskOrder,
     toggleTaskCompletion,
     completedTasks, // This is now a Set of completion keys `${taskId}_${dateStr}`
@@ -428,6 +428,11 @@ export function CalendarView({
                 if (!task || !task.date) return false;
                 const taskDate = parseISOStrict(task.date);
                 if (!taskDate) return false; // Skip if date is invalid
+
+                // Skip if the task has an exception for this specific date
+                if (task.exceptions?.includes(dateStr)) {
+                    return false;
+                }
 
                 if (task.recurring) {
                     const taskStartDayOfWeek = taskDate.getDay();
@@ -670,7 +675,7 @@ export function CalendarView({
                                      dateStr={dateStr} // Pass the date string
                                      isCompleted={completedTasks?.has(completionKey) ?? false} // Check completion using the key
                                      toggleTaskCompletion={toggleTaskCompletion}
-                                     deleteTask={deleteTask}
+                                     requestDeleteTask={requestDeleteTask} // Pass the request delete function
                                      onTaskClick={handleTaskClick}
                                      onEditClick={handleEditClick} // Pass edit handler
                                    />
@@ -699,7 +704,7 @@ export function CalendarView({
                         isDragging // Add a prop to style the dragged item differently
                         // Provide dummy functions or context if needed by TaskItem for display
                         toggleTaskCompletion={() => {}}
-                        deleteTask={() => {}}
+                        requestDeleteTask={() => {}} // Pass dummy request delete
                         onTaskClick={() => {}}
                         onEditClick={() => {}} // Add dummy edit handler
                     />
