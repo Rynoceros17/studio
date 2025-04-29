@@ -2,7 +2,7 @@
 "use client";
 
 import type * as React from 'react';
-import { useRef } from 'react'; // Import useRef
+import { useRef, useCallback } from 'react'; // Import useCallback
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label"; // Import Label
@@ -18,52 +18,118 @@ export function TaskListSheet({}: TaskListSheetProps) {
     const handleNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         const textarea = event.target;
         const newValue = textarea.value;
-        const cursorPos = textarea.selectionStart;
-        let modifiedValue = newValue;
-        let newCursorPos = cursorPos;
-        let shouldAdjustCursor = false;
-
-        // Check if the character just typed was a space
-        if (newValue[cursorPos - 1] === ' ') {
-            // Find the start of the current line
-            const lineStartIndex = newValue.lastIndexOf('\n', cursorPos - 2) + 1;
-            // Get text from line start up to the character before the typed space
-            const textBeforeSpaceOnLine = newValue.substring(lineStartIndex, cursorPos - 1);
-
-            // Check for "1." pattern at the start of the line
-            if (lineStartIndex === cursorPos - 3 && textBeforeSpaceOnLine === '1.') {
-                // Prepend tab for indentation
-                modifiedValue =
-                    newValue.substring(0, lineStartIndex) +
-                    '\t' +
-                    newValue.substring(lineStartIndex);
-                newCursorPos = cursorPos + 1; // Adjust cursor for the added tab
-                shouldAdjustCursor = true;
-            }
-            // Check for "-" pattern at the start of the line
-            else if (lineStartIndex === cursorPos - 2 && textBeforeSpaceOnLine === '-') {
-                 // Prepend tab for indentation
-                 modifiedValue =
-                    newValue.substring(0, lineStartIndex) +
-                    '\t' +
-                    newValue.substring(lineStartIndex);
-                 newCursorPos = cursorPos + 1; // Adjust cursor for the added tab
-                 shouldAdjustCursor = true;
-            }
-        }
-
-        setNotes(modifiedValue);
-
-        // Adjust cursor position in the next tick if necessary
-        if (shouldAdjustCursor && textareaRef.current) {
-             // Use setTimeout to defer cursor update until after React processes state update
-             setTimeout(() => {
-                if (textareaRef.current) {
-                    textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newCursorPos;
-                }
-             }, 0);
-        }
+        // Basic auto-indent on space after "1." or "-" is now handled in onKeyDown
+        // Keep this basic update for typing other characters
+        setNotes(newValue);
     };
+
+     const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        const textarea = event.currentTarget;
+        const value = textarea.value;
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd; // Needed for replacement
+
+        // Handle Enter key press for list continuation
+        if (event.key === 'Enter') {
+            // Find the start of the current line
+            const currentLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+            const currentLineText = value.substring(currentLineStart, selectionStart);
+
+            // Regex to match numbered list items (e.g., "1. ", " 1. ", "\t1. ")
+            const numberedListMatch = currentLineText.match(/^(\s*)(\d+)\.\s+/);
+            // Regex to match bulleted list items (e.g., "- ", " - ", "\t- ")
+            const bulletListMatch = currentLineText.match(/^(\s*)-\s+/);
+
+            if (numberedListMatch) {
+                event.preventDefault(); // Prevent default Enter behavior
+
+                const indentation = numberedListMatch[1] || ''; // Capture existing indentation
+                const currentNumber = parseInt(numberedListMatch[2], 10);
+                const nextNumber = currentNumber + 1;
+                const textToInsert = `\n${indentation}${nextNumber}. `;
+
+                // Insert the new numbered list item
+                 const newValue =
+                    value.substring(0, selectionStart) +
+                    textToInsert +
+                    value.substring(selectionEnd);
+
+                setNotes(newValue);
+
+                // Move cursor to the end of the inserted text
+                // Use setTimeout to ensure the cursor position updates after state change
+                setTimeout(() => {
+                     if (textareaRef.current) {
+                        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = selectionStart + textToInsert.length;
+                    }
+                }, 0);
+
+            } else if (bulletListMatch) {
+                event.preventDefault(); // Prevent default Enter behavior
+
+                const indentation = bulletListMatch[1] || ''; // Capture existing indentation
+                const textToInsert = `\n${indentation}- `;
+
+                // Insert the new bullet list item
+                const newValue =
+                    value.substring(0, selectionStart) +
+                    textToInsert +
+                    value.substring(selectionEnd);
+
+                setNotes(newValue);
+
+                // Move cursor to the end of the inserted text
+                 setTimeout(() => {
+                     if (textareaRef.current) {
+                        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = selectionStart + textToInsert.length;
+                    }
+                 }, 0);
+            }
+            // If not a list item, let Enter behave normally (handled by default textarea behavior)
+        }
+
+         // Handle Space key press for initial indentation
+         if (event.key === ' ') {
+             const charBeforeSpace = value[selectionStart - 1];
+             const twoCharsBeforeSpace = value.substring(selectionStart - 2, selectionStart);
+             const currentLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+
+             // Check for "1." just typed at the start of the line
+             if (twoCharsBeforeSpace === '1.' && selectionStart - currentLineStart === 2) {
+                 event.preventDefault(); // Prevent the space from being added normally
+                 const textToInsert = '\t1. ';
+                 const newValue =
+                    value.substring(0, currentLineStart) +
+                    textToInsert +
+                    value.substring(selectionEnd);
+                setNotes(newValue);
+                setTimeout(() => {
+                     if (textareaRef.current) {
+                        const newCursorPos = currentLineStart + textToInsert.length;
+                        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newCursorPos;
+                    }
+                }, 0);
+             }
+             // Check for "-" just typed at the start of the line
+             else if (charBeforeSpace === '-' && selectionStart - currentLineStart === 1) {
+                 event.preventDefault(); // Prevent the space from being added normally
+                 const textToInsert = '\t- ';
+                 const newValue =
+                    value.substring(0, currentLineStart) +
+                    textToInsert +
+                    value.substring(selectionEnd);
+                 setNotes(newValue);
+                  setTimeout(() => {
+                     if (textareaRef.current) {
+                        const newCursorPos = currentLineStart + textToInsert.length;
+                        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newCursorPos;
+                    }
+                }, 0);
+             }
+         }
+
+    }, [setNotes]); // Added setNotes to dependencies
+
 
     return (
         // Use flex-grow to allow textarea to fill available space
@@ -76,6 +142,7 @@ export function TaskListSheet({}: TaskListSheetProps) {
                 id="scratchpad-notes"
                 value={notes}
                 onChange={handleNotesChange}
+                onKeyDown={handleKeyDown} // Add keydown handler
                 placeholder="Start typing..."
                 // Make textarea take up remaining height
                 className="flex-grow resize-none text-sm" // Added text-sm for consistency
