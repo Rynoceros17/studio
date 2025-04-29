@@ -87,7 +87,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
 
   // Get truncated title and description for display
   const dialogTitleLimit = getMaxLength('title', 'dialog');
-  const dialogDescLimit = getMaxLength('desc', 'dialog');
+  const dialogDescLimit = 55; // Set specific limit for description display in dialog
   const truncatedTitle = truncateText(task?.name, dialogTitleLimit);
   const truncatedDescription = truncateText(task?.description, dialogDescLimit);
 
@@ -97,11 +97,11 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
         <ShadDialogHeader>
            <div className="flex justify-between items-start">
                 <div>
-                    <ShadDialogTitle className="text-primary" title={task?.name}> {/* Add full title as tooltip */}
+                    <ShadDialogTitle className="text-primary truncate" title={task?.name}> {/* Add full title as tooltip and truncate */}
                         {truncatedTitle}
                     </ShadDialogTitle>
                      {task?.description && (
-                        <ShadDialogDesc className="pt-1" title={task.description}> {/* Add full description as tooltip */}
+                        <ShadDialogDesc className="pt-1 truncate" title={task.description}> {/* Add full description as tooltip and truncate */}
                             {truncatedDescription}
                         </ShadDialogDesc>
                      )}
@@ -130,7 +130,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                                    id="dueDateDisplay"
                                    variant={"outline"}
                                    className={cn(
-                                       "w-full justify-start text-left font-normal h-9", // Keep h-9, w-full controlled by grid
+                                       "w-full justify-start text-left font-normal h-9 truncate", // Keep h-9, w-full controlled by grid, added truncate
                                        !dueDate && "text-muted-foreground"
                                    )}
                                    >

@@ -8,8 +8,11 @@ export function cn(...inputs: ClassValue[]) {
 // Function to truncate text
 export const truncateText = (text: string | undefined, maxLength: number): string => {
     if (!text) return '';
-    return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+    // Ensure maxLength is at least 3 to accommodate '...'
+    if (maxLength < 3) return text.slice(0, maxLength);
+    return text.length > maxLength ? text.slice(0, maxLength - 3) + '...' : text;
 };
+
 
 // Function to get max lengths based on viewport/container (can be adapted)
 // For dialogs, we might use larger fixed limits or pass them dynamically.
@@ -25,10 +28,11 @@ export const getMaxLength = (limitType: 'title' | 'desc', context: 'calendar' | 
 
     // Dialog limits (can be more generous)
     const DIALOG_TITLE_LIMIT = 60;
-    const DIALOG_DESC_LIMIT = 100;
+    // Removed DIALOG_DESC_LIMIT as it's handled specifically in the dialog component now
 
     if (context === 'dialog') {
-        return limitType === 'title' ? DIALOG_TITLE_LIMIT : DIALOG_DESC_LIMIT;
+        // Dialog description limit is now handled directly in TaskDetailsDisplayDialog.tsx
+        return DIALOG_TITLE_LIMIT;
     }
 
     // Calendar context logic (remains the same)
