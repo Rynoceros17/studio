@@ -232,15 +232,23 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Trigger animation when isCompleted changes to true
+    // Trigger animation when isCompleted changes
      useEffect(() => {
-         if (isCompleted && !isCompletedAnim) {
-           setIsCompletedAnim(true);
-           // Remove animation class after duration
-           const timer = setTimeout(() => setIsCompletedAnim(false), 500); // Match animation duration
-           return () => clearTimeout(timer);
+         let timer: NodeJS.Timeout | null = null;
+         if (isCompleted) {
+             setIsCompletedAnim(true);
+             // Remove animation class after duration to allow revert styles if needed
+             timer = setTimeout(() => setIsCompletedAnim(false), 500); // Match animation duration
+         } else {
+            // Explicitly remove class if marked incomplete
+            setIsCompletedAnim(false);
          }
-       }, [isCompleted, isCompletedAnim]); // Depend on isCompleted and isCompletedAnim
+
+         return () => {
+             if (timer) clearTimeout(timer);
+         };
+       }, [isCompleted]); // Depend only on isCompleted
+
 
   const handleToggleCompletion = (e: React.MouseEvent) => {
       e.preventDefault();

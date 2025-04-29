@@ -91,7 +91,7 @@ export default {
   			}
   		},
   		animation: {
-            'task-complete': 'task-complete 0.5s ease-in-out forwards', // Use the completion animation
+            'task-complete': 'task-complete 0.5s ease-in-out', // Removed 'forwards'
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
   		}
