@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { cn } from '@/lib/utils';
+import { cn, truncateText } from '@/lib/utils'; // Import truncateText
 
 interface Bookmark {
     id: string;
@@ -145,11 +145,12 @@ export function BookmarkListSheet() {
                                      <div className="flex items-center space-x-2 flex-grow min-w-0 cursor-pointer group" onClick={() => openLink(bookmark.url)}>
                                         <LinkIcon className="h-4 w-4 text-primary flex-shrink-0" />
                                         <div className="flex-grow min-w-0">
-                                            <p className="text-sm font-medium truncate group-hover:text-primary group-hover:underline" title={bookmark.name}>
+                                            <p className="text-sm font-medium truncate whitespace-nowrap overflow-hidden text-ellipsis group-hover:text-primary group-hover:underline" title={bookmark.name}>
                                                 {bookmark.name}
                                             </p>
-                                            <p className="text-xs text-muted-foreground truncate group-hover:text-primary" title={bookmark.url}>
-                                                {bookmark.url}
+                                            {/* Apply truncation to the URL display */}
+                                            <p className="text-xs text-muted-foreground truncate whitespace-nowrap overflow-hidden text-ellipsis group-hover:text-primary" title={bookmark.url}>
+                                                {truncateText(bookmark.url, 25)} {/* Truncate URL display */}
                                             </p>
                                         </div>
                                         <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -172,4 +173,3 @@ export function BookmarkListSheet() {
         </div>
     );
 }
-
