@@ -86,8 +86,8 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
   };
 
   // Get truncated title and description for display
-  const dialogTitleLimit = getMaxLength('title', 'dialog');
-  const dialogDescLimit = 55; // Set specific limit for description display in dialog
+  const dialogTitleLimit = getMaxLength('title', 'dialog'); // Uses 60 from getMaxLength
+  const dialogDescLimit = 40; // Set specific limit for description display in dialog to 40
   const truncatedTitle = truncateText(task?.name, dialogTitleLimit);
   const truncatedDescription = truncateText(task?.description, dialogDescLimit);
 
@@ -192,7 +192,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                            <div className="mt-2 space-y-1 max-h-24 overflow-y-auto border rounded p-1">
                                {uploadedFiles.map(file => (
                                    <div key={file.name} className="flex items-center justify-between text-xs bg-muted/50 p-1 rounded">
-                                       <span className="truncate mr-1" title={file.name}>{file.name}</span>
+                                       <span className="truncate mr-1 whitespace-nowrap overflow-hidden text-ellipsis" title={file.name}>{truncateText(file.name, 25)}</span>
                                        <Button variant="ghost" size="icon" className="h-4 w-4 text-destructive shrink-0" onClick={() => removeFile(file.name)} aria-label={`Remove file ${file.name}`}>
                                             <Trash2 className="h-3 w-3" />
                                         </Button>
