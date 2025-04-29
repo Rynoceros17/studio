@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -24,19 +25,23 @@ const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
+  // Removed Primitive.Header wrapper as it's optional and can interfere with flex layouts
+  <AccordionPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      // Adjusted base styles: removed flex-1, justify-between. Added width-full for potential parent flex control.
+      "flex items-center py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180 w-full",
+      className
+    )}
+    {...props}
+  >
+    {/* Children (like goal name/badge) now take up available space */}
+    <div className="flex-grow text-left mr-2"> {/* Ensure text aligns left and has margin */}
+         {children}
+    </div>
+    {/* Chevron is now explicitly placed at the end */}
+    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+  </AccordionPrimitive.Trigger>
 ))
 AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 

@@ -195,26 +195,27 @@ export function GoalsSheet() {
                                 return (
                                     <AccordionItem key={goal.id} value={goal.id}>
                                         <Card className="overflow-hidden shadow-sm border hover:shadow-md transition-shadow duration-200 mb-2">
-                                            <CardHeader className="p-0"> {/* Remove default CardHeader padding */}
-                                                <AccordionTrigger className="flex items-center justify-between w-full p-3 text-sm font-medium hover:bg-muted/50 rounded-t-lg">
-                                                    <div className="flex items-center space-x-2 flex-grow min-w-0">
+                                            {/* Card Header now contains Trigger and Delete Button as siblings */}
+                                            <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/50 rounded-t-lg">
+                                                <AccordionTrigger className="flex-grow p-3 text-sm font-medium text-left"> {/* Removed justify-between, added text-left */}
+                                                    <div className="flex items-center space-x-2 min-w-0">
                                                         <span className="truncate" title={goal.name}>{goal.name}</span>
                                                         <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0">{progress}%</Badge>
                                                     </div>
-                                                    {/* Remove default chevron, AccordionTrigger adds its own */}
-                                                      <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-6 w-6 text-destructive hover:bg-destructive/10 ml-2 shrink-0"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation(); // Prevent accordion toggle
-                                                            deleteGoal(goal.id);
-                                                        }}
-                                                        aria-label={`Delete goal ${goal.name}`}
-                                                    >
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </Button>
                                                 </AccordionTrigger>
+                                                {/* Delete button is now a sibling of the trigger */}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive hover:bg-destructive/10 mr-2 shrink-0" // Added margin-right
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent accordion toggle
+                                                        deleteGoal(goal.id);
+                                                    }}
+                                                    aria-label={`Delete goal ${goal.name}`}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </CardHeader>
                                             <AccordionContent>
                                                 <CardContent className="p-3 space-y-3">
@@ -282,4 +283,3 @@ export function GoalsSheet() {
         </div>
     );
 }
-
