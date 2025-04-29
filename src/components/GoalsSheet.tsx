@@ -13,23 +13,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge"; // Import Badge
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, PlusCircle } from 'lucide-react'; // Added PlusCircle
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
+import type { Subtask, Goal } from '@/lib/types'; // Import types
 
-interface Subtask {
-    id: string;
-    name: string;
-    completed: boolean;
+interface GoalsSheetProps {
+  onCreateTaskFromSubtask: (subtask: Subtask) => void; // Callback prop
 }
 
-interface Goal {
-    id: string;
-    name: string;
-    subtasks: Subtask[];
-}
-
-export function GoalsSheet() {
+export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
     const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
     const [newGoalName, setNewGoalName] = useState('');
     const [newSubtaskInputs, setNewSubtaskInputs] = useState<Record<string, string>>({}); // { [goalId]: subtaskName }
@@ -159,6 +152,11 @@ export function GoalsSheet() {
         }
     };
 
+    // Handle clicking the "Create Task" button for a subtask
+    const handleCreateTaskClick = (subtask: Subtask) => {
+        onCreateTaskFromSubtask(subtask); // Call the passed-in callback
+    };
+
 
     return (
         <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden">
@@ -195,21 +193,19 @@ export function GoalsSheet() {
                                 return (
                                     <AccordionItem key={goal.id} value={goal.id}>
                                         <Card className="overflow-hidden shadow-sm border hover:shadow-md transition-shadow duration-200 mb-2">
-                                            {/* Card Header now contains Trigger and Delete Button as siblings */}
                                             <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/50 rounded-t-lg">
-                                                <AccordionTrigger className="flex-grow p-3 text-sm font-medium text-left"> {/* Removed justify-between, added text-left */}
+                                                <AccordionTrigger className="flex-grow p-3 text-sm font-medium text-left">
                                                     <div className="flex items-center space-x-2 min-w-0">
                                                         <span className="truncate" title={goal.name}>{goal.name}</span>
                                                         <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0">{progress}%</Badge>
                                                     </div>
                                                 </AccordionTrigger>
-                                                {/* Delete button is now a sibling of the trigger */}
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-destructive hover:bg-destructive/10 mr-2 shrink-0" // Added margin-right
+                                                    className="h-8 w-8 text-destructive hover:bg-destructive/10 mr-2 shrink-0"
                                                     onClick={(e) => {
-                                                        e.stopPropagation(); // Prevent accordion toggle
+                                                        e.stopPropagation();
                                                         deleteGoal(goal.id);
                                                     }}
                                                     aria-label={`Delete goal ${goal.name}`}
@@ -227,13 +223,14 @@ export function GoalsSheet() {
                                                             <p className="text-xs text-muted-foreground">No subtasks yet.</p>
                                                         ) : (
                                                             goal.subtasks.map(subtask => (
-                                                                <div key={subtask.id} className="flex items-center justify-between space-x-2 bg-background p-1.5 rounded border">
+                                                                <div key={subtask.id} className="flex items-center justify-between space-x-1 bg-background p-1.5 rounded border">
                                                                     <div className="flex items-center space-x-2 flex-grow min-w-0">
                                                                         <Checkbox
                                                                             id={`subtask-${subtask.id}`}
                                                                             checked={subtask.completed}
                                                                             onCheckedChange={() => toggleSubtaskCompletion(goal.id, subtask.id)}
                                                                             className="shrink-0"
+                                                                            aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
                                                                         />
                                                                         <Label
                                                                             htmlFor={`subtask-${subtask.id}`}
@@ -243,15 +240,29 @@ export function GoalsSheet() {
                                                                             {subtask.name}
                                                                         </Label>
                                                                     </div>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-5 w-5 text-destructive hover:bg-destructive/10 shrink-0"
-                                                                        onClick={() => deleteSubtask(goal.id, subtask.id)}
-                                                                        aria-label={`Delete subtask ${subtask.name}`}
-                                                                    >
-                                                                        <Trash2 className="h-3 w-3" />
-                                                                    </Button>
+                                                                    <div className="flex items-center shrink-0 space-x-1">
+                                                                         {/* Create Task Button */}
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-5 w-5 text-primary hover:bg-primary/10"
+                                                                            onClick={() => handleCreateTaskClick(subtask)}
+                                                                            aria-label={`Create calendar task for ${subtask.name}`}
+                                                                            title="Create Calendar Task" // Tooltip for clarity
+                                                                        >
+                                                                            <PlusCircle className="h-3 w-3" />
+                                                                        </Button>
+                                                                        {/* Delete Subtask Button */}
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-5 w-5 text-destructive hover:bg-destructive/10"
+                                                                            onClick={() => deleteSubtask(goal.id, subtask.id)}
+                                                                            aria-label={`Delete subtask ${subtask.name}`}
+                                                                        >
+                                                                            <Trash2 className="h-3 w-3" />
+                                                                        </Button>
+                                                                    </div>
                                                                 </div>
                                                             ))
                                                         )}

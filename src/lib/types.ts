@@ -1,6 +1,6 @@
 
 
-export type Task = {
+export interface Task { // Changed 'type' to 'interface' for better clarity and extensibility
   id: string;
   name: string;
   description?: string;
@@ -21,7 +21,7 @@ export interface FileMetaData {
     // In a real app, you might store a URL or an identifier here
 }
 
-// Goal and Subtask types
+// Goal and Subtask types (Ensure these are exported)
 export interface Subtask {
     id: string;
     name: string;
@@ -34,3 +34,4 @@ export interface Goal {
     subtasks: Subtask[];
 }
 
+```

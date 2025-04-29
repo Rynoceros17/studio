@@ -14,7 +14,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
-import type { Task } from '@/lib/types';
+import type { Task, Subtask } from '@/lib/types'; // Added Subtask type
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
@@ -66,6 +66,7 @@ export default function Home() {
 
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<Task> | null>(null); // State for prefilling task form
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for Bookmark sheet
   const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // State for Goals sheet
@@ -161,7 +162,8 @@ export default function Home() {
            title: "Task Added",
            description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
        });
-       setIsFormOpen(false);
+       setIsFormOpen(false); // Close form after adding
+       setPrefilledTaskData(null); // Clear prefilled data
    }, [setTasks, toast, parseISOStrict]);
 
 
@@ -411,6 +413,15 @@ export default function Home() {
      });
    }, [setTasks, toast, parseISOStrict]);
 
+   // Function to handle creating a task from a subtask
+    const handleCreateTaskFromSubtask = useCallback((subtask: Subtask) => {
+        // Prefill task data with subtask name
+        setPrefilledTaskData({ name: subtask.name });
+        setIsGoalsSheetOpen(false); // Close the Goals sheet
+        setIsFormOpen(true); // Open the TaskForm dialog
+    }, []); // Dependencies: none
+
+
   return (
     // Wrap the relevant part in DndContext for the timer
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
@@ -442,15 +453,27 @@ export default function Home() {
                 size="icon"
                 className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
                 aria-label="Add new task"
+                onClick={() => setPrefilledTaskData(null)} // Clear prefill when opening manually
               >
                 <Plus className="h-6 w-6" />
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle className="text-primary">Add New Task</DialogTitle>
+                 {/* Title changes based on whether it's prefilled */}
+                 <DialogTitle className="text-primary">
+                   {prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}
+                 </DialogTitle>
               </DialogHeader>
-              <TaskForm addTask={addTask} onTaskAdded={() => setIsFormOpen(false)}/>
+               {/* Pass prefilledTaskData to TaskForm */}
+               <TaskForm
+                 addTask={addTask}
+                 onTaskAdded={() => {
+                    setIsFormOpen(false);
+                    setPrefilledTaskData(null); // Always clear after adding
+                 }}
+                 initialData={prefilledTaskData} // Pass initial data
+               />
             </DialogContent>
           </Dialog>
 
@@ -473,7 +496,8 @@ export default function Home() {
                      <SheetHeader className="p-4 border-b shrink-0">
                          <SheetTitle className="text-primary">Goals</SheetTitle>
                      </SheetHeader>
-                     <GoalsSheet />
+                      {/* Pass the callback to GoalsSheet */}
+                      <GoalsSheet onCreateTaskFromSubtask={handleCreateTaskFromSubtask} />
                  </SheetContent>
              </Sheet>
 
@@ -573,4 +597,3 @@ export default function Home() {
     </DndContext>
   );
 }
-

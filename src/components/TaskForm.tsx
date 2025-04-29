@@ -2,7 +2,7 @@
 "use client";
 
 import type * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Import useEffect
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,21 +33,45 @@ type TaskFormValues = z.infer<typeof formSchema>;
 interface TaskFormProps {
   addTask: (task: Omit<Task, 'id'>) => void;
   onTaskAdded?: () => void; // Optional callback after task is added
+  initialData?: Partial<Task> | null; // Optional initial data for prefilling
 }
 
-export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
+export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      date: undefined, // Initialize date as undefined
-      recurring: false, // Initialize recurring as false
-      highPriority: false, // Initialize highPriority as false
+      name: initialData?.name || "", // Prefill name if available
+      description: initialData?.description || "",
+      date: initialData?.date ? new Date(initialData.date + 'T00:00:00') : undefined, // Parse initial date safely
+      recurring: initialData?.recurring || false, // Prefill recurring
+      highPriority: initialData?.highPriority || false, // Prefill highPriority
     },
   });
+
+   // Effect to update form when initialData changes (e.g., when creating from subtask)
+   useEffect(() => {
+     if (initialData) {
+       form.reset({
+         name: initialData.name || "",
+         description: initialData.description || "",
+         date: initialData.date ? new Date(initialData.date + 'T00:00:00') : undefined,
+         recurring: initialData.recurring || false,
+         highPriority: initialData.highPriority || false,
+       });
+     } else {
+       // Reset to defaults if initialData becomes null (e.g., user opens form manually)
+       form.reset({
+         name: "",
+         description: "",
+         date: undefined,
+         recurring: false,
+         highPriority: false,
+       });
+     }
+   }, [initialData, form]); // Rerun when initialData or form instance changes
+
 
   const onSubmit: SubmitHandler<TaskFormValues> = (data) => {
     const newTask: Omit<Task, 'id'> = {
@@ -60,9 +84,10 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
        details: '',
        dueDate: undefined,
        files: [],
+       exceptions: [], // Ensure exceptions are initialized
     };
     addTask(newTask);
-    form.reset(); // Reset form after submission
+    // Form reset is now handled by the useEffect when initialData changes or onTaskAdded is called
     onTaskAdded?.(); // Call the callback if provided (e.g., to close a dialog)
   };
 
@@ -128,8 +153,8 @@ export function TaskForm({ addTask, onTaskAdded }: TaskFormProps) {
                       field.onChange(date);
                       setIsCalendarOpen(false); // Close popover on date select
                     }}
-                    // removed initialFocus
                     disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} // Optional: disable past dates
+                    // initialFocus // Removing initialFocus might help with mobile interaction
                   />
                 </PopoverContent>
               </Popover>
