@@ -1,4 +1,5 @@
 
+
 export type Task = {
   id: string;
   name: string;
@@ -19,3 +20,17 @@ export interface FileMetaData {
     size: number;
     // In a real app, you might store a URL or an identifier here
 }
+
+// Goal and Subtask types
+export interface Subtask {
+    id: string;
+    name: string;
+    completed: boolean;
+}
+
+export interface Goal {
+    id: string;
+    name: string;
+    subtasks: Subtask[];
+}
+

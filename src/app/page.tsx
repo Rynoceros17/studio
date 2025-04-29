@@ -44,7 +44,8 @@ import {
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet'; // Import BookmarkListSheet
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon } from 'lucide-react'; // Added BookmarkIcon
+import { GoalsSheet } from '@/components/GoalsSheet'; // Import GoalsSheet
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target } from 'lucide-react'; // Added BookmarkIcon and Target
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils'; // Import cn
 
@@ -67,6 +68,7 @@ export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for Bookmark sheet
+  const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // State for Goals sheet
   const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
   const [isClient, setIsClient] = useState(false);
@@ -455,6 +457,26 @@ export default function Home() {
          {/* Left Side Icons Container */}
          <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2"> {/* Container with spacing */}
 
+              {/* Goals Sheet Trigger */}
+             <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
+                 <SheetTrigger asChild>
+                     <Button
+                         variant="outline"
+                         size="icon"
+                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
+                         aria-label="View goals"
+                     >
+                         <Target className="h-6 w-6 text-primary" />
+                     </Button>
+                 </SheetTrigger>
+                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                     <SheetHeader className="p-4 border-b shrink-0">
+                         <SheetTitle className="text-primary">Goals</SheetTitle>
+                     </SheetHeader>
+                     <GoalsSheet />
+                 </SheetContent>
+             </Sheet>
+
              {/* Bookmark List Sheet Trigger */}
              <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                  <SheetTrigger asChild>
@@ -551,3 +573,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
