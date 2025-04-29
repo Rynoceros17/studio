@@ -9,6 +9,7 @@ export default {
   ],
   theme: {
   	extend: {
+        // Removed specific spacing utilities as they are no longer needed for icon positioning
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -67,6 +68,11 @@ export default {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		keyframes: {
+            'task-complete': { // Animation for task completion
+                '0%': { transform: 'scale(1)', borderColor: 'hsl(var(--border))', opacity: 1 },
+                '50%': { transform: 'scale(1.05)', borderColor: 'hsl(var(--accent))', opacity: 0.8 },
+                '100%': { transform: 'scale(1)', borderColor: 'transparent', opacity: 0.6 },
+            },
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -85,6 +91,7 @@ export default {
   			}
   		},
   		animation: {
+            'task-complete': 'task-complete 0.5s ease-in-out forwards', // Use the completion animation
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
   		}

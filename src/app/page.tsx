@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type * as React from 'react';
@@ -451,58 +452,61 @@ export default function Home() {
             </DialogContent>
           </Dialog>
 
-          {/* Bookmark List Sheet Trigger - Positioned bottom-left, above Pomodoro */}
-           <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
-               <SheetTrigger asChild>
-                   <Button
-                     variant="outline"
-                     size="icon"
-                     className="fixed bottom-36 left-4 md:bottom-36 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary" // Positioned above Pomodoro
-                     aria-label="View bookmarks"
-                   >
-                     <BookmarkIcon className="h-6 w-6 text-primary" />
-                   </Button>
-               </SheetTrigger>
-               <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                   <SheetHeader className="p-4 border-b shrink-0">
-                     <SheetTitle className="text-primary">Bookmarks</SheetTitle>
-                   </SheetHeader>
-                    <BookmarkListSheet />
-               </SheetContent>
-           </Sheet>
+         {/* Left Side Icons Container */}
+         <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2"> {/* Container with spacing */}
 
-          {/* Pomodoro Timer Trigger - Positioned bottom-left, above scratchpad */}
-           <Button
-             variant="outline"
-             size="icon"
-             className="fixed bottom-20 left-4 md:bottom-20 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary" // Positioned above Scratchpad
-             aria-label="Toggle Pomodoro Timer"
-             onClick={() => setIsTimerVisible(!isTimerVisible)}
-           >
-             <TimerIcon className="h-6 w-6 text-primary" />
-           </Button>
+             {/* Bookmark List Sheet Trigger */}
+             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
+                 <SheetTrigger asChild>
+                     <Button
+                         variant="outline"
+                         size="icon"
+                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
+                         aria-label="View bookmarks"
+                     >
+                         <BookmarkIcon className="h-6 w-6 text-primary" />
+                     </Button>
+                 </SheetTrigger>
+                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                     <SheetHeader className="p-4 border-b shrink-0">
+                         <SheetTitle className="text-primary">Bookmarks</SheetTitle>
+                     </SheetHeader>
+                     <BookmarkListSheet />
+                 </SheetContent>
+             </Sheet>
 
+             {/* Pomodoro Timer Trigger */}
+             <Button
+                 variant="outline"
+                 size="icon"
+                 className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
+                 aria-label="Toggle Pomodoro Timer"
+                 onClick={() => setIsTimerVisible(!isTimerVisible)}
+             >
+                 <TimerIcon className="h-6 w-6 text-primary" />
+             </Button>
 
-          {/* Task List (Scratchpad) Sheet Trigger - Positioned bottom-left */}
-           <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
-              <SheetTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="fixed bottom-4 left-4 md:bottom-6 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary" // Original position
-                    aria-label="View scratchpad"
-                  >
-                    <List className="h-6 w-6 text-primary" />
-                  </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                  <SheetHeader className="p-4 border-b shrink-0">
-                    <SheetTitle className="text-primary">Scratchpad</SheetTitle>
-                  </SheetHeader>
-                   <TaskListSheet />
-              </SheetContent>
-           </Sheet>
+             {/* Task List (Scratchpad) Sheet Trigger */}
+             <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
+                 <SheetTrigger asChild>
+                     <Button
+                         variant="outline"
+                         size="icon"
+                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
+                         aria-label="View scratchpad"
+                     >
+                         <List className="h-6 w-6 text-primary" />
+                     </Button>
+                 </SheetTrigger>
+                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                     <SheetHeader className="p-4 border-b shrink-0">
+                         <SheetTitle className="text-primary">Scratchpad</SheetTitle>
+                     </SheetHeader>
+                     <TaskListSheet />
+                 </SheetContent>
+             </Sheet>
 
+         </div>
 
 
         </div>
