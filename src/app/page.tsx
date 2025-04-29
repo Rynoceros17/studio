@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type * as React from 'react';
@@ -57,7 +56,6 @@ export default function Home() {
 
   // Calculate completed count based on unique task IDs present in completedTaskIds
   const completedCount = useMemo(() => {
-      const uniqueTaskIds = new Set(completedTaskIds.map(key => key.split('_')[0]));
       // Count based on unique tasks ever completed, might need adjustment based on exact requirement
       // For now, just count the number of completion entries
       return completedTaskIds.length;
@@ -416,16 +414,7 @@ export default function Home() {
         <div className="w-full max-w-7xl space-y-4">
           <header className="text-center py-2 relative z-10"> {/* Ensure header is above timer */}
             <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
-             {/* Render counter only on client and position it under the title */}
-            {isClient && (
-                <Badge variant="secondary" className="mt-1 mx-auto flex items-center justify-center gap-1.5 px-2 py-1 text-xs w-fit"> {/* Added mx-auto and w-fit */}
-                    <CheckSquare className="h-3 w-3" />
-                    {completedCount} Completed
-                </Badge>
-            )}
           </header>
-
-
 
           {/* Conditionally render CalendarView only on the client */}
           {isClient && (
@@ -437,6 +426,7 @@ export default function Home() {
                 completedTasks={completedTasks} // Pass the Set of completion keys
                 updateTaskDetails={updateTaskDetails} // Pass the modified updateTaskDetails
                 updateTask={updateTask}
+                completedCount={completedCount} // Pass the completed count
               />
           )}
 
@@ -536,4 +526,3 @@ export default function Home() {
     </DndContext>
   );
 }
-

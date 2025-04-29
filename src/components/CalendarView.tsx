@@ -12,7 +12,7 @@ import {
   isSameDay,
   parseISO,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star } from 'lucide-react'; // Added Star back for high priority indicator
+import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, CheckSquare } from 'lucide-react'; // Added CheckSquare
 import {
   DndContext,
   closestCenter,
@@ -69,6 +69,7 @@ interface CalendarViewProps {
     // Removed highPriority from the updateTaskDetails type definition here
     updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
     updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => void;
+    completedCount: number; // Add completedCount prop
 }
 
 
@@ -367,7 +368,8 @@ export function CalendarView({
     toggleTaskCompletion,
     completedTasks, // This is now a Set of completion keys `${taskId}_${dateStr}`
     updateTaskDetails,
-    updateTask // Destructure new prop
+    updateTask, // Destructure new prop
+    completedCount, // Destructure completedCount
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeId, setActiveId] = useState<string | null>(null); // Can be `${taskId}_${dateStr}`
@@ -395,7 +397,7 @@ export function CalendarView({
       return daysArray;
     }, [weekStart, weekEnd]);
 
-   const parseISOStrict = (dateString: string | undefined): Date | null => {
+   const parseISOStrict = useCallback((dateString: string | undefined): Date | null => {
        if (!dateString) return null;
        // Ensure the input is just the date part before appending time
        const datePart = dateString.split('T')[0];
@@ -405,7 +407,8 @@ export function CalendarView({
            return null; // Return null for invalid dates
        }
        return date;
-   }
+   }, []); // Added useCallback with empty dependency array
+
 
    const tasksByDay = useMemo(() => {
        const groupedTasks: { [key: string]: Task[] } = {};
@@ -621,9 +624,19 @@ export function CalendarView({
           <Button variant="outline" size="icon" onClick={goToPreviousWeek} aria-label="Previous week" className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <h2 className="text-base md:text-lg font-semibold text-primary text-center flex-grow px-1">
-            {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
-          </h2>
+          {/* Center the date range and add completed count badge */}
+          <div className="flex-grow text-center flex items-center justify-center gap-2">
+              <h2 className="text-base md:text-lg font-semibold text-primary">
+                {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+              </h2>
+              {/* Render counter only on client */}
+              {isClient && (
+                <Badge variant="secondary" className="ml-2 flex items-center gap-1.5 px-2 py-1 text-xs">
+                  <CheckSquare className="h-3 w-3" />
+                  {completedCount} Completed
+                </Badge>
+              )}
+          </div>
           <Button variant="outline" size="icon" onClick={goToNextWeek} aria-label="Next week" className="h-8 w-8">
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -633,7 +646,8 @@ export function CalendarView({
           {days.map((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
              // Ensure tasksByDay is accessed only after initialization and is an object
-            const dayTasks = (isClient && tasksByDay && typeof tasksByDay === 'object' && tasksByDay[dateStr]) ? tasksByDay[dateStr] : [];
+             // Initialize dayTasks safely
+             const dayTasks = (isClient && tasksByDay && typeof tasksByDay === 'object' && Array.isArray(tasksByDay[dateStr])) ? tasksByDay[dateStr] : [];
             const isToday = isSameDay(day, new Date());
 
 
