@@ -42,9 +42,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
-import { Plus, List, Timer as TimerIcon, CheckSquare } from 'lucide-react'; // Added TimerIcon and CheckSquare
+import { BookmarkListSheet } from '@/components/BookmarkListSheet'; // Import BookmarkListSheet
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon } from 'lucide-react'; // Added BookmarkIcon
 import { format, parseISO } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils'; // Import cn
 
 
@@ -65,6 +65,7 @@ export default function Home() {
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
+  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for Bookmark sheet
   const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
   const [isClient, setIsClient] = useState(false);
@@ -450,11 +451,31 @@ export default function Home() {
             </DialogContent>
           </Dialog>
 
-          {/* Pomodoro Timer Trigger - Positioned bottom-left */}
+          {/* Bookmark List Sheet Trigger - Positioned bottom-left, above Pomodoro */}
+           <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
+               <SheetTrigger asChild>
+                   <Button
+                     variant="outline"
+                     size="icon"
+                     className="fixed bottom-36 left-4 md:bottom-36 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary" // Positioned above Pomodoro
+                     aria-label="View bookmarks"
+                   >
+                     <BookmarkIcon className="h-6 w-6 text-primary" />
+                   </Button>
+               </SheetTrigger>
+               <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                   <SheetHeader className="p-4 border-b shrink-0">
+                     <SheetTitle className="text-primary">Bookmarks</SheetTitle>
+                   </SheetHeader>
+                    <BookmarkListSheet />
+               </SheetContent>
+           </Sheet>
+
+          {/* Pomodoro Timer Trigger - Positioned bottom-left, above scratchpad */}
            <Button
              variant="outline"
              size="icon"
-             className="fixed bottom-20 left-4 md:bottom-20 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary" // Adjusted bottom position
+             className="fixed bottom-20 left-4 md:bottom-20 md:left-6 h-12 w-12 rounded-full shadow-lg z-50 bg-card hover:bg-card/90 border-primary" // Positioned above Scratchpad
              aria-label="Toggle Pomodoro Timer"
              onClick={() => setIsTimerVisible(!isTimerVisible)}
            >
@@ -462,7 +483,7 @@ export default function Home() {
            </Button>
 
 
-          {/* Task List Sheet Trigger - Positioned bottom-left */}
+          {/* Task List (Scratchpad) Sheet Trigger - Positioned bottom-left */}
            <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
               <SheetTrigger asChild>
                   <Button
