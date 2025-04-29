@@ -46,7 +46,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Task, FileMetaData } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, truncateText, getMaxLength } from '@/lib/utils'; // Import truncateText and getMaxLength from utils
 import {
   Dialog as ShadDialog, // Use ShadDialog alias to avoid conflict
   DialogContent as ShadDialogContent,
@@ -95,43 +95,15 @@ interface SortableTaskProps {
   onEditClick: (task: Task) => void; // Add handler for edit click
 }
 
-// Determine max lengths based on viewport width (example breakpoints)
-const getMaxLength = (limitType: 'title' | 'desc'): number => {
-    const BASE_TITLE_LIMIT_SM = 10; // Mobile (e.g., 1-2 cols)
-    const BASE_DESC_LIMIT_SM = 15;
-    const BASE_TITLE_LIMIT_MD = 15; // Tablet (e.g., 3-4 cols)
-    const BASE_DESC_LIMIT_MD = 25;
-    const BASE_TITLE_LIMIT_LG = 20; // Desktop (7 cols) - Adjust based on actual column width
-    const BASE_DESC_LIMIT_LG = 30; // Desktop (7 cols) - Adjust based on actual column width
-
-    if (typeof window !== 'undefined') {
-        if (window.innerWidth < 640) { // sm screens
-            return limitType === 'title' ? BASE_TITLE_LIMIT_SM : BASE_DESC_LIMIT_SM;
-        } else if (window.innerWidth < 1024) { // md screens
-            return limitType === 'title' ? BASE_TITLE_LIMIT_MD : BASE_DESC_LIMIT_MD;
-        } else { // lg screens and up
-            return limitType === 'title' ? BASE_TITLE_LIMIT_LG : BASE_DESC_LIMIT_LG;
-        }
-    }
-    // Default for SSR or if window is undefined
-    return limitType === 'title' ? BASE_TITLE_LIMIT_LG : BASE_DESC_LIMIT_LG; // Default to desktop
-};
-
-
-const truncateText = (text: string | undefined, maxLength: number): string => {
-    if (!text) return '';
-    return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
-};
-
 
 function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
-    const [titleLimit, setTitleLimit] = useState(getMaxLength('title'));
-    const [descLimit, setDescLimit] = useState(getMaxLength('desc'));
+    const [titleLimit, setTitleLimit] = useState(getMaxLength('title', 'calendar'));
+    const [descLimit, setDescLimit] = useState(getMaxLength('desc', 'calendar'));
 
     useEffect(() => {
         const handleResize = () => {
-            setTitleLimit(getMaxLength('title'));
-            setDescLimit(getMaxLength('desc'));
+            setTitleLimit(getMaxLength('title', 'calendar'));
+            setDescLimit(getMaxLength('desc', 'calendar'));
         };
         window.addEventListener('resize', handleResize);
         // Initial check
@@ -162,7 +134,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
              </div>
             <div className="flex-grow min-w-0 pr-1 overflow-hidden"> {/* Ensures div takes space but content can wrap */}
               <p className={cn(
-                  "text-xs font-medium break-words whitespace-normal", // Allow wrapping
+                  "text-xs font-medium break-words whitespace-normal line-clamp-1", // Allow wrapping, Limit to 1 line
                   isCompleted && 'line-through'
                  )}
                  title={task.name}
@@ -173,7 +145,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
               </p>
               {descriptionDisplay && (
                 <p className={cn(
-                    "text-[10px] text-muted-foreground mt-0.5 break-words whitespace-normal", // Allow wrapping
+                    "text-[10px] text-muted-foreground mt-0.5 break-words whitespace-normal line-clamp-2", // Allow wrapping, Limit to 2 lines
                      isCompleted && 'line-through'
                     )}
                     title={task.description}
@@ -219,13 +191,13 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
     position: 'relative' as const // Needed for z-index to work
   };
 
-  const [titleLimit, setTitleLimit] = useState(getMaxLength('title'));
-  const [descLimit, setDescLimit] = useState(getMaxLength('desc'));
+  const [titleLimit, setTitleLimit] = useState(getMaxLength('title', 'calendar'));
+  const [descLimit, setDescLimit] = useState(getMaxLength('desc', 'calendar'));
 
     useEffect(() => {
         const handleResize = () => {
-            setTitleLimit(getMaxLength('title'));
-            setDescLimit(getMaxLength('desc'));
+            setTitleLimit(getMaxLength('title', 'calendar'));
+            setDescLimit(getMaxLength('desc', 'calendar'));
         };
         window.addEventListener('resize', handleResize);
         handleResize(); // Initial set
@@ -310,7 +282,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
              <div className="flex-grow min-w-0 pr-1 overflow-hidden"> {/* Ensures div takes space */}
                <p
                  className={cn(
-                   "text-xs font-medium break-words whitespace-normal", // Allow wrapping
+                   "text-xs font-medium break-words whitespace-normal line-clamp-1", // Allow wrapping, Limit to 1 line
                    isCompleted && 'line-through'
                  )}
                  title={task.name}
@@ -322,7 +294,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                {descriptionDisplay && (
                  <p
                    className={cn(
-                     "text-[10px] text-muted-foreground mt-0.5 break-words whitespace-normal", // Allow wrapping
+                     "text-[10px] text-muted-foreground mt-0.5 break-words whitespace-normal line-clamp-2", // Allow wrapping, Limit to 2 lines
                      isCompleted && 'line-through'
                    )}
                    title={task.description}
@@ -684,11 +656,14 @@ export function CalendarView({
                          items={dayTasks.map(task => `${task.id}_${dateStr}`)}
                          strategy={verticalListSortingStrategy}
                        >
-                         {!isClient || dayTasks.length === 0 ? (
+                         {!isClient ? (
+                            <p className="text-[10px] text-muted-foreground text-center pt-4">Loading...</p> // Show loading state during SSR or hydration
+                         ) : dayTasks.length === 0 ? (
                            <p className="text-[10px] text-muted-foreground text-center pt-4">No tasks</p>
                          ) : (
                              // Map over the tasks for this day
                              dayTasks.map((task) => {
+                                if (!task) return null; // Add a null check for safety
                                 const completionKey = `${task.id}_${dateStr}`;
                                 return (
                                    <SortableTask

@@ -22,7 +22,7 @@ import {
   DialogFooter as ShadDialogFooter, // Added Footer
 } from "@/components/ui/dialog";
 import type { Task, FileMetaData } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, truncateText, getMaxLength } from '@/lib/utils'; // Import truncateText and getMaxLength
 
 interface TaskDetailsDisplayDialogProps {
   task: Task | null;
@@ -85,21 +85,33 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
     }
   };
 
+  // Get truncated title and description for display
+  const dialogTitleLimit = getMaxLength('title', 'dialog');
+  const dialogDescLimit = getMaxLength('desc', 'dialog');
+  const truncatedTitle = truncateText(task?.name, dialogTitleLimit);
+  const truncatedDescription = truncateText(task?.description, dialogDescLimit);
+
   return (
     <ShadDialog open={!!task} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <ShadDialogContent className="sm:max-w-md">
         <ShadDialogHeader>
            <div className="flex justify-between items-start">
                 <div>
-                    <ShadDialogTitle className="text-primary">{task?.name}</ShadDialogTitle>
-                     {task?.description && <ShadDialogDesc className="pt-1">{task.description}</ShadDialogDesc>}
+                    <ShadDialogTitle className="text-primary" title={task?.name}> {/* Add full title as tooltip */}
+                        {truncatedTitle}
+                    </ShadDialogTitle>
+                     {task?.description && (
+                        <ShadDialogDesc className="pt-1" title={task.description}> {/* Add full description as tooltip */}
+                            {truncatedDescription}
+                        </ShadDialogDesc>
+                     )}
                 </div>
            </div>
            {task?.date && (
-                <div className="text-xs text-muted-foreground pt-1">
-                    Scheduled for: {format(parseISO(task.date + 'T00:00:00'), 'PPP')}
-                    {task.recurring && <Badge variant="secondary" className="ml-2 text-xs">Weekly</Badge>}
-                    {task.highPriority && <Badge variant="outline" className="ml-2 text-xs border-accent text-accent"><Star className="h-3 w-3 mr-1 fill-accent"/>Priority</Badge>}
+                <div className="text-xs text-muted-foreground pt-1 flex items-center flex-wrap gap-x-2 gap-y-1"> {/* Use flex-wrap and gap */}
+                    <span>Scheduled for: {format(parseISO(task.date + 'T00:00:00'), 'PPP')}</span>
+                    {task.recurring && <Badge variant="secondary" className="text-xs">Weekly</Badge>}
+                    {task.highPriority && <Badge variant="outline" className="text-xs border-accent text-accent"><Star className="h-3 w-3 mr-1 fill-accent"/>Priority</Badge>}
                 </div>
            )}
         </ShadDialogHeader>
@@ -155,7 +167,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                   value={taskDetails}
                   onChange={(e) => setTaskDetails(e.target.value)}
                   placeholder="Add links, notes, etc."
-                  className="min-h-[100px]"
+                  className="min-h-[100px] max-h-[200px] overflow-y-auto" // Added max-height and overflow
                 />
               </div>
             </div>
@@ -203,4 +215,3 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
     </ShadDialog>
   );
 }
-
