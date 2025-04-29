@@ -46,6 +46,7 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { Plus, List, Timer as TimerIcon, CheckSquare } from 'lucide-react'; // Added TimerIcon and CheckSquare
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils'; // Import cn
 
 
 export default function Home() {
@@ -514,7 +515,8 @@ export default function Home() {
                     <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
-                        className={buttonVariants({ variant: "outline" })}
+                         // Apply buttonVariants for outline and ensure text color contrasts
+                         className={cn(buttonVariants({ variant: "outline" }), "text-foreground")}
                     >
                         Delete This Occurrence Only
                     </AlertDialogAction>
