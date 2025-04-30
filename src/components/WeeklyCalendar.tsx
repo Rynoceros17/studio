@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Calendar, Clock, MapPin, Info } from 'lucide-react';
+import { Clock, MapPin, Info, Repeat } from 'lucide-react'; // Changed Calendar to Repeat for recurrence
 
 interface WeeklyCalendarProps {
   weekStartDate: Date;
@@ -61,17 +61,17 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ weekStartDate, events }
 
         return (
           <Card key={dateStr} className={cn(
-            "flex flex-col min-h-[300px] max-h-[500px] overflow-hidden bg-secondary/30", // Adjusted min/max height
-            isToday ? 'border-primary border-2 shadow-md' : 'border-transparent'
+            "flex flex-col min-h-[300px] max-h-[500px] overflow-hidden bg-secondary/30", // Adjusted min/max height, use secondary for background
+            isToday ? 'border-accent border-2 shadow-md' : 'border-transparent' // Use accent for today's border
           )}>
-            <CardHeader className="p-1 text-center shrink-0">
-              <CardTitle className="text-xs font-medium">
+            <CardHeader className="p-1 text-center shrink-0 border-b border-border/50"> {/* Add subtle border */}
+              <CardTitle className="text-xs font-medium text-muted-foreground"> {/* Muted foreground for day name */}
                 {format(d, 'EEE')}
               </CardTitle>
-              <CardDescription className={cn("text-sm font-bold", isToday ? 'text-primary' : 'text-foreground')}>
+              <CardDescription className={cn("text-sm font-bold", isToday ? 'text-accent' : 'text-foreground')}> {/* Accent for today's date */}
                 {format(d, 'd')}
               </CardDescription>
-              {isToday && <Badge variant="outline" className="border-primary text-primary mt-0.5 px-1 py-0 text-[9px] mx-auto">Today</Badge>}
+              {isToday && <Badge variant="outline" className="border-accent text-accent mt-0.5 px-1 py-0 text-[9px] mx-auto">Today</Badge>}
             </CardHeader>
             <ScrollArea className="flex-grow">
               <CardContent className="p-1 space-y-1">
@@ -97,23 +97,24 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ weekStartDate, events }
                        }
 
                        return (
-                        <div key={`${event.uid}-${index}`} className="p-1.5 rounded bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700/50 shadow-sm text-[10px] leading-tight">
-                            <p className="font-medium text-blue-800 dark:text-blue-200 mb-0.5 break-words line-clamp-2" title={event.summary}>
-                                {event.summary || <span className="italic">No Title</span>}
+                        // Use primary/muted colors for event blocks
+                        <div key={`${event.uid}-${index}`} className="p-1.5 rounded bg-card border border-border/50 shadow-sm text-[10px] leading-tight">
+                            <p className="font-medium text-primary mb-0.5 break-words line-clamp-2" title={event.summary}>
+                                {event.summary || <span className="italic text-muted-foreground">No Title</span>}
                             </p>
-                            <p className="flex items-center gap-1 text-blue-600 dark:text-blue-400 text-[9px]">
+                            <p className="flex items-center gap-1 text-muted-foreground text-[9px]">
                                 <Clock className="w-2.5 h-2.5 shrink-0" />
                                 {format(eventStartDate, "h:mma")} - {format(eventEndDate, "h:mma")}
                             </p>
                              {event.location && (
-                                <p className="flex items-center gap-1 text-blue-600 dark:text-blue-400 text-[9px] mt-0.5 truncate" title={event.location}>
+                                <p className="flex items-center gap-1 text-muted-foreground text-[9px] mt-0.5 truncate" title={event.location}>
                                     <MapPin className="w-2.5 h-2.5 shrink-0" />
                                     {event.location}
                                 </p>
                              )}
                              {event.isRecurring && (
-                                <p className="flex items-center gap-1 text-blue-500 dark:text-blue-500 text-[9px] mt-0.5" title="Recurring event instance">
-                                    <Info className="w-2.5 h-2.5 shrink-0" />
+                                <p className="flex items-center gap-1 text-muted-foreground/80 text-[9px] mt-0.5" title="Recurring event instance">
+                                    <Repeat className="w-2.5 h-2.5 shrink-0" /> {/* Use Repeat icon */}
                                     Recurring
                                 </p>
                              )}

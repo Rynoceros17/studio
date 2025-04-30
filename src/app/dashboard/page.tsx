@@ -401,11 +401,11 @@ export default function IcsUploadForm() {
     return (
       <Card className={`mt-4 shadow-md ${type === 'Current' ? 'border-primary ring-1 ring-primary' : 'border-border'}`}>
         <CardHeader>
-          <CardTitle className="text-xl flex items-center gap-2">
+          <CardTitle className="text-xl flex items-center gap-2 text-primary"> {/* Added text-primary */}
              <CalendarClock className={`w-5 h-5 shrink-0 ${type === 'Current' ? 'text-primary' : 'text-muted-foreground'}`} />
              <span className="flex-1 truncate" title={event.summary}>{event.summary || <span className="italic text-muted-foreground">No Title</span>}</span> {/* Added truncate */}
           </CardTitle>
-           <CardDescription className="text-sm pt-1 pl-7">
+           <CardDescription className="text-sm pt-1 pl-7 text-foreground/80"> {/* Use less prominent foreground */}
                {cardDescriptionContent}
            </CardDescription>
         </CardHeader>
@@ -423,11 +423,11 @@ export default function IcsUploadForm() {
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
       {/* Main Content Area */}
       <div className="w-full max-w-5xl mx-auto"> {/* Increased max width from 3xl to 5xl */}
-        <Card className="shadow-lg overflow-hidden mb-8"> {/* Added mb-8 */}
-          <CardHeader className="flex flex-row items-center justify-between">
+        <Card className="shadow-lg overflow-hidden mb-8 bg-card border-border"> {/* Added mb-8, explicit background/border */}
+          <CardHeader className="flex flex-row items-center justify-between border-b pb-4"> {/* Added border-b and padding */}
             <div>
-                <CardTitle className="text-2xl">ICS Event Viewer</CardTitle>
-                <CardDescription className="text-sm">
+                <CardTitle className="text-2xl text-primary">ICS Event Viewer</CardTitle> {/* Apply primary color */}
+                <CardDescription className="text-sm text-muted-foreground"> {/* Muted description */}
                   {fileName ? `Viewing events from ${fileName}.` : 'Upload your .ics calendar file.'}
                 </CardDescription>
             </div>
@@ -445,7 +445,7 @@ export default function IcsUploadForm() {
           )}>
               {isUploadSectionVisible && ( // Also conditionally mount/unmount for better performance? Or just hide? Hiding is simpler for state.
                   <form onSubmit={handleSubmit}>
-                  <CardContent className="space-y-4 pt-4"> {/* Added pt-4 */}
+                  <CardContent className="space-y-4 pt-6 pb-4"> {/* Adjusted padding */}
                       {error && (
                       <Alert variant="destructive">
                           <AlertCircle className="h-4 w-4" />
@@ -471,7 +471,7 @@ export default function IcsUploadForm() {
                           htmlFor="icsFile"
                           className={cn(
                           buttonVariants({ variant: "outline" }), // Style as an outline button
-                          "w-full cursor-pointer flex items-center justify-center gap-2 h-10" // Make it look like the submit button, ensure height
+                          "w-full cursor-pointer flex items-center justify-center gap-2 h-10 border-primary text-primary hover:bg-primary/10" // Adjusted styling
                           )}
                       >
                           <FileUp className="mr-2 h-4 w-4" />
@@ -480,13 +480,13 @@ export default function IcsUploadForm() {
                       </Label>
                           {fileName && !isLoading && !error && ( // Show filename only when not loading/erroring
                               <p className="text-sm text-muted-foreground text-center pt-2">
-                              Using file: <span className="font-medium">{fileName}</span>
+                              Using file: <span className="font-medium text-foreground">{fileName}</span> {/* Ensure contrast */}
                               </p>
                           )}
                       </div>
                   </CardContent>
-                  <CardFooter>
-                      <Button type="submit" disabled={isLoading || !icsData} className="w-full">
+                  <CardFooter className="bg-secondary/50 py-4 px-6 border-t"> {/* Styled footer */}
+                      <Button type="submit" disabled={isLoading || !icsData} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"> {/* Primary button */}
                       {isLoading ? (
                           <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -518,23 +518,23 @@ export default function IcsUploadForm() {
         {/* Weekly Calendar Section */}
        {!isLoading && allEvents && !error && ( // Only show if not loading and events exist
          <div className="mt-8">
-           <Card className="shadow-md">
-             <CardHeader className="flex flex-row items-center justify-between pb-2">
-               <CardTitle className="text-xl">
+           <Card className="shadow-md bg-card border-border"> {/* Styled card */}
+             <CardHeader className="flex flex-row items-center justify-between pb-2 border-b"> {/* Added border-b */}
+               <CardTitle className="text-xl text-primary"> {/* Primary color title */}
                  Week of {format(currentWeekStart, "MMMM do, yyyy")}
                </CardTitle>
                <div className="flex space-x-2">
-                 <Button variant="outline" size="icon" onClick={goToPreviousWeek} disabled={!allEvents}>
+                 <Button variant="outline" size="icon" onClick={goToPreviousWeek} disabled={!allEvents} className="border-primary text-primary hover:bg-primary/10"> {/* Styled button */}
                    <ChevronLeft className="h-4 w-4" />
                    <span className="sr-only">Previous Week</span>
                  </Button>
-                 <Button variant="outline" size="icon" onClick={goToNextWeek} disabled={!allEvents}>
+                 <Button variant="outline" size="icon" onClick={goToNextWeek} disabled={!allEvents} className="border-primary text-primary hover:bg-primary/10"> {/* Styled button */}
                    <ChevronRight className="h-4 w-4" />
                    <span className="sr-only">Next Week</span>
                  </Button>
                </div>
              </CardHeader>
-             <CardContent className="pt-2"> {/* Adjusted padding */}
+             <CardContent className="pt-4 pb-2"> {/* Adjusted padding */}
                <WeeklyCalendar weekStartDate={currentWeekStart} events={eventsForWeek} />
              </CardContent>
            </Card>
