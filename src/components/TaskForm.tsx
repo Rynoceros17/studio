@@ -1,3 +1,4 @@
+
 "use client";
 
 import type * as React from 'react';
@@ -6,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, PlusCircle, Star, Palette, X } from 'lucide-react'; // Keep X icon import if needed elsewhere, but not for the button
+import { Calendar as CalendarIcon, PlusCircle, Star, Palette } from 'lucide-react'; // Removed X icon import
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -19,15 +20,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Predefined pastel colors (copied from EditTaskDialog)
+// Predefined pastel colors (removed default, added White at the end)
 const pastelColors = [
-  { name: 'Default', value: undefined }, // Represents default card background (white)
   { name: 'Pink', value: 'hsl(340, 70%, 85%)' },
   { name: 'Blue', value: 'hsl(200, 70%, 85%)' },
   { name: 'Green', value: 'hsl(140, 50%, 85%)' },
   { name: 'Yellow', value: 'hsl(55, 70%, 85%)' },
   { name: 'Orange', value: 'hsl(30, 70%, 85%)' },
   { name: 'Purple', value: 'hsl(260, 60%, 88%)' },
+  { name: 'White', value: undefined }, // Represents default card background (white)
 ];
 
 // Update schema to include color
@@ -249,8 +250,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                        aria-label={`Set task color to ${colorOption.name}`}
                        title={colorOption.name}
                      >
-                        {/* Removed the X icon for the default/white option */}
-                        {/* {!colorOption.value && <X className="h-4 w-4 text-muted-foreground" />} */}
+                        {/* Intentionally empty: color is shown by background */}
                      </Button>
                    ))}
                  </div>
