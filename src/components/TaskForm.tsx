@@ -2,21 +2,21 @@
 "use client";
 
 import type * as React from 'react';
-import { useState, useEffect } from 'react'; // Import useEffect
+import { useState, useEffect } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, PlusCircle, Star, Palette } from 'lucide-react'; // Added Star, Palette
+import { Calendar as CalendarIcon, PlusCircle, Star, Palette, X } from 'lucide-react'; // Added X icon
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from "@/components/ui/checkbox"; // Added Checkbox
-import { Label } from "@/components/ui/label"; // Added Label
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Added FormDescription
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -36,17 +36,17 @@ const formSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
-  recurring: z.boolean().optional().default(false), // Add recurring field with default
-  highPriority: z.boolean().optional().default(false), // Add highPriority field
-  color: z.string().optional(), // Add color field
+  recurring: z.boolean().optional().default(false),
+  highPriority: z.boolean().optional().default(false),
+  color: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof formSchema>;
 
 interface TaskFormProps {
   addTask: (task: Omit<Task, 'id'>) => void;
-  onTaskAdded?: () => void; // Optional callback after task is added
-  initialData?: Partial<Task> | null; // Optional initial data for prefilling
+  onTaskAdded?: () => void;
+  initialData?: Partial<Task> | null;
 }
 
 export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
@@ -55,16 +55,15 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: initialData?.name || "", // Prefill name if available
+      name: initialData?.name || "",
       description: initialData?.description || "",
-      date: initialData?.date ? new Date(initialData.date + 'T00:00:00') : undefined, // Parse initial date safely
-      recurring: initialData?.recurring || false, // Prefill recurring
-      highPriority: initialData?.highPriority || false, // Prefill highPriority
-      color: initialData?.color || undefined, // Prefill color
+      date: initialData?.date ? new Date(initialData.date + 'T00:00:00') : undefined,
+      recurring: initialData?.recurring || false,
+      highPriority: initialData?.highPriority || false,
+      color: initialData?.color || undefined,
     },
   });
 
-   // Effect to update form when initialData changes (e.g., when creating from subtask)
    useEffect(() => {
      if (initialData) {
        form.reset({
@@ -73,43 +72,38 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
          date: initialData.date ? new Date(initialData.date + 'T00:00:00') : undefined,
          recurring: initialData.recurring || false,
          highPriority: initialData.highPriority || false,
-         color: initialData.color || undefined, // Reset color from initial data
+         color: initialData.color || undefined,
        });
      } else {
-       // Reset to defaults if initialData becomes null (e.g., user opens form manually)
        form.reset({
          name: "",
          description: "",
          date: undefined,
          recurring: false,
          highPriority: false,
-         color: undefined, // Reset color to default
+         color: undefined,
        });
      }
-   }, [initialData, form]); // Rerun when initialData or form instance changes
+   }, [initialData, form]);
 
 
   const onSubmit: SubmitHandler<TaskFormValues> = (data) => {
-    // Include color in the new task data
     const newTask: Omit<Task, 'id'> = {
       name: data.name,
       description: data.description,
-      date: format(data.date, 'yyyy-MM-dd'), // Format date before adding
-      recurring: data.recurring, // Include recurring status
-      highPriority: data.highPriority, // Include high priority status
-      color: data.color, // Include color
-       // Initialize other optional fields
+      date: format(data.date, 'yyyy-MM-dd'),
+      recurring: data.recurring,
+      highPriority: data.highPriority,
+      color: data.color, // Pass undefined if default/no color selected
        details: '',
        dueDate: undefined,
        files: [],
-       exceptions: [], // Ensure exceptions are initialized
+       exceptions: [],
     };
     addTask(newTask);
-    // Form reset is now handled by the useEffect when initialData changes or onTaskAdded is called
-    onTaskAdded?.(); // Call the callback if provided (e.g., to close a dialog)
+    onTaskAdded?.();
   };
 
-  // Watch the current color value from the form
   const selectedColor = form.watch('color');
 
 
@@ -154,11 +148,11 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full justify-start text-left font-normal", // Use justify-start
+                        "w-full justify-start text-left font-normal",
                         !field.value && "text-muted-foreground"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" /> {/* Icon on the left */}
+                      <CalendarIcon className="mr-2 h-4 w-4" />
                       {field.value ? (
                         format(field.value, "PPP")
                       ) : (
@@ -173,10 +167,9 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                     selected={field.value}
                     onSelect={(date) => {
                       field.onChange(date);
-                      setIsCalendarOpen(false); // Close popover on date select
+                      setIsCalendarOpen(false);
                     }}
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} // Optional: disable past dates
-                    // initialFocus // Removing initialFocus might help with mobile interaction
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   />
                 </PopoverContent>
               </Popover>
@@ -185,7 +178,6 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
           )}
         />
 
-         {/* Combined Recurring and High Priority Options */}
          <div className="grid grid-cols-2 gap-4">
             <FormField
                 control={form.control}
@@ -196,7 +188,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        id="recurring-checkbox" // Add id for label association
+                        id="recurring-checkbox"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
@@ -217,7 +209,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        id="high-priority-checkbox" // Add id for label association
+                        id="high-priority-checkbox"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
@@ -234,7 +226,6 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
               />
          </div>
 
-        {/* Color Picker */}
          <FormField
            control={form.control}
            name="color"
@@ -250,15 +241,18 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                        variant="outline"
                        size="icon"
                        className={cn(
-                         "h-8 w-8 rounded-full border-2",
-                         field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted' // Highlight selected
+                         "h-8 w-8 rounded-full border-2 flex items-center justify-center", // Added flex center
+                         // Highlight if the field value matches the option's value
+                         field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted'
                        )}
-                       style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }} // Use card background for default
+                       style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }}
+                        // Set field value to undefined for the "Default" option
                        onClick={() => field.onChange(colorOption.value)}
                        aria-label={`Set task color to ${colorOption.name}`}
-                       title={colorOption.name} // Tooltip for color name
+                       title={colorOption.name}
                      >
-                        {!colorOption.value && <span className="text-xs text-muted-foreground">✕</span>} {/* Mark for default */}
+                       {/* Display X for the default/no color option */}
+                       {!colorOption.value && <X className="h-4 w-4 text-muted-foreground" />}
                      </Button>
                    ))}
                  </div>

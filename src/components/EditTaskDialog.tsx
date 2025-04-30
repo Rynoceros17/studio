@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Save, Star, Palette } from 'lucide-react'; // Added Palette
+import { Calendar as CalendarIcon, Save, Star, Palette, X } from 'lucide-react'; // Added X icon
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -16,13 +16,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Added FormDescription
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import {
-  Dialog as ShadDialog, // Use ShadDialog alias
+  Dialog as ShadDialog,
   DialogContent as ShadDialogContent,
   DialogHeader as ShadDialogHeader,
   DialogTitle as ShadDialogTitle,
-  DialogFooter as ShadDialogFooter, // Import Footer
+  DialogFooter as ShadDialogFooter,
 } from '@/components/ui/dialog';
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -44,8 +44,8 @@ const editFormSchema = z.object({
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
   recurring: z.boolean().optional(),
-  highPriority: z.boolean().optional(), // Add highPriority field
-  color: z.string().optional(), // Add color field
+  highPriority: z.boolean().optional(),
+  color: z.string().optional(),
 });
 
 type EditTaskFormValues = z.infer<typeof editFormSchema>;
@@ -54,8 +54,7 @@ interface EditTaskDialogProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
-  // Update signature to include color in Task Omit<>
-  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => void; // Function to update core task properties
+  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => void;
 }
 
 export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDialogProps) {
@@ -63,55 +62,52 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
 
   const form = useForm<EditTaskFormValues>({
     resolver: zodResolver(editFormSchema),
-    defaultValues: { // Initialize with empty strings or default values
+    defaultValues: {
       name: '',
       description: '',
       date: undefined,
       recurring: false,
-      highPriority: false, // Initialize highPriority
-      color: undefined, // Initialize color
+      highPriority: false,
+      color: undefined,
     },
   });
 
-  // Effect to reset the form when the task changes or the dialog opens/closes
   useEffect(() => {
     if (isOpen && task) {
       form.reset({
         name: task.name,
         description: task.description || '',
-        date: task.date ? parseISO(task.date + 'T00:00:00') : undefined, // Ensure parsing includes time part
+        date: task.date ? parseISO(task.date + 'T00:00:00') : undefined,
         recurring: task.recurring || false,
-        highPriority: task.highPriority || false, // Reset highPriority
-        color: task.color, // Reset color
+        highPriority: task.highPriority || false,
+        color: task.color, // Ensure color is reset correctly (undefined for default)
       });
     } else if (!isOpen) {
-       // Optionally reset to defaults when closing if task is null
-       // form.reset({ name: '', description: '', date: undefined, recurring: false });
+       // Reset to ensure clean state next time it opens
+       form.reset({ name: '', description: '', date: undefined, recurring: false, highPriority: false, color: undefined });
     }
-  }, [task, isOpen, form]); // form added as dependency
+  }, [task, isOpen, form]);
 
   const onSubmit: SubmitHandler<EditTaskFormValues> = (data) => {
     if (task) {
-      // Update signature to include color
       const updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>> = {
         name: data.name,
         description: data.description,
-        date: format(data.date, 'yyyy-MM-dd'), // Format date before updating
+        date: format(data.date, 'yyyy-MM-dd'),
         recurring: data.recurring,
-        highPriority: data.highPriority, // Include high priority status
-        color: data.color, // Include color
+        highPriority: data.highPriority,
+        color: data.color, // Pass undefined if default/no color selected
       };
       updateTask(task.id, updates);
-      onClose(); // Close dialog after successful update
+      onClose();
     }
   };
 
-  // Watch the current color value from the form
   const selectedColor = form.watch('color');
 
   return (
     <ShadDialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <ShadDialogContent className="sm:max-w-md"> {/* Changed max-w to md for a bit more space */}
+      <ShadDialogContent className="sm:max-w-md">
         <ShadDialogHeader>
           <ShadDialogTitle className="text-primary">Edit Task</ShadDialogTitle>
         </ShadDialogHeader>
@@ -156,11 +152,11 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                              <Button
                                variant={"outline"}
                                className={cn(
-                                 "w-full justify-start text-left font-normal", // Use justify-start
+                                 "w-full justify-start text-left font-normal",
                                  !field.value && "text-muted-foreground"
                                )}
                              >
-                               <CalendarIcon className="mr-2 h-4 w-4" /> {/* Icon on the left */}
+                               <CalendarIcon className="mr-2 h-4 w-4" />
                                {field.value ? (
                                  format(field.value, "PPP")
                                ) : (
@@ -175,10 +171,9 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                              selected={field.value}
                              onSelect={(date) => {
                                field.onChange(date);
-                               setIsCalendarOpen(false); // Close popover on date select
+                               setIsCalendarOpen(false);
                              }}
-                             // removed initialFocus
-                             disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} // Optional: disable past dates
+                             disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                            />
                          </PopoverContent>
                       </Popover>
@@ -187,7 +182,6 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                 )}
               />
 
-             {/* Combined Recurring and High Priority Options */}
              <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -236,7 +230,6 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                   />
              </div>
 
-              {/* Color Picker */}
               <FormField
                 control={form.control}
                 name="color"
@@ -252,17 +245,18 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                             variant="outline"
                             size="icon"
                             className={cn(
-                              "h-8 w-8 rounded-full border-2",
-                              field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted' // Highlight selected
+                              "h-8 w-8 rounded-full border-2 flex items-center justify-center", // Added flex center
+                              // Highlight if the field value matches the option's value
+                              field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted'
                             )}
-                            style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }} // Use card background for default
+                            style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }}
+                            // Set field value to undefined for the "Default" option
                             onClick={() => field.onChange(colorOption.value)}
                             aria-label={`Set task color to ${colorOption.name}`}
-                            title={colorOption.name} // Tooltip for color name
+                            title={colorOption.name}
                           >
-                            {/* Optionally show checkmark on selected */}
-                            {/* {field.value === colorOption.value && <Check className="h-4 w-4 text-primary-foreground mix-blend-difference" />} */}
-                             {!colorOption.value && <span className="text-xs text-muted-foreground">✕</span>} {/* Mark for default */}
+                             {/* Display X for the default/no color option */}
+                             {!colorOption.value && <X className="h-4 w-4 text-muted-foreground" />}
                           </Button>
                         ))}
                       </div>
@@ -280,7 +274,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
             </form>
           </Form>
         ) : (
-          <p>Loading task details...</p> // Or some loading indicator
+          <p>Loading task details...</p>
         )}
       </ShadDialogContent>
     </ShadDialog>
