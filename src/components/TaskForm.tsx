@@ -20,16 +20,19 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Predefined pastel colors (removed default, added White at the end)
-const pastelColors = [
-  { name: 'Pink', value: 'hsl(340, 70%, 85%)' },
-  { name: 'Blue', value: 'hsl(200, 70%, 85%)' },
-  { name: 'Green', value: 'hsl(140, 50%, 85%)' },
-  { name: 'Yellow', value: 'hsl(55, 70%, 85%)' },
-  { name: 'Orange', value: 'hsl(30, 70%, 85%)' },
-  { name: 'Purple', value: 'hsl(260, 60%, 88%)' },
+// New set of 8 colors + White (default)
+const colorOptions = [
+  { name: 'Salmon', value: 'hsl(6, 90%, 85%)' },     // Light Salmon
+  { name: 'Sky', value: 'hsl(195, 70%, 85%)' },    // Light Sky Blue
+  { name: 'Mint', value: 'hsl(150, 60%, 85%)' },    // Light Mint Green
+  { name: 'Apricot', value: 'hsl(35, 90%, 85%)' },   // Light Apricot
+  { name: 'Lavender', value: 'hsl(250, 60%, 88%)' }, // Light Lavender (similar to old purple)
+  { name: 'Teal', value: 'hsl(175, 50%, 82%)' },    // Light Teal
+  { name: 'Rose', value: 'hsl(350, 75%, 88%)' },    // Light Rose
+  { name: 'Lime', value: 'hsl(80, 60%, 85%)' },     // Light Lime Green
   { name: 'White', value: undefined }, // Represents default card background (white)
 ];
+
 
 // Update schema to include color
 const formSchema = z.object({
@@ -151,6 +154,16 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                         "w-full justify-start text-left font-normal",
                         !field.value && "text-muted-foreground"
                       )}
+                      // Prevent form submission when clicking the trigger
+                      type="button"
+                      onClick={(e) => {
+                         e.preventDefault();
+                         setIsCalendarOpen(!isCalendarOpen);
+                       }}
+                       onBlur={() => {
+                           // Delay closing slightly to allow calendar interaction
+                           // setTimeout(() => setIsCalendarOpen(false), 150);
+                       }}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {field.value ? (
@@ -234,7 +247,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
                <FormControl>
                  <div className="flex flex-wrap gap-2 pt-2">
-                   {pastelColors.map((colorOption) => (
+                   {colorOptions.map((colorOption) => ( // Use new colorOptions
                      <Button
                        key={colorOption.name}
                        type="button"
