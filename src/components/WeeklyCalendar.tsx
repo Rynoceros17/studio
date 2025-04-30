@@ -61,14 +61,15 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ weekStartDate, events }
 
         return (
           <Card key={dateStr} className={cn(
-            "flex flex-col min-h-[300px] max-h-[500px] overflow-hidden bg-secondary/30", // Adjusted min/max height, use secondary for background
-            isToday ? 'border-accent border-2 shadow-md' : 'border-transparent' // Use accent for today's border
+            "flex flex-col min-h-[300px] max-h-[500px] overflow-hidden",
+            isToday ? 'bg-card border-accent border-2 shadow-md' : 'bg-secondary/30 border-transparent' // Use bg-card for today's background
           )}>
             <CardHeader className="p-1 text-center shrink-0 border-b border-border/50"> {/* Add subtle border */}
               <CardTitle className="text-xs font-medium text-muted-foreground"> {/* Muted foreground for day name */}
                 {format(d, 'EEE')}
               </CardTitle>
-              <CardDescription className={cn("text-sm font-bold", isToday ? 'text-accent' : 'text-foreground')}> {/* Accent for today's date */}
+              {/* Use accent color for today's date number, foreground for others */}
+              <CardDescription className={cn("text-sm font-bold", isToday ? 'text-accent' : 'text-foreground')}>
                 {format(d, 'd')}
               </CardDescription>
               {isToday && <Badge variant="outline" className="border-accent text-accent mt-0.5 px-1 py-0 text-[9px] mx-auto">Today</Badge>}

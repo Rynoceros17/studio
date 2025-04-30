@@ -2,18 +2,19 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, type ChangeEvent, type FormEvent } from 'react';
+import Link from 'next/link'; // Import Link
 import { parseIcsContent, type RelevantEvent } from '@/lib/ics-parser'; // Updated import path
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Upload, CalendarClock, AlertCircle, Info, MapPin, FileText, ChevronLeft, ChevronRight, FileUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Upload, CalendarClock, AlertCircle, Info, MapPin, FileText, ChevronLeft, ChevronRight, FileUp, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react'; // Added ArrowLeft
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, addWeeks, subWeeks, isWithinInterval, parseISO } from 'date-fns';
 import WeeklyCalendar from '@/components/WeeklyCalendar'; // Updated import path
 import { cn } from '@/lib/utils'; // Import cn utility
 
-export default function IcsUploadForm() {
+export default function DashboardPage() { // Renamed component for clarity
   const [isLoading, setIsLoading] = useState(false);
   const [allEvents, setAllEvents] = useState<RelevantEvent[] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -421,6 +422,16 @@ export default function IcsUploadForm() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
+        {/* Back Button */}
+        <div className="mb-4">
+            <Link href="/" passHref legacyBehavior>
+                <Button variant="outline" className="text-primary border-primary hover:bg-primary/10">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Calendar
+                </Button>
+            </Link>
+        </div>
+
       {/* Main Content Area */}
       <div className="w-full max-w-5xl mx-auto"> {/* Increased max width from 3xl to 5xl */}
         <Card className="shadow-lg overflow-hidden mb-8 bg-card border-border"> {/* Added mb-8, explicit background/border */}
