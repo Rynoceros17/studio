@@ -28,7 +28,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ weekStartDate, events }
   const eventsByDay: { [key: string]: RelevantEvent[] } = {};
   days.forEach(d => {
     const dateStr = format(d, 'yyyy-MM-dd');
-    eventsByDay[dateStr] = events
+
+    // 1. Filter events for the current day
+    const filteredEvents = events
         .filter(event => {
              try {
                  const eventStartDate = parseISO(event.startDate);
@@ -37,18 +39,34 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ weekStartDate, events }
              } catch {
                  return false; // Ignore events with invalid start dates
              }
-        })
-        .sort((a, b) => {
-            try {
-                 // Ensure dates are valid before sorting
-                const dateA = parseISO(a.startDate);
-                const dateB = parseISO(b.startDate);
-                if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
-                return dateA.getTime() - dateB.getTime();
-            } catch {
-                return 0; // Keep original order if dates are invalid
-            }
-        }); // Sort events within each day by start time
+        });
+
+     // 2. Sort events by start time
+    const sortedEvents = filteredEvents.sort((a, b) => {
+        try {
+             // Ensure dates are valid before sorting
+            const dateA = parseISO(a.startDate);
+            const dateB = parseISO(b.startDate);
+            if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
+            return dateA.getTime() - dateB.getTime();
+        } catch {
+            return 0; // Keep original order if dates are invalid
+        }
+    });
+
+    // 3. Deduplicate events based on summary, start, and end time
+    const uniqueEventKeys = new Set<string>();
+    const deduplicatedEvents: RelevantEvent[] = [];
+    sortedEvents.forEach(event => {
+        const key = `${event.summary}_${event.startDate}_${event.endDate}`;
+        if (!uniqueEventKeys.has(key)) {
+            uniqueEventKeys.add(key);
+            deduplicatedEvents.push(event);
+        }
+    });
+
+    // 4. Assign the deduplicated list
+    eventsByDay[dateStr] = deduplicatedEvents;
   });
 
 
