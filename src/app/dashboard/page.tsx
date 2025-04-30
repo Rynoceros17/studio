@@ -1,7 +1,8 @@
 // src/app/dashboard/page.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect, type ChangeEvent, type FormEvent } from 'react';
+import type * as React from 'react';
+import { useState, useMemo, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link'; // Import Link
 import { parseIcsContent, type RelevantEvent } from '@/lib/ics-parser'; // Updated import path
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -422,25 +423,26 @@ export default function DashboardPage() { // Renamed component for clarity
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
-        {/* Back Button */}
-        <div className="mb-4">
-            <Link href="/" passHref legacyBehavior>
-                <Button variant="outline" className="text-primary border-primary hover:bg-primary/10">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Calendar
-                </Button>
-            </Link>
-        </div>
 
       {/* Main Content Area */}
       <div className="w-full max-w-5xl mx-auto"> {/* Increased max width from 3xl to 5xl */}
         <Card className="shadow-lg overflow-hidden mb-8 bg-card border-border"> {/* Added mb-8, explicit background/border */}
           <CardHeader className="flex flex-row items-center justify-between border-b pb-4"> {/* Added border-b and padding */}
-            <div>
-                <CardTitle className="text-2xl text-primary">ICS Event Viewer</CardTitle> {/* Apply primary color */}
-                <CardDescription className="text-sm text-muted-foreground"> {/* Muted description */}
-                  {fileName ? `Viewing events from ${fileName}.` : 'Upload your .ics calendar file.'}
-                </CardDescription>
+            <div className="flex items-center gap-2"> {/* Flex container for title and back button */}
+                {/* Back Button */}
+                <Link href="/" passHref legacyBehavior>
+                    <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-8 w-8"> {/* Adjusted size */}
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">Back to Calendar</span>
+                    </Button>
+                </Link>
+                {/* Title and Description */}
+                <div>
+                    <CardTitle className="text-2xl text-primary">ICS Event Viewer</CardTitle> {/* Apply primary color */}
+                    <CardDescription className="text-sm text-muted-foreground"> {/* Muted description */}
+                    {fileName ? `Viewing events from ${fileName}.` : 'Upload your .ics calendar file.'}
+                    </CardDescription>
+                </div>
             </div>
             {allEvents && !error && ( // Show toggle button only if events are loaded successfully
               <Button variant="ghost" size="icon" onClick={toggleUploadVisibility} aria-label={isUploadSectionVisible ? "Hide upload section" : "Show upload section"}>

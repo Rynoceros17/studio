@@ -1,9 +1,9 @@
 // src/components/WeeklyCalendar.tsx
 'use client';
 
-import React from 'react';
+import type * as React from 'react';
 import { format, startOfWeek, endOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
-import type { RelevantEvent } from '@/lib/ics-parser'; // Updated import path
+import type { RelevantEvent } from '@/lib/ics-parser'; // Corrected import path
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
