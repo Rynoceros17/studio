@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Save, Star, Palette } from 'lucide-react'; // Removed X icon import
+import { Calendar as CalendarIcon, Save, Star, Palette } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -27,17 +27,17 @@ import {
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// New set of 8 colors + White (default)
+// Updated set of 8 colors + White (default)
 const colorOptions = [
-  { name: 'Salmon', value: 'hsl(6, 90%, 85%)' },     // Light Salmon
-  { name: 'Sky', value: 'hsl(195, 70%, 85%)' },    // Light Sky Blue
-  { name: 'Mint', value: 'hsl(150, 60%, 85%)' },    // Light Mint Green
-  { name: 'Apricot', value: 'hsl(35, 90%, 85%)' },   // Light Apricot
-  { name: 'Lavender', value: 'hsl(250, 60%, 88%)' }, // Light Lavender (similar to old purple)
-  { name: 'Teal', value: 'hsl(175, 50%, 82%)' },    // Light Teal
-  { name: 'Rose', value: 'hsl(350, 75%, 88%)' },    // Light Rose
-  { name: 'Lime', value: 'hsl(80, 60%, 85%)' },     // Light Lime Green
-  { name: 'White', value: undefined }, // Represents default card background (white)
+    { name: 'Coral', value: 'hsl(16, 100%, 80%)' },      // Light Coral
+    { name: 'Aqua', value: 'hsl(180, 75%, 80%)' },     // Light Aqua
+    { name: 'Chartreuse', value: 'hsl(90, 70%, 85%)' }, // Light Chartreuse Green
+    { name: 'Orchid', value: 'hsl(280, 60%, 85%)' },    // Light Orchid
+    { name: 'Gold', value: 'hsl(50, 90%, 80%)' },      // Light Gold
+    { name: 'SteelBlue', value: 'hsl(210, 50%, 80%)' }, // Light Steel Blue
+    { name: 'Pink', value: 'hsl(340, 80%, 88%)' },     // Light Pink
+    { name: 'Spring', value: 'hsl(140, 60%, 82%)' },    // Light Spring Green
+    { name: 'White', value: undefined }, // Represents default card background (white)
 ];
 
 
@@ -91,6 +91,26 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
     }
   }, [task, isOpen, form]);
 
+  // Function to handle color selection and save/close
+  const handleColorSelect = (newColor: string | undefined) => {
+     if (task) {
+       // Get current form values (excluding color which we're setting)
+       const currentValues = form.getValues();
+       const updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>> = {
+         name: currentValues.name,
+         description: currentValues.description,
+         date: format(currentValues.date, 'yyyy-MM-dd'),
+         recurring: currentValues.recurring,
+         highPriority: currentValues.highPriority,
+         color: newColor, // Set the newly selected color
+       };
+       updateTask(task.id, updates);
+       onClose(); // Close the dialog immediately after updating
+     }
+  };
+
+
+  // This onSubmit is now only for the main "Save Changes" button (non-color edits)
   const onSubmit: SubmitHandler<EditTaskFormValues> = (data) => {
     if (task) {
       const updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>> = {
@@ -99,7 +119,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
         date: format(data.date, 'yyyy-MM-dd'),
         recurring: data.recurring,
         highPriority: data.highPriority,
-        color: data.color, // Pass undefined if default/no color selected
+        color: data.color,
       };
       updateTask(task.id, updates);
       onClose();
@@ -243,41 +263,35 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                   />
              </div>
 
-              <FormField
-                control={form.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
-                    <FormControl>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {colorOptions.map((colorOption) => ( // Use new colorOptions
-                          <Button
-                            key={colorOption.name}
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className={cn(
-                              "h-8 w-8 rounded-full border-2 flex items-center justify-center",
-                              // Highlight if the field value matches the option's value (including undefined)
-                              field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted'
-                            )}
-                            style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }} // Use card background (white) if value is undefined
-                            onClick={() => field.onChange(colorOption.value)} // Sets to undefined for default
-                            aria-label={`Set task color to ${colorOption.name}`}
-                            title={colorOption.name}
-                          >
-                             {/* Intentionally empty: color is shown by background */}
-                          </Button>
-                        ))}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Color Selection - No longer uses FormField */}
+               <FormItem>
+                  <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
+                  <FormControl>
+                     <div className="flex flex-wrap gap-2 pt-2">
+                       {colorOptions.map((colorOption) => (
+                         <Button
+                           key={colorOption.name}
+                           type="button" // Important: prevents form submission
+                           variant="outline"
+                           size="icon"
+                           className={cn(
+                             "h-8 w-8 rounded-full border-2 flex items-center justify-center border-muted" // Removed conditional highlighting
+                           )}
+                           style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }}
+                           onClick={() => handleColorSelect(colorOption.value)} // Use the new handler
+                           aria-label={`Set task color to ${colorOption.name}`}
+                           title={colorOption.name}
+                         >
+                            {/* Intentionally empty: color is shown by background */}
+                         </Button>
+                       ))}
+                     </div>
+                   </FormControl>
+                 <FormMessage />
+               </FormItem>
 
               <ShadDialogFooter className="pt-4">
+                  {/* Save button remains for non-color edits */}
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                     <Save className="mr-2 h-4 w-4" /> Save Changes
                   </Button>

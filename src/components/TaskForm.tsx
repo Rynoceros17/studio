@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, PlusCircle, Star, Palette } from 'lucide-react'; // Removed X icon import
+import { Calendar as CalendarIcon, PlusCircle, Star, Palette } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,17 +20,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// New set of 8 colors + White (default)
+// Updated set of 8 colors + White (default)
 const colorOptions = [
-  { name: 'Salmon', value: 'hsl(6, 90%, 85%)' },     // Light Salmon
-  { name: 'Sky', value: 'hsl(195, 70%, 85%)' },    // Light Sky Blue
-  { name: 'Mint', value: 'hsl(150, 60%, 85%)' },    // Light Mint Green
-  { name: 'Apricot', value: 'hsl(35, 90%, 85%)' },   // Light Apricot
-  { name: 'Lavender', value: 'hsl(250, 60%, 88%)' }, // Light Lavender (similar to old purple)
-  { name: 'Teal', value: 'hsl(175, 50%, 82%)' },    // Light Teal
-  { name: 'Rose', value: 'hsl(350, 75%, 88%)' },    // Light Rose
-  { name: 'Lime', value: 'hsl(80, 60%, 85%)' },     // Light Lime Green
-  { name: 'White', value: undefined }, // Represents default card background (white)
+    { name: 'Coral', value: 'hsl(16, 100%, 80%)' },      // Light Coral
+    { name: 'Aqua', value: 'hsl(180, 75%, 80%)' },     // Light Aqua
+    { name: 'Chartreuse', value: 'hsl(90, 70%, 85%)' }, // Light Chartreuse Green
+    { name: 'Orchid', value: 'hsl(280, 60%, 85%)' },    // Light Orchid
+    { name: 'Gold', value: 'hsl(50, 90%, 80%)' },      // Light Gold
+    { name: 'SteelBlue', value: 'hsl(210, 50%, 80%)' }, // Light Steel Blue
+    { name: 'Pink', value: 'hsl(340, 80%, 88%)' },     // Light Pink
+    { name: 'Spring', value: 'hsl(140, 60%, 82%)' },    // Light Spring Green
+    { name: 'White', value: undefined }, // Represents default card background (white)
 ];
 
 
@@ -254,9 +254,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                        variant="outline"
                        size="icon"
                        className={cn(
-                         "h-8 w-8 rounded-full border-2 flex items-center justify-center",
-                         // Highlight if the field value matches the option's value (including undefined)
-                         field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted'
+                         "h-8 w-8 rounded-full border-2 flex items-center justify-center border-muted" // Removed conditional highlighting
                        )}
                        style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }} // Use card background (white) if value is undefined
                        onClick={() => field.onChange(colorOption.value)} // Sets to undefined for default
