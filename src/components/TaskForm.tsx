@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, PlusCircle, Star } from 'lucide-react'; // Added Star
+import { Calendar as CalendarIcon, PlusCircle, Star, Palette } from 'lucide-react'; // Added Star, Palette
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,12 +20,25 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
+// Predefined pastel colors (copied from EditTaskDialog)
+const pastelColors = [
+  { name: 'Default', value: undefined },
+  { name: 'Pink', value: 'hsl(340, 70%, 85%)' },
+  { name: 'Blue', value: 'hsl(200, 70%, 85%)' },
+  { name: 'Green', value: 'hsl(140, 50%, 85%)' },
+  { name: 'Yellow', value: 'hsl(55, 70%, 85%)' },
+  { name: 'Orange', value: 'hsl(30, 70%, 85%)' },
+  { name: 'Purple', value: 'hsl(260, 60%, 88%)' },
+];
+
+// Update schema to include color
 const formSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
   recurring: z.boolean().optional().default(false), // Add recurring field with default
   highPriority: z.boolean().optional().default(false), // Add highPriority field
+  color: z.string().optional(), // Add color field
 });
 
 type TaskFormValues = z.infer<typeof formSchema>;
@@ -47,6 +60,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
       date: initialData?.date ? new Date(initialData.date + 'T00:00:00') : undefined, // Parse initial date safely
       recurring: initialData?.recurring || false, // Prefill recurring
       highPriority: initialData?.highPriority || false, // Prefill highPriority
+      color: initialData?.color || undefined, // Prefill color
     },
   });
 
@@ -59,6 +73,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
          date: initialData.date ? new Date(initialData.date + 'T00:00:00') : undefined,
          recurring: initialData.recurring || false,
          highPriority: initialData.highPriority || false,
+         color: initialData.color || undefined, // Reset color from initial data
        });
      } else {
        // Reset to defaults if initialData becomes null (e.g., user opens form manually)
@@ -68,18 +83,21 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
          date: undefined,
          recurring: false,
          highPriority: false,
+         color: undefined, // Reset color to default
        });
      }
    }, [initialData, form]); // Rerun when initialData or form instance changes
 
 
   const onSubmit: SubmitHandler<TaskFormValues> = (data) => {
+    // Include color in the new task data
     const newTask: Omit<Task, 'id'> = {
       name: data.name,
       description: data.description,
       date: format(data.date, 'yyyy-MM-dd'), // Format date before adding
       recurring: data.recurring, // Include recurring status
       highPriority: data.highPriority, // Include high priority status
+      color: data.color, // Include color
        // Initialize other optional fields
        details: '',
        dueDate: undefined,
@@ -90,6 +108,10 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
     // Form reset is now handled by the useEffect when initialData changes or onTaskAdded is called
     onTaskAdded?.(); // Call the callback if provided (e.g., to close a dialog)
   };
+
+  // Watch the current color value from the form
+  const selectedColor = form.watch('color');
+
 
   return (
     <Form {...form}>
@@ -211,6 +233,40 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                 )}
               />
          </div>
+
+        {/* Color Picker */}
+         <FormField
+           control={form.control}
+           name="color"
+           render={({ field }) => (
+             <FormItem>
+               <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
+               <FormControl>
+                 <div className="flex flex-wrap gap-2 pt-2">
+                   {pastelColors.map((colorOption) => (
+                     <Button
+                       key={colorOption.name}
+                       type="button"
+                       variant="outline"
+                       size="icon"
+                       className={cn(
+                         "h-8 w-8 rounded-full border-2",
+                         field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted' // Highlight selected
+                       )}
+                       style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }} // Use card background for default
+                       onClick={() => field.onChange(colorOption.value)}
+                       aria-label={`Set task color to ${colorOption.name}`}
+                       title={colorOption.name} // Tooltip for color name
+                     >
+                        {!colorOption.value && <span className="text-xs text-muted-foreground">✕</span>} {/* Mark for default */}
+                     </Button>
+                   ))}
+                 </div>
+               </FormControl>
+               <FormMessage />
+             </FormItem>
+           )}
+         />
 
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">

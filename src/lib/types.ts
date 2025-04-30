@@ -11,6 +11,7 @@ export interface Task { // Changed 'type' to 'interface' for better clarity and 
   files?: FileMetaData[]; // Optional array for file metadata
   highPriority?: boolean; // Optional: Flag for high priority tasks
   exceptions?: string[]; // Optional array of 'yyyy-MM-dd' dates to skip for recurring tasks
+  color?: string; // Optional: Background color for the task card (e.g., HSL string)
 };
 
 // Simple interface for file metadata (as we aren't handling uploads yet)
@@ -33,5 +34,4 @@ export interface Goal {
     name: string;
     subtasks: Subtask[];
 }
-
 ```

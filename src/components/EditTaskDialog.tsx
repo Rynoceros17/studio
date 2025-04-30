@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Save, Star } from 'lucide-react'; // Added Star
+import { Calendar as CalendarIcon, Save, Star, Palette } from 'lucide-react'; // Added Palette
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -27,13 +27,25 @@ import {
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Schema for the core editable properties
+// Predefined pastel colors (HSL format for easy brightness/saturation control)
+const pastelColors = [
+  { name: 'Default', value: undefined }, // Represents default card background
+  { name: 'Pink', value: 'hsl(340, 70%, 85%)' },
+  { name: 'Blue', value: 'hsl(200, 70%, 85%)' },
+  { name: 'Green', value: 'hsl(140, 50%, 85%)' },
+  { name: 'Yellow', value: 'hsl(55, 70%, 85%)' },
+  { name: 'Orange', value: 'hsl(30, 70%, 85%)' },
+  { name: 'Purple', value: 'hsl(260, 60%, 88%)' }, // Similar to secondary
+];
+
+// Schema for the core editable properties, now including color
 const editFormSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
   recurring: z.boolean().optional(),
   highPriority: z.boolean().optional(), // Add highPriority field
+  color: z.string().optional(), // Add color field
 });
 
 type EditTaskFormValues = z.infer<typeof editFormSchema>;
@@ -42,7 +54,8 @@ interface EditTaskDialogProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
-  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>>) => void; // Function to update core task properties
+  // Update signature to include color in Task Omit<>
+  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => void; // Function to update core task properties
 }
 
 export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDialogProps) {
@@ -56,6 +69,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
       date: undefined,
       recurring: false,
       highPriority: false, // Initialize highPriority
+      color: undefined, // Initialize color
     },
   });
 
@@ -68,6 +82,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
         date: task.date ? parseISO(task.date + 'T00:00:00') : undefined, // Ensure parsing includes time part
         recurring: task.recurring || false,
         highPriority: task.highPriority || false, // Reset highPriority
+        color: task.color, // Reset color
       });
     } else if (!isOpen) {
        // Optionally reset to defaults when closing if task is null
@@ -77,21 +92,26 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
 
   const onSubmit: SubmitHandler<EditTaskFormValues> = (data) => {
     if (task) {
-      const updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate'>> = {
+      // Update signature to include color
+      const updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>> = {
         name: data.name,
         description: data.description,
         date: format(data.date, 'yyyy-MM-dd'), // Format date before updating
         recurring: data.recurring,
         highPriority: data.highPriority, // Include high priority status
+        color: data.color, // Include color
       };
       updateTask(task.id, updates);
       onClose(); // Close dialog after successful update
     }
   };
 
+  // Watch the current color value from the form
+  const selectedColor = form.watch('color');
+
   return (
     <ShadDialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <ShadDialogContent className="sm:max-w-[425px]">
+      <ShadDialogContent className="sm:max-w-md"> {/* Changed max-w to md for a bit more space */}
         <ShadDialogHeader>
           <ShadDialogTitle className="text-primary">Edit Task</ShadDialogTitle>
         </ShadDialogHeader>
@@ -215,6 +235,42 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                     )}
                   />
              </div>
+
+              {/* Color Picker */}
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {pastelColors.map((colorOption) => (
+                          <Button
+                            key={colorOption.name}
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 rounded-full border-2",
+                              field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted' // Highlight selected
+                            )}
+                            style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }} // Use card background for default
+                            onClick={() => field.onChange(colorOption.value)}
+                            aria-label={`Set task color to ${colorOption.name}`}
+                            title={colorOption.name} // Tooltip for color name
+                          >
+                            {/* Optionally show checkmark on selected */}
+                            {/* {field.value === colorOption.value && <Check className="h-4 w-4 text-primary-foreground mix-blend-difference" />} */}
+                             {!colorOption.value && <span className="text-xs text-muted-foreground">✕</span>} {/* Mark for default */}
+                          </Button>
+                        ))}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <ShadDialogFooter className="pt-4">
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
