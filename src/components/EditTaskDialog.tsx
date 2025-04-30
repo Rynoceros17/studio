@@ -27,16 +27,16 @@ import {
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Updated set of 8 colors + White (default)
+// Updated set of 8 colors + White (default) in rainbow order
 const colorOptions = [
-    { name: 'Coral', value: 'hsl(16, 100%, 80%)' },      // Light Coral
-    { name: 'Aqua', value: 'hsl(180, 75%, 80%)' },     // Light Aqua
-    { name: 'Chartreuse', value: 'hsl(90, 70%, 85%)' }, // Light Chartreuse Green
-    { name: 'Orchid', value: 'hsl(280, 60%, 85%)' },    // Light Orchid
-    { name: 'Gold', value: 'hsl(50, 90%, 80%)' },      // Light Gold
-    { name: 'SteelBlue', value: 'hsl(210, 50%, 80%)' }, // Light Steel Blue
-    { name: 'Pink', value: 'hsl(340, 80%, 88%)' },     // Light Pink
-    { name: 'Spring', value: 'hsl(140, 60%, 82%)' },    // Light Spring Green
+    { name: 'Pink', value: 'hsl(340, 80%, 88%)' },     // Light Pink (Red/Violet end)
+    { name: 'Coral', value: 'hsl(16, 100%, 80%)' },      // Light Coral (Red/Orange)
+    { name: 'Gold', value: 'hsl(50, 90%, 80%)' },      // Light Gold (Yellow/Orange)
+    { name: 'Chartreuse', value: 'hsl(90, 70%, 85%)' }, // Light Chartreuse Green (Yellow/Green)
+    { name: 'Spring', value: 'hsl(140, 60%, 82%)' },    // Light Spring Green (Green)
+    { name: 'Aqua', value: 'hsl(180, 75%, 80%)' },     // Light Aqua (Cyan/Greenish-Blue)
+    { name: 'SteelBlue', value: 'hsl(210, 50%, 80%)' }, // Light Steel Blue (Blue)
+    { name: 'Orchid', value: 'hsl(280, 60%, 85%)' },    // Light Orchid (Violet/Purple)
     { name: 'White', value: undefined }, // Represents default card background (white)
 ];
 
@@ -275,7 +275,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                            variant="outline"
                            size="icon"
                            className={cn(
-                             "h-8 w-8 rounded-full border-2 flex items-center justify-center border-muted" // Removed conditional highlighting
+                             "h-8 w-8 rounded-full border-2 flex items-center justify-center border-muted"
                            )}
                            style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }}
                            onClick={() => handleColorSelect(colorOption.value)} // Use the new handler

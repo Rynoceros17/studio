@@ -20,16 +20,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Updated set of 8 colors + White (default)
+// Updated set of 8 colors + White (default) in rainbow order
 const colorOptions = [
-    { name: 'Coral', value: 'hsl(16, 100%, 80%)' },      // Light Coral
-    { name: 'Aqua', value: 'hsl(180, 75%, 80%)' },     // Light Aqua
-    { name: 'Chartreuse', value: 'hsl(90, 70%, 85%)' }, // Light Chartreuse Green
-    { name: 'Orchid', value: 'hsl(280, 60%, 85%)' },    // Light Orchid
-    { name: 'Gold', value: 'hsl(50, 90%, 80%)' },      // Light Gold
-    { name: 'SteelBlue', value: 'hsl(210, 50%, 80%)' }, // Light Steel Blue
-    { name: 'Pink', value: 'hsl(340, 80%, 88%)' },     // Light Pink
-    { name: 'Spring', value: 'hsl(140, 60%, 82%)' },    // Light Spring Green
+    { name: 'Pink', value: 'hsl(340, 80%, 88%)' },     // Light Pink (Red/Violet end)
+    { name: 'Coral', value: 'hsl(16, 100%, 80%)' },      // Light Coral (Red/Orange)
+    { name: 'Gold', value: 'hsl(50, 90%, 80%)' },      // Light Gold (Yellow/Orange)
+    { name: 'Chartreuse', value: 'hsl(90, 70%, 85%)' }, // Light Chartreuse Green (Yellow/Green)
+    { name: 'Spring', value: 'hsl(140, 60%, 82%)' },    // Light Spring Green (Green)
+    { name: 'Aqua', value: 'hsl(180, 75%, 80%)' },     // Light Aqua (Cyan/Greenish-Blue)
+    { name: 'SteelBlue', value: 'hsl(210, 50%, 80%)' }, // Light Steel Blue (Blue)
+    { name: 'Orchid', value: 'hsl(280, 60%, 85%)' },    // Light Orchid (Violet/Purple)
     { name: 'White', value: undefined }, // Represents default card background (white)
 ];
 
@@ -106,8 +106,6 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
     addTask(newTask);
     onTaskAdded?.();
   };
-
-  const selectedColor = form.watch('color');
 
 
   return (
@@ -247,20 +245,22 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
                <FormControl>
                  <div className="flex flex-wrap gap-2 pt-2">
-                   {colorOptions.map((colorOption) => ( // Use new colorOptions
+                   {colorOptions.map((colorOption) => (
                      <Button
                        key={colorOption.name}
                        type="button"
                        variant="outline"
                        size="icon"
                        className={cn(
-                         "h-8 w-8 rounded-full border-2 flex items-center justify-center border-muted" // Removed conditional highlighting
+                         "h-8 w-8 rounded-full border-2 flex items-center justify-center",
+                         field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted'
                        )}
-                       style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }} // Use card background (white) if value is undefined
+                       style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }}
                        onClick={() => field.onChange(colorOption.value)} // Sets to undefined for default
                        aria-label={`Set task color to ${colorOption.name}`}
                        title={colorOption.name}
                      >
+                        {/* Add a checkmark or similar indicator for the selected color */}
                         {/* Intentionally empty: color is shown by background */}
                      </Button>
                    ))}
