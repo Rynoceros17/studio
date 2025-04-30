@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Upload, CalendarClock, AlertCircle, Info, MapPin, FileText, ChevronLeft, ChevronRight, FileUp, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react'; // Added ArrowLeft
-import { format, formatDistanceToNow, startOfWeek, endOfWeek, addWeeks, subWeeks, isWithinInterval, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, startOfWeek, endOfWeek, addWeeks, subWeeks, isWithinInterval, parseISO, isSameDay } from 'date-fns'; // Added isSameDay
 import WeeklyCalendar from '@/components/WeeklyCalendar'; // Updated import path
 import { cn } from '@/lib/utils'; // Import cn utility
 
@@ -401,7 +401,7 @@ export default function DashboardPage() { // Renamed component for clarity
 
 
     return (
-      <Card className={`mt-4 shadow-md ${type === 'Current' ? 'border-primary ring-1 ring-primary' : 'border-border'}`}>
+      <Card className={`mt-4 shadow-md ${type === 'Current' ? 'border-primary ring-1 ring-primary' : 'border-border'} ${isSameDay(startDate, new Date()) ? 'bg-card' : ''}`}> {/* Added today background */}
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2 text-primary"> {/* Added text-primary */}
              <CalendarClock className={`w-5 h-5 shrink-0 ${type === 'Current' ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -424,26 +424,27 @@ export default function DashboardPage() { // Renamed component for clarity
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
 
-      {/* Main Content Area */}
-      <div className="w-full max-w-5xl mx-auto"> {/* Increased max width from 3xl to 5xl */}
-        <Card className="shadow-lg overflow-hidden mb-8 bg-card border-border"> {/* Added mb-8, explicit background/border */}
-          <CardHeader className="flex flex-row items-center justify-between border-b pb-4"> {/* Added border-b and padding */}
-            <div className="flex items-center gap-2"> {/* Flex container for title and back button */}
-                {/* Back Button */}
-                <Link href="/" passHref legacyBehavior>
-                    <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-8 w-8"> {/* Adjusted size */}
-                        <ArrowLeft className="h-4 w-4" />
-                        <span className="sr-only">Back to Calendar</span>
-                    </Button>
-                </Link>
-                {/* Title and Description */}
-                <div>
-                    <CardTitle className="text-2xl text-primary">ICS Event Viewer</CardTitle> {/* Apply primary color */}
-                    <CardDescription className="text-sm text-muted-foreground"> {/* Muted description */}
-                    {fileName ? `Viewing events from ${fileName}.` : 'Upload your .ics calendar file.'}
-                    </CardDescription>
-                </div>
-            </div>
+      {/* Main Content Area - Removed max-w-5xl for full width */}
+      <div className="w-full mx-auto">
+        <Card className="shadow-lg overflow-hidden mb-8 bg-card border-border">
+          <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+             {/* Container for Back Button and Title/Description */}
+            <div className="flex items-center gap-4"> {/* Increased gap */}
+                 {/* Back Button */}
+                 <Link href="/" passHref legacyBehavior>
+                    <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10 flex-shrink-0"> {/* Increased size, prevent shrinking */}
+                         <ArrowLeft className="h-5 w-5" />
+                         <span className="sr-only">Back to Calendar</span>
+                     </Button>
+                 </Link>
+                 {/* Title and Description */}
+                 <div className="flex-grow"> {/* Allow this div to grow */}
+                     <CardTitle className="text-2xl text-primary">ICS Event Importer</CardTitle> {/* Changed title */}
+                     <CardDescription className="text-sm text-muted-foreground">
+                         {fileName ? `Viewing events from ${fileName}.` : 'Upload your .ics calendar file to view events.'}
+                     </CardDescription>
+                 </div>
+             </div>
             {allEvents && !error && ( // Show toggle button only if events are loaded successfully
               <Button variant="ghost" size="icon" onClick={toggleUploadVisibility} aria-label={isUploadSectionVisible ? "Hide upload section" : "Show upload section"}>
                 {isUploadSectionVisible ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
