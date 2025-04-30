@@ -1,4 +1,3 @@
-
 "use client";
 
 import type * as React from 'react';
@@ -7,7 +6,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, PlusCircle, Star, Palette, X } from 'lucide-react'; // Added X icon
+import { Calendar as CalendarIcon, PlusCircle, Star, Palette, X } from 'lucide-react'; // Keep X icon import if needed elsewhere, but not for the button
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -22,7 +21,7 @@ import { cn } from '@/lib/utils';
 
 // Predefined pastel colors (copied from EditTaskDialog)
 const pastelColors = [
-  { name: 'Default', value: undefined },
+  { name: 'Default', value: undefined }, // Represents default card background (white)
   { name: 'Pink', value: 'hsl(340, 70%, 85%)' },
   { name: 'Blue', value: 'hsl(200, 70%, 85%)' },
   { name: 'Green', value: 'hsl(140, 50%, 85%)' },
@@ -38,7 +37,7 @@ const formSchema = z.object({
   date: z.date({ required_error: "A date is required." }),
   recurring: z.boolean().optional().default(false),
   highPriority: z.boolean().optional().default(false),
-  color: z.string().optional(),
+  color: z.string().optional(), // Allow undefined for color
 });
 
 type TaskFormValues = z.infer<typeof formSchema>;
@@ -241,18 +240,17 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                        variant="outline"
                        size="icon"
                        className={cn(
-                         "h-8 w-8 rounded-full border-2 flex items-center justify-center", // Added flex center
-                         // Highlight if the field value matches the option's value
+                         "h-8 w-8 rounded-full border-2 flex items-center justify-center",
+                         // Highlight if the field value matches the option's value (including undefined)
                          field.value === colorOption.value ? 'border-primary ring-2 ring-ring' : 'border-muted'
                        )}
-                       style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }}
-                        // Set field value to undefined for the "Default" option
-                       onClick={() => field.onChange(colorOption.value)}
+                       style={{ backgroundColor: colorOption.value || 'hsl(var(--card))' }} // Use card background (white) if value is undefined
+                       onClick={() => field.onChange(colorOption.value)} // Sets to undefined for default
                        aria-label={`Set task color to ${colorOption.name}`}
                        title={colorOption.name}
                      >
-                       {/* Display X for the default/no color option */}
-                       {!colorOption.value && <X className="h-4 w-4 text-muted-foreground" />}
+                        {/* Removed the X icon for the default/white option */}
+                        {/* {!colorOption.value && <X className="h-4 w-4 text-muted-foreground" />} */}
                      </Button>
                    ))}
                  </div>
