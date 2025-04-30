@@ -4,6 +4,7 @@
 
 import type * as React from 'react';
 import { useCallback, useState, useMemo, useEffect } from 'react';
+import Link from 'next/link'; // Import Link for navigation
 import {
   DndContext,
   type DragEndEvent,
@@ -45,7 +46,7 @@ import {
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet'; // Import BookmarkListSheet
 import { GoalsSheet } from '@/components/GoalsSheet'; // Import GoalsSheet
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target } from 'lucide-react'; // Added BookmarkIcon and Target
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard } from 'lucide-react'; // Added LayoutDashboard
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils'; // Import cn
 
@@ -479,6 +480,21 @@ export default function Home() {
 
          {/* Left Side Icons Container */}
          <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2"> {/* Container with spacing */}
+
+             {/* Dashboard Page Link Button */}
+             <Link href="/dashboard" passHref legacyBehavior>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
+                    aria-label="Go to dashboard"
+                    asChild // Important: Allows Button to act as the child of Link
+                >
+                    <a> {/* This anchor tag receives the href from Link */}
+                      <LayoutDashboard className="h-6 w-6 text-primary" />
+                    </a>
+                </Button>
+             </Link>
 
               {/* Goals Sheet Trigger */}
              <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
