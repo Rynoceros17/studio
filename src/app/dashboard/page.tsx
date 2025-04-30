@@ -302,6 +302,7 @@ export default function DashboardPage() { // Renamed component for clarity
       let endDate: Date | null = null;
       let cardDescriptionContent: React.ReactNode = null;
       let cardContentContent: React.ReactNode = null;
+      const label = type === 'Current' ? 'Current Class' : 'Next Class'; // Use 'Class' label
 
       if(event) {
           try {
@@ -324,7 +325,7 @@ export default function DashboardPage() { // Renamed component for clarity
           <CardHeader>
             <CardTitle className="text-lg font-normal flex items-center gap-2 text-muted-foreground">
               <Info className="w-5 h-5" />
-              No {type.toLowerCase()} event found
+              No {type.toLowerCase()} class found {/* Updated label */}
             </CardTitle>
              {type === 'Next' && currentEvent && (() => {
                  try {
@@ -332,7 +333,7 @@ export default function DashboardPage() { // Renamed component for clarity
                      if (!isNaN(currentEndDate.getTime())) {
                          return (
                             <CardDescription className="text-xs pl-7 text-muted-foreground">
-                                (After the current event finishes at {format(currentEndDate, "h:mm a")})
+                                (After the current class finishes at {format(currentEndDate, "h:mm a")}) {/* Updated label */}
                             </CardDescription>
                          );
                      }
@@ -403,6 +404,7 @@ export default function DashboardPage() { // Renamed component for clarity
     return (
       <Card className={`mt-4 shadow-md ${type === 'Current' ? 'border-primary ring-1 ring-primary' : 'border-border'} ${isSameDay(startDate, new Date()) ? 'bg-card' : ''}`}> {/* Added today background */}
         <CardHeader>
+           <CardDescription className="text-xs uppercase font-semibold tracking-wider text-muted-foreground mb-1">{label}</CardDescription> {/* Added label */}
           <CardTitle className="text-xl flex items-center gap-2 text-primary"> {/* Added text-primary */}
              <CalendarClock className={`w-5 h-5 shrink-0 ${type === 'Current' ? 'text-primary' : 'text-muted-foreground'}`} />
              <span className="flex-1 truncate" title={event.summary}>{event.summary || <span className="italic text-muted-foreground">No Title</span>}</span> {/* Added truncate */}
