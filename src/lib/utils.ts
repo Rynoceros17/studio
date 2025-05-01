@@ -8,8 +8,10 @@ export function cn(...inputs: ClassValue[]) {
 // Function to truncate text using CSS classes approach
 export const truncateText = (text: string | undefined | null, limit: number): string => {
     if (!text) return '';
-    // The actual truncation happens via CSS line-clamp now
-    // This function can still be useful for tooltips or if JS fallback is needed
+    // Basic truncation logic (can be improved if needed)
+    if (text.length > limit) {
+        return text.substring(0, limit) + '...';
+    }
     return text;
 };
 

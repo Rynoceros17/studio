@@ -61,7 +61,7 @@ export default function StudyTrackerPage() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, elapsedTime]); // Rerun effect if isRunning changes
+  }, [isRunning, elapsedTime]); // Rerun effect if isRunning or elapsedTime changes
 
   const startTimer = () => {
     if (!isRunning) {
