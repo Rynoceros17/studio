@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress'; // Import Progress
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog'; // Import Dialog components
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
-import { ArrowLeft, Play, Pause, StopCircle, Trash2, Target, Save } from 'lucide-react'; // Added Target, Save
+import { ArrowLeft, Play, Pause, StopCircle, Trash2, Target, Save, Loader2 } from 'lucide-react'; // Added Target, Save, Loader2
 import useLocalStorage from '@/hooks/use-local-storage';
 import { formatDuration } from '@/lib/utils'; // Import the new formatting function
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 interface StudySession {
   id: string;
@@ -51,6 +52,7 @@ export default function StudyTrackerPage() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false); // State to track client-side rendering
 
   // State for Goals
   const [weeklyGoal, setWeeklyGoal] = useLocalStorage<StudyGoal>('weekwise-weekly-goal', { hours: 0, minutes: 0 });
@@ -58,6 +60,11 @@ export default function StudyTrackerPage() {
   const [isGoalDialogOpen, setIsGoalDialogOpen] = useState(false);
   const [tempWeeklyGoal, setTempWeeklyGoal] = useState<StudyGoal>(weeklyGoal);
   const [tempDailyGoal, setTempDailyGoal] = useState<StudyGoal>(dailyGoal);
+
+  // Set isClient to true on component mount
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Sync temp goals when actual goals change (e.g., loaded from storage)
   useEffect(() => {
@@ -304,7 +311,7 @@ export default function StudyTrackerPage() {
             <div className="flex flex-col items-center justify-center space-y-6 p-6 border rounded-lg bg-secondary/30">
               <div className="text-center">
                 <p className="text-7xl font-bold font-mono text-primary">
-                  {formatDuration(elapsedTime)}
+                  {isClient ? formatDuration(elapsedTime) : '00:00'} {/* Show 00:00 during SSR */}
                 </p>
                 <p className="text-sm text-muted-foreground">Elapsed Time</p>
               </div>
@@ -327,23 +334,40 @@ export default function StudyTrackerPage() {
                  <div className="space-y-2">
                      <div className="flex justify-between items-baseline">
                         <Label htmlFor="daily-progress" className="text-sm font-medium text-muted-foreground">Daily Goal</Label>
-                        <span className="text-xs text-muted-foreground">
-                            {formatDuration(todaySecondsStudied)} / {formatDuration(getTotalSeconds(dailyGoal))}
-                        </span>
+                         {isClient ? (
+                           <span className="text-xs text-muted-foreground">
+                             {formatDuration(todaySecondsStudied)} / {formatDuration(getTotalSeconds(dailyGoal))}
+                           </span>
+                         ) : (
+                           <Skeleton className="h-4 w-20" /> // Skeleton for times
+                         )}
                      </div>
-                     <Progress value={dailyProgress} id="daily-progress" aria-label={`Daily study progress ${dailyProgress}%`} />
+                     {isClient ? (
+                         <Progress value={dailyProgress} id="daily-progress" aria-label={`Daily study progress ${dailyProgress}%`} />
+                     ) : (
+                         <Skeleton className="h-2 w-full" /> // Skeleton for progress bar
+                     )}
                  </div>
                  {/* Weekly Progress */}
                  <div className="space-y-2">
                      <div className="flex justify-between items-baseline">
                          <Label htmlFor="weekly-progress" className="text-sm font-medium text-muted-foreground">Weekly Goal</Label>
-                         <span className="text-xs text-muted-foreground">
-                            {formatDuration(weekSecondsStudied)} / {formatDuration(getTotalSeconds(weeklyGoal))}
-                        </span>
+                         {isClient ? (
+                           <span className="text-xs text-muted-foreground">
+                             {formatDuration(weekSecondsStudied)} / {formatDuration(getTotalSeconds(weeklyGoal))}
+                           </span>
+                         ) : (
+                            <Skeleton className="h-4 w-20" />
+                         )}
                      </div>
-                     <Progress value={weeklyProgress} id="weekly-progress" aria-label={`Weekly study progress ${weeklyProgress}%`} />
+                     {isClient ? (
+                         <Progress value={weeklyProgress} id="weekly-progress" aria-label={`Weekly study progress ${weeklyProgress}%`} />
+                     ) : (
+                          <Skeleton className="h-2 w-full" />
+                     )}
                  </div>
-                  {(getTotalSeconds(dailyGoal) === 0 && getTotalSeconds(weeklyGoal) === 0) && (
+                  {/* Show goal setting prompt only on client when no goals are set */}
+                  {isClient && (getTotalSeconds(dailyGoal) === 0 && getTotalSeconds(weeklyGoal) === 0) && (
                      <p className="text-sm text-muted-foreground text-center pt-2">Set your goals using the <Target className="inline h-4 w-4 mx-1"/> icon above.</p>
                  )}
             </div>
@@ -355,7 +379,14 @@ export default function StudyTrackerPage() {
             <h3 className="text-lg font-semibold mb-4 text-primary">Recorded Sessions</h3>
             <ScrollArea className="flex-grow border rounded-lg h-[400px] lg:h-auto lg:min-h-[calc(100%-3rem)]"> {/* Adjust height */}
               <div className="p-4 space-y-3">
-                {sessions.length === 0 ? (
+                {!isClient ? (
+                    // Show skeletons while waiting for client-side rendering
+                     <>
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                     </>
+                ) : sessions.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-10">No study sessions recorded yet.</p>
                 ) : (
                   sessions.map(session => (
