@@ -27,16 +27,17 @@ import {
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Updated set of 8 colors + White (default) in rainbow order
+// Updated set of colors + White (default) in rainbow order including pastel red
 const colorOptions = [
-    { name: 'Pink', value: 'hsl(340, 80%, 88%)' },     // Light Pink (Red/Violet end)
-    { name: 'Coral', value: 'hsl(16, 100%, 80%)' },      // Light Coral (Red/Orange)
+    { name: 'Red', value: 'hsl(0, 80%, 88%)' },       // Pastel Red
+    { name: 'Coral', value: 'hsl(16, 100%, 80%)' },   // Light Coral (Red/Orange)
     { name: 'Gold', value: 'hsl(50, 90%, 80%)' },      // Light Gold (Yellow/Orange)
     { name: 'Chartreuse', value: 'hsl(90, 70%, 85%)' }, // Light Chartreuse Green (Yellow/Green)
     { name: 'Spring', value: 'hsl(140, 60%, 82%)' },    // Light Spring Green (Green)
     { name: 'Aqua', value: 'hsl(180, 75%, 80%)' },     // Light Aqua (Cyan/Greenish-Blue)
     { name: 'SteelBlue', value: 'hsl(210, 50%, 80%)' }, // Light Steel Blue (Blue)
     { name: 'Orchid', value: 'hsl(280, 60%, 85%)' },    // Light Orchid (Violet/Purple)
+    { name: 'Pink', value: 'hsl(340, 80%, 88%)' },     // Light Pink (Red/Violet end)
     { name: 'White', value: undefined }, // Represents default card background (white)
 ];
 
@@ -125,8 +126,6 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
       onClose();
     }
   };
-
-  const selectedColor = form.watch('color');
 
   return (
     <ShadDialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
