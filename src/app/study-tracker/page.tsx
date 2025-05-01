@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"; // Added TooltipContent import
 import { ArrowLeft, Play, Pause, StopCircle, Trash2, Target, Save, Loader2, Plus, Tag, Trash } from 'lucide-react'; // Added Plus, Tag, Trash
 import useLocalStorage from '@/hooks/use-local-storage';
 import { formatDuration } from '@/lib/utils';
