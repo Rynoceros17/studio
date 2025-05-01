@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -56,18 +57,24 @@ export const getMaxLength = (limitType: 'title' | 'desc', context: 'calendar' | 
     return limitType === 'title' ? CAL_TITLE_LIMIT_LG : CAL_DESC_LIMIT_LG; // Default to desktop calendar
 };
 
-// Function to format duration in seconds to HH:MM:SS
+// Function to format duration in seconds to HH:MM:SS or MM:SS
 export const formatDuration = (totalSeconds: number): string => {
-  if (totalSeconds < 0) totalSeconds = 0; // Handle negative values
+  // Handle non-numeric or negative input gracefully
+  if (typeof totalSeconds !== 'number' || totalSeconds < 0) {
+    totalSeconds = 0;
+  }
 
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const seconds = Math.floor(totalSeconds % 60); // Use floor to avoid potential decimal points
 
   const hoursStr = hours.toString().padStart(2, '0');
   const minutesStr = minutes.toString().padStart(2, '0');
   const secondsStr = seconds.toString().padStart(2, '0');
 
-  // Only include hours if they are greater than 0
-  return hours > 0 ? `${hoursStr}:${minutesStr}:${secondsStr}` : `${minutesStr}:${secondsStr}`;
+  if (hours > 0) {
+    return `${hoursStr}:${minutesStr}:${secondsStr}`;
+  } else {
+    return `${minutesStr}:${secondsStr}`;
+  }
 };
