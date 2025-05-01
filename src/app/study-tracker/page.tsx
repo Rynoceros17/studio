@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress'; // Import Progress
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog'; // Import Dialog components
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
 import { ArrowLeft, Play, Pause, StopCircle, Trash2, Target, Save } from 'lucide-react'; // Added Target, Save
 import useLocalStorage from '@/hooks/use-local-storage';
 import { formatDuration } from '@/lib/utils'; // Import the new formatting function
@@ -201,88 +202,97 @@ export default function StudyTrackerPage() {
               </CardDescription>
             </div>
           </div>
-          {/* Goal Setting Trigger */}
-          <Dialog open={isGoalDialogOpen} onOpenChange={setIsGoalDialogOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10 flex-shrink-0 ml-4">
-                  <Target className="h-5 w-5" />
-                  <span className="sr-only">Set Study Goals</span>
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle className="text-primary">Set Study Goals</DialogTitle>
-                <DialogDescription>
-                  Define your daily and weekly study targets in hours and minutes.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                {/* Daily Goal Inputs */}
-                <div className="space-y-2">
-                    <Label className="font-medium">Daily Goal</Label>
-                    <div className="grid grid-cols-2 gap-2 items-center">
-                        <div>
-                            <Label htmlFor="daily-hours" className="text-xs text-muted-foreground">Hours</Label>
-                            <Input
-                                id="daily-hours"
-                                type="number"
-                                min="0"
-                                value={tempDailyGoal.hours}
-                                onChange={(e) => handleGoalInputChange('daily', 'hours', e.target.value)}
-                                className="h-9"
-                             />
-                        </div>
-                         <div>
-                             <Label htmlFor="daily-minutes" className="text-xs text-muted-foreground">Minutes</Label>
-                             <Input
-                                id="daily-minutes"
-                                type="number"
-                                min="0"
-                                max="59"
-                                value={tempDailyGoal.minutes}
-                                onChange={(e) => handleGoalInputChange('daily', 'minutes', e.target.value)}
-                                className="h-9"
-                             />
-                        </div>
-                    </div>
-                </div>
-                 {/* Weekly Goal Inputs */}
-                 <div className="space-y-2">
-                    <Label className="font-medium">Weekly Goal</Label>
-                    <div className="grid grid-cols-2 gap-2 items-center">
-                       <div>
-                            <Label htmlFor="weekly-hours" className="text-xs text-muted-foreground">Hours</Label>
-                            <Input
-                                id="weekly-hours"
-                                type="number"
-                                min="0"
-                                value={tempWeeklyGoal.hours}
-                                onChange={(e) => handleGoalInputChange('weekly', 'hours', e.target.value)}
-                                className="h-9"
-                             />
-                       </div>
-                        <div>
-                            <Label htmlFor="weekly-minutes" className="text-xs text-muted-foreground">Minutes</Label>
-                            <Input
-                                id="weekly-minutes"
-                                type="number"
-                                min="0"
-                                max="59"
-                                value={tempWeeklyGoal.minutes}
-                                onChange={(e) => handleGoalInputChange('weekly', 'minutes', e.target.value)}
-                                className="h-9"
-                             />
-                        </div>
-                    </div>
-                 </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={saveGoals} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                    <Save className="mr-2 h-4 w-4" /> Save Goals
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+           {/* Goal Setting Trigger with Tooltip */}
+           <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Dialog open={isGoalDialogOpen} onOpenChange={setIsGoalDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10 flex-shrink-0 ml-4">
+                                    <Target className="h-5 w-5" />
+                                    <span className="sr-only">Set Study Goals</span> {/* Keep sr-only for accessibility */}
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle className="text-primary">Set Study Goals</DialogTitle>
+                                    <DialogDescription>
+                                        Define your daily and weekly study targets in hours and minutes.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    {/* Daily Goal Inputs */}
+                                    <div className="space-y-2">
+                                        <Label className="font-medium">Daily Goal</Label>
+                                        <div className="grid grid-cols-2 gap-2 items-center">
+                                            <div>
+                                                <Label htmlFor="daily-hours" className="text-xs text-muted-foreground">Hours</Label>
+                                                <Input
+                                                    id="daily-hours"
+                                                    type="number"
+                                                    min="0"
+                                                    value={tempDailyGoal.hours}
+                                                    onChange={(e) => handleGoalInputChange('daily', 'hours', e.target.value)}
+                                                    className="h-9"
+                                                 />
+                                            </div>
+                                             <div>
+                                                 <Label htmlFor="daily-minutes" className="text-xs text-muted-foreground">Minutes</Label>
+                                                 <Input
+                                                    id="daily-minutes"
+                                                    type="number"
+                                                    min="0"
+                                                    max="59"
+                                                    value={tempDailyGoal.minutes}
+                                                    onChange={(e) => handleGoalInputChange('daily', 'minutes', e.target.value)}
+                                                    className="h-9"
+                                                 />
+                                            </div>
+                                        </div>
+                                    </div>
+                                     {/* Weekly Goal Inputs */}
+                                     <div className="space-y-2">
+                                        <Label className="font-medium">Weekly Goal</Label>
+                                        <div className="grid grid-cols-2 gap-2 items-center">
+                                           <div>
+                                                <Label htmlFor="weekly-hours" className="text-xs text-muted-foreground">Hours</Label>
+                                                <Input
+                                                    id="weekly-hours"
+                                                    type="number"
+                                                    min="0"
+                                                    value={tempWeeklyGoal.hours}
+                                                    onChange={(e) => handleGoalInputChange('weekly', 'hours', e.target.value)}
+                                                    className="h-9"
+                                                 />
+                                           </div>
+                                            <div>
+                                                <Label htmlFor="weekly-minutes" className="text-xs text-muted-foreground">Minutes</Label>
+                                                <Input
+                                                    id="weekly-minutes"
+                                                    type="number"
+                                                    min="0"
+                                                    max="59"
+                                                    value={tempWeeklyGoal.minutes}
+                                                    onChange={(e) => handleGoalInputChange('weekly', 'minutes', e.target.value)}
+                                                    className="h-9"
+                                                 />
+                                            </div>
+                                        </div>
+                                     </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button onClick={saveGoals} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                                        <Save className="mr-2 h-4 w-4" /> Save Goals
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Set Study Goals</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </CardHeader>
 
         {/* Main Content Area */}
@@ -388,5 +398,3 @@ export default function StudyTrackerPage() {
     </div>
   );
 }
-
-    
