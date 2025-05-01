@@ -15,7 +15,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
-import { QuickCaptureSheet } from '@/components/QuickCaptureSheet'; // Import QuickCaptureSheet
+// Removed import for QuickCaptureSheet
 import type { Task, Subtask } from '@/lib/types'; // Added Subtask type
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
@@ -47,8 +47,8 @@ import {
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet'; // Import BookmarkListSheet
 import { GoalsSheet } from '@/components/GoalsSheet'; // Import GoalsSheet
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar components
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, Camera, LayoutDashboard, BookOpen } from 'lucide-react'; // Added LayoutDashboard, Camera, BookOpen
+// Removed Avatar imports
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react'; // Removed Camera, added LayoutDashboard, BookOpen
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils'; // Import cn
 
@@ -73,7 +73,7 @@ export default function Home() {
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for Bookmark sheet
   const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // State for Goals sheet
-  const [isQuickCaptureSheetOpen, setIsQuickCaptureSheetOpen] = useState(false); // State for Quick Capture sheet
+  // Removed state for Quick Capture sheet
   const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
   const [isClient, setIsClient] = useState(false);
@@ -492,11 +492,7 @@ export default function Home() {
          {/* Left Side Icons Container */}
          <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2"> {/* Container with spacing */}
 
-             {/* User Avatar - Top Icon */}
-             <Avatar className="h-12 w-12 border-2 border-primary shadow-lg cursor-pointer hover:opacity-90 transition-opacity">
-                 <AvatarImage src="https://picsum.photos/seed/user/48/48" alt="User avatar" data-ai-hint="user avatar person"/>
-                 <AvatarFallback>U</AvatarFallback>
-             </Avatar>
+             {/* Removed User Avatar */}
 
              {/* Dashboard Page Link Button */}
              <Link href="/dashboard" passHref legacyBehavior>
@@ -569,25 +565,7 @@ export default function Home() {
                  </SheetContent>
              </Sheet>
 
-             {/* Quick Capture Sheet Trigger */}
-             <Sheet open={isQuickCaptureSheetOpen} onOpenChange={setIsQuickCaptureSheetOpen}>
-                 <SheetTrigger asChild>
-                     <Button
-                         variant="outline"
-                         size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-                         aria-label="Open quick capture"
-                     >
-                         <Camera className="h-6 w-6 text-primary" />
-                     </Button>
-                 </SheetTrigger>
-                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b shrink-0">
-                         <SheetTitle className="text-primary">Quick Capture</SheetTitle>
-                     </SheetHeader>
-                     <QuickCaptureSheet />
-                 </SheetContent>
-             </Sheet>
+             {/* Removed Quick Capture Sheet Trigger */}
 
              {/* Pomodoro Timer Trigger */}
              <Button
@@ -665,4 +643,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
