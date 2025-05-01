@@ -15,6 +15,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
+import { QuickCaptureSheet } from '@/components/QuickCaptureSheet'; // Import QuickCaptureSheet
 import type { Task, Subtask } from '@/lib/types'; // Added Subtask type
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
@@ -46,7 +47,8 @@ import {
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet'; // Import BookmarkListSheet
 import { GoalsSheet } from '@/components/GoalsSheet'; // Import GoalsSheet
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard } from 'lucide-react'; // Added LayoutDashboard
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar components
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, Camera, LayoutDashboard, BookOpen } from 'lucide-react'; // Added LayoutDashboard, Camera, BookOpen
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils'; // Import cn
 
@@ -71,6 +73,7 @@ export default function Home() {
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for Bookmark sheet
   const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // State for Goals sheet
+  const [isQuickCaptureSheetOpen, setIsQuickCaptureSheetOpen] = useState(false); // State for Quick Capture sheet
   const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
   const [isClient, setIsClient] = useState(false);
@@ -127,6 +130,7 @@ export default function Home() {
            recurring: newTaskData.recurring ?? false,
            highPriority: newTaskData.highPriority ?? false, // Add high priority
            exceptions: [], // Initialize exceptions array
+           color: newTaskData.color, // Ensure color is passed
        };
        setTasks((prevTasks) => {
            const updatedTasks = [...prevTasks, newTask];
@@ -430,6 +434,12 @@ export default function Home() {
         <div className="w-full max-w-7xl space-y-4">
           <header className="text-center py-2 relative z-10"> {/* Ensure header is above timer */}
             <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
+             {/* Completed Task Count - Moved here */}
+             {isClient && (
+                 <p className="text-sm text-muted-foreground mt-1">
+                     Completed Tasks: {completedCount}
+                 </p>
+             )}
           </header>
 
           {/* Conditionally render CalendarView only on the client */}
@@ -446,40 +456,47 @@ export default function Home() {
               />
           )}
 
-          {/* Add New Task Dialog */}
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="default"
-                size="icon"
-                className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
-                aria-label="Add new task"
-                onClick={() => setPrefilledTaskData(null)} // Clear prefill when opening manually
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                 {/* Title changes based on whether it's prefilled */}
-                 <DialogTitle className="text-primary">
-                   {prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}
-                 </DialogTitle>
-              </DialogHeader>
-               {/* Pass prefilledTaskData to TaskForm */}
-               <TaskForm
-                 addTask={addTask}
-                 onTaskAdded={() => {
-                    setIsFormOpen(false);
-                    setPrefilledTaskData(null); // Always clear after adding
-                 }}
-                 initialData={prefilledTaskData} // Pass initial data
-               />
-            </DialogContent>
-          </Dialog>
+           {/* Bottom Right Icons - Add New Task */}
+           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
+                  aria-label="Add new task"
+                  onClick={() => setPrefilledTaskData(null)} // Clear prefill when opening manually
+                 >
+                  <Plus className="h-6 w-6" />
+                 </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                   {/* Title changes based on whether it's prefilled */}
+                   <DialogTitle className="text-primary">
+                     {prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}
+                   </DialogTitle>
+                 </DialogHeader>
+                 {/* Pass prefilledTaskData to TaskForm */}
+                 <TaskForm
+                   addTask={addTask}
+                   onTaskAdded={() => {
+                     setIsFormOpen(false);
+                     setPrefilledTaskData(null); // Always clear after adding
+                   }}
+                   initialData={prefilledTaskData} // Pass initial data
+                  />
+              </DialogContent>
+            </Dialog>
+
 
          {/* Left Side Icons Container */}
          <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2"> {/* Container with spacing */}
+
+             {/* User Avatar - Top Icon */}
+             <Avatar className="h-12 w-12 border-2 border-primary shadow-lg cursor-pointer hover:opacity-90 transition-opacity">
+                 <AvatarImage src="https://picsum.photos/seed/user/48/48" alt="User avatar" data-ai-hint="user avatar person"/>
+                 <AvatarFallback>U</AvatarFallback>
+             </Avatar>
 
              {/* Dashboard Page Link Button */}
              <Link href="/dashboard" passHref legacyBehavior>
@@ -494,6 +511,21 @@ export default function Home() {
                       <LayoutDashboard className="h-6 w-6 text-primary" />
                     </a>
                 </Button>
+             </Link>
+
+              {/* Study Tracker Page Link Button */}
+             <Link href="/study-tracker" passHref legacyBehavior>
+                 <Button
+                     variant="outline"
+                     size="icon"
+                     className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
+                     aria-label="Go to study tracker"
+                     asChild
+                 >
+                     <a>
+                         <BookOpen className="h-6 w-6 text-primary" /> {/* Study icon */}
+                     </a>
+                 </Button>
              </Link>
 
               {/* Goals Sheet Trigger */}
@@ -534,6 +566,26 @@ export default function Home() {
                          <SheetTitle className="text-primary">Bookmarks</SheetTitle>
                      </SheetHeader>
                      <BookmarkListSheet />
+                 </SheetContent>
+             </Sheet>
+
+             {/* Quick Capture Sheet Trigger */}
+             <Sheet open={isQuickCaptureSheetOpen} onOpenChange={setIsQuickCaptureSheetOpen}>
+                 <SheetTrigger asChild>
+                     <Button
+                         variant="outline"
+                         size="icon"
+                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
+                         aria-label="Open quick capture"
+                     >
+                         <Camera className="h-6 w-6 text-primary" />
+                     </Button>
+                 </SheetTrigger>
+                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                     <SheetHeader className="p-4 border-b shrink-0">
+                         <SheetTitle className="text-primary">Quick Capture</SheetTitle>
+                     </SheetHeader>
+                     <QuickCaptureSheet />
                  </SheetContent>
              </Sheet>
 
@@ -613,3 +665,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
