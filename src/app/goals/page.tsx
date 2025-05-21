@@ -253,31 +253,18 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            let textColorClass = '';
-            let checkboxBorderClass = 'border-primary';
-            let expandChevronColorClass = 'text-foreground'; // Default for card background
-            let actionButtonVariant: "ghost" | "outline" = "outline"; // Default to outline for contrast
+            // Unified text color for active tasks, specific for completed
+            let textColorClass = subtask.completed ? 'text-muted-foreground' : 'text-card-foreground';
+            let expandChevronColorClass = subtask.completed ? 'text-muted-foreground' : 'text-card-foreground';
 
             if (subtask.completed) {
                 bgClass = 'bg-muted opacity-70';
-                textColorClass = 'text-muted-foreground';
-                checkboxBorderClass = 'border-primary';
-                expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtasks
-                bgClass = 'bg-secondary'; // Very Light Purple
-                textColorClass = 'text-secondary-foreground'; // Dark Grey
-                checkboxBorderClass = 'border-primary'; // Primary border (purple)
-                expandChevronColorClass = 'text-secondary-foreground';
+                bgClass = 'bg-secondary'; // Very Light Purple (hsl(259 67% 88%))
             } else if (depth === 1) { // Child subtasks
-                bgClass = 'bg-muted'; // Lighter version of Secondary
-                textColorClass = 'text-muted-foreground'; // Muted Grey
-                checkboxBorderClass = 'border-primary';
-                expandChevronColorClass = 'text-muted-foreground';
+                bgClass = 'bg-muted/60'; // Lighter version of Secondary (hsl(259 67% 92%)) with 60% opacity
             } else { // Grandchild and deeper (depth >= 2)
                 bgClass = 'bg-card'; // White background
-                textColorClass = 'text-card-foreground'; // Dark Grey
-                checkboxBorderClass = 'border-primary';
-                expandChevronColorClass = 'text-card-foreground';
             }
             
             const paddingLeft = `${depth * 1.25}rem`;
@@ -304,10 +291,8 @@ export default function GoalsPage() {
                                 checked={subtask.completed}
                                 onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
                                 className={cn(
-                                    "shrink-0 h-5 w-5",
-                                    checkboxBorderClass,
-                                    // Standard checked state for all depths, as backgrounds are light
-                                    "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                                    "shrink-0 h-5 w-5 border-primary", // Standard border
+                                    "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" // Standard checked state
                                 )}
                                 aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
                             />
@@ -325,37 +310,37 @@ export default function GoalsPage() {
                         </div>
                         <div className="flex items-center shrink-0 space-x-1.5">
                             <Button
-                                variant={actionButtonVariant}
+                                variant="outline"
                                 size="icon"
                                 className={cn(
                                     "h-7 w-7 border-dashed",
-                                    textColorClass, // Use the general text color for the icon
-                                    !subtask.completed && "hover:border-primary hover:text-primary" // Consistent hover for active tasks
+                                    subtask.completed ? "text-muted-foreground cursor-not-allowed" : "text-card-foreground hover:border-primary hover:text-primary"
                                 )}
-                                onClick={() => setShowAddChildInputFor(subtask.id)}
+                                onClick={() => !subtask.completed && setShowAddChildInputFor(subtask.id)}
                                 aria-label={`Add child subtask to ${subtask.name}`}
                                 title="Add Child Subtask"
+                                disabled={subtask.completed}
                             >
                                 <Plus className="h-3.5 w-3.5" />
                             </Button>
                             <Button
-                                variant={actionButtonVariant}
+                                variant="outline"
                                 size="icon"
                                 className={cn(
                                     "h-7 w-7",
-                                    textColorClass,
-                                    !subtask.completed && "text-primary border-primary hover:bg-primary/10" // Make "Create Task" stand out
+                                    subtask.completed ? "text-muted-foreground border-muted cursor-not-allowed" : "text-primary border-primary hover:bg-primary/10"
                                 )}
-                                onClick={() => handleCreateTaskFromSubtask(subtask)}
+                                onClick={() => !subtask.completed && handleCreateTaskFromSubtask(subtask)}
                                 aria-label={`Create calendar task for ${subtask.name}`}
                                 title="Create Calendar Task"
+                                disabled={subtask.completed}
                             >
                                 <PlusCircle className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                                 variant="ghost" 
                                 size="icon"
-                                className={cn("h-7 w-7 text-destructive hover:bg-destructive/10", subtask.completed && "hover:bg-destructive/20")}
+                                className={cn("h-7 w-7 text-destructive hover:bg-destructive/10")}
                                 onClick={() => deleteSubtask(goalId, subtask.id)}
                                 aria-label={`Delete subtask ${subtask.name}`}
                             >
