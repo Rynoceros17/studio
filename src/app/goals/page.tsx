@@ -251,99 +251,106 @@ export default function GoalsPage() {
 
 
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
-        return subtasks.map(subtask => (
-            <React.Fragment key={subtask.id}>
-                <div className={cn(
-                    `ml-${depth * 4} flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
-                    subtask.completed ? 'bg-muted opacity-70' : 'bg-secondary/60'
-                )}>
-                    <div className="flex items-center space-x-2.5 flex-grow min-w-0">
-                        {(subtask.subtasks && subtask.subtasks.length > 0) && (
-                             <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className="h-6 w-6 shrink-0">
-                                {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                            </Button>
-                        )}
-                        {!(subtask.subtasks && subtask.subtasks.length > 0) && <div className="w-6 shrink-0"></div> /* Placeholder for alignment */}
-                        <Checkbox
-                            id={`subtask-${subtask.id}`}
-                            checked={subtask.completed}
-                            onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
-                            className="shrink-0 h-5 w-5"
-                            aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
-                        />
-                        <Label
-                            htmlFor={`subtask-${subtask.id}`}
-                            className={cn(
-                                "text-sm truncate cursor-pointer",
-                                subtask.completed ? "line-through text-muted-foreground" : "text-secondary-foreground"
+        return subtasks.map(subtask => {
+            const isEvenDepth = depth % 2 === 0;
+            const baseBgClass = subtask.completed ? 'bg-muted opacity-70' : (isEvenDepth ? 'bg-primary' : 'bg-secondary');
+            const textColorClass = subtask.completed ? 'text-muted-foreground' : (isEvenDepth ? 'text-primary-foreground' : 'text-secondary-foreground');
+
+            return (
+                <React.Fragment key={subtask.id}>
+                    <div className={cn(
+                        `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
+                        baseBgClass
+                    )}>
+                        <div className="flex items-center space-x-2.5 flex-grow min-w-0">
+                            {(subtask.subtasks && subtask.subtasks.length > 0) && (
+                                 <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className={cn("h-6 w-6 shrink-0", textColorClass)}>
+                                    {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </Button>
                             )}
-                            title={subtask.name}
-                        >
-                            {truncateText(subtask.name, 35 - depth * 2)}
-                        </Label>
-                    </div>
-                    <div className="flex items-center shrink-0 space-x-1.5">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground border-dashed hover:border-primary"
-                            onClick={() => setShowAddChildInputFor(subtask.id)}
-                            aria-label={`Add child subtask to ${subtask.name}`}
-                            title="Add Child Subtask"
-                        >
-                            <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7 text-primary border-primary hover:bg-primary/10"
-                            onClick={() => handleCreateTaskFromSubtask(subtask)}
-                            aria-label={`Create calendar task for ${subtask.name}`}
-                            title="Create Calendar Task"
-                        >
-                            <PlusCircle className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                            onClick={() => deleteSubtask(goalId, subtask.id)}
-                            aria-label={`Delete subtask ${subtask.name}`}
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
-                </div>
-                
-                {/* Input form for adding child subtask, shown below the parent subtask item */}
-                <div className={`ml-${depth * 4 + 4} my-1`}>
-                    {showAddChildInputFor === subtask.id && (
-                        <div className="flex space-x-2 items-center p-2 border rounded-md bg-secondary/20">
-                            <Input
-                                value={newSubtaskInputs[subtask.id] || ''}
-                                onChange={(e) => handleSubtaskInputChange(subtask.id, e.target.value)}
-                                placeholder="Add a child subtask..."
-                                className="h-8 text-xs flex-grow"
-                                onKeyPress={(e) => handleKeyPressSubtask(e, goalId, subtask.id)}
-                                autoFocus
+                            {!(subtask.subtasks && subtask.subtasks.length > 0) && <div className="w-6 shrink-0"></div> /* Placeholder for alignment */}
+                            <Checkbox
+                                id={`subtask-${subtask.id}`}
+                                checked={subtask.completed}
+                                onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
+                                className={cn("shrink-0 h-5 w-5", subtask.completed ? "" : (isEvenDepth ? "border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary" : ""))}
+                                aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
                             />
-                            <Button onClick={() => addSubtask(goalId, subtask.id)} size="sm" className="h-8 px-2.5 text-xs shrink-0">
-                                <CornerDownRight className="mr-1 h-3 w-3" /> Add
+                            <Label
+                                htmlFor={`subtask-${subtask.id}`}
+                                className={cn(
+                                    "text-sm truncate cursor-pointer",
+                                    textColorClass,
+                                    subtask.completed && "line-through"
+                                )}
+                                title={subtask.name}
+                            >
+                                {truncateText(subtask.name, 35)} {/* Removed depth adjustment for truncate */}
+                            </Label>
+                        </div>
+                        <div className="flex items-center shrink-0 space-x-1.5">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className={cn("h-7 w-7 border-dashed hover:border-primary", isEvenDepth && !subtask.completed ? "text-primary-foreground border-primary-foreground/50 hover:text-primary-foreground hover:bg-white/10" : "text-muted-foreground hover:text-foreground")}
+                                onClick={() => setShowAddChildInputFor(subtask.id)}
+                                aria-label={`Add child subtask to ${subtask.name}`}
+                                title="Add Child Subtask"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-8 w-8 text-xs shrink-0">
-                                <X className="h-3.5 w-3.5" />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className={cn("h-7 w-7 text-primary border-primary hover:bg-primary/10", isEvenDepth && !subtask.completed ? "bg-primary-foreground text-primary border-primary hover:bg-primary-foreground/80" : "")}
+                                onClick={() => handleCreateTaskFromSubtask(subtask)}
+                                aria-label={`Create calendar task for ${subtask.name}`}
+                                title="Create Calendar Task"
+                            >
+                                <PlusCircle className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn("h-7 w-7 text-destructive hover:bg-destructive/10", isEvenDepth && !subtask.completed ? "hover:bg-red-400/20" : "")}
+                                onClick={() => deleteSubtask(goalId, subtask.id)}
+                                aria-label={`Delete subtask ${subtask.name}`}
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                         </div>
-                    )}
-                </div>
-
-                {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                    <div className="pl-2 border-l-2 border-muted ml-2"> {/* Indent children further */}
-                        {renderSubtasks(subtask.subtasks, goalId, depth + 1)}
                     </div>
-                )}
-            </React.Fragment>
-        ));
+                    
+                    {/* Input form for adding child subtask, shown below the parent subtask item */}
+                    <div className={`my-1`}> {/* Removed margin-left based on depth */}
+                        {showAddChildInputFor === subtask.id && (
+                            <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow"> {/* Changed to bg-card for input area */}
+                                <Input
+                                    value={newSubtaskInputs[subtask.id] || ''}
+                                    onChange={(e) => handleSubtaskInputChange(subtask.id, e.target.value)}
+                                    placeholder="Add a child subtask..."
+                                    className="h-8 text-xs flex-grow"
+                                    onKeyPress={(e) => handleKeyPressSubtask(e, goalId, subtask.id)}
+                                    autoFocus
+                                />
+                                <Button onClick={() => addSubtask(goalId, subtask.id)} size="sm" className="h-8 px-2.5 text-xs shrink-0">
+                                    <CornerDownRight className="mr-1 h-3 w-3" /> Add
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-8 w-8 text-xs shrink-0">
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+
+                    {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
+                        <div className="pl-1"> {/* Removed border and reduced padding, color will differentiate */}
+                            {renderSubtasks(subtask.subtasks, goalId, depth + 1)}
+                        </div>
+                    )}
+                </React.Fragment>
+            );
+        });
     };
 
 
@@ -405,7 +412,7 @@ export default function GoalsPage() {
                                                                 {goal.subtasks.length === 0 ? (
                                                                     <p className="text-sm text-muted-foreground italic">No subtasks yet. Add one below.</p>
                                                                 ) : (
-                                                                    renderSubtasks(goal.subtasks, goal.id, 0)
+                                                                    renderSubtasks(goal.subtasks, goal.id, 0) // Start depth at 0 for top-level subtasks
                                                                 )}
                                                             </div>
                                                             {/* Input for adding top-level subtask to the goal */}
