@@ -259,25 +259,25 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            let textColorClass = 'text-card-foreground'; // Default for active tasks
-            let expandChevronColorClass = 'text-card-foreground';
+            let textColorClass = 'text-card-foreground'; // Default dark grey for active tasks
+            let expandChevronColorClass = 'text-card-foreground'; // Default dark grey
 
             if (subtask.completed) {
                 bgClass = 'bg-muted opacity-70';
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtasks
-                bgClass = 'bg-muted'; // New: Lighter Version of Secondary (solid)
-                textColorClass = 'text-muted-foreground'; // New: Muted Grey
-                expandChevronColorClass = 'text-muted-foreground';
+                bgClass = 'bg-muted'; // Very Light Purple (solid)
+                // textColorClass is already 'text-card-foreground' by default (dark grey)
+                // expandChevronColorClass is already 'text-card-foreground' by default (dark grey)
             } else if (depth === 1) { // Child subtasks
-                bgClass = 'bg-muted/60'; // New: Lighter Version of Secondary with 60% opacity (very pale)
-                textColorClass = 'text-card-foreground'; // Dark Grey is fine for this very light background
-                expandChevronColorClass = 'text-card-foreground';
+                bgClass = 'bg-muted/60'; // Very pale purple (opacity)
+                // textColorClass is already 'text-card-foreground' by default (dark grey)
+                // expandChevronColorClass is already 'text-card-foreground' by default (dark grey)
             } else { // Grandchild and deeper (depth >= 2)
                 bgClass = 'bg-card'; // White
-                textColorClass = 'text-card-foreground'; // Dark Grey
-                expandChevronColorClass = 'text-card-foreground';
+                // textColorClass is already 'text-card-foreground' by default (dark grey)
+                // expandChevronColorClass is already 'text-card-foreground' by default (dark grey)
             }
             
             return (
