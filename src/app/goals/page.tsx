@@ -253,12 +253,13 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            // Unified text color for active tasks, specific for completed
-            let textColorClass = subtask.completed ? 'text-muted-foreground' : 'text-card-foreground';
-            let expandChevronColorClass = subtask.completed ? 'text-muted-foreground' : 'text-card-foreground';
+            let textColorClass = 'text-card-foreground'; // Default for active tasks
+            let expandChevronColorClass = 'text-card-foreground'; // Default for active tasks
 
             if (subtask.completed) {
                 bgClass = 'bg-muted opacity-70';
+                textColorClass = 'text-muted-foreground';
+                expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtasks
                 bgClass = 'bg-secondary'; // Very Light Purple (hsl(259 67% 88%))
             } else if (depth === 1) { // Child subtasks
@@ -267,7 +268,8 @@ export default function GoalsPage() {
                 bgClass = 'bg-card'; // White background
             }
             
-            const paddingLeft = `${depth * 1.25}rem`;
+            // Removed paddingLeft calculation
+            // const paddingLeft = `${depth * 1.25}rem`;
 
             return (
                 <React.Fragment key={subtask.id}>
@@ -276,7 +278,7 @@ export default function GoalsPage() {
                             `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
                             bgClass
                         )}
-                        style={{ paddingLeft: paddingLeft }}
+                        // Removed style={{ paddingLeft: paddingLeft }}
                     >
                         <div className="flex items-center space-x-2.5 flex-grow min-w-0">
                             {(subtask.subtasks && subtask.subtasks.length > 0) ? (
@@ -349,7 +351,7 @@ export default function GoalsPage() {
                         </div>
                     </div>
 
-                    <div className="my-1" style={{ paddingLeft: `${(depth + 1) * 1.25}rem` }}>
+                    <div className="my-1" /* Removed style={{ paddingLeft: `${(depth + 1) * 1.25}rem` }} */ >
                         {showAddChildInputFor === subtask.id && (
                             <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
                                 <Input
