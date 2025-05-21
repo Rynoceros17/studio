@@ -269,7 +269,8 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            let textColorClass = 'text-card-foreground'; 
+            // Default to black text for active tasks
+            let textColorClass = 'text-card-foreground';
             let expandChevronColorClass = 'text-card-foreground';
 
             if (subtask.completed) {
@@ -277,17 +278,11 @@ export default function GoalsPage() {
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtask
-                bgClass = 'bg-secondary'; // Very Light Purple (hsl(259 67% 88%))
-                textColorClass = 'text-secondary-foreground'; // Dark Grey
-                expandChevronColorClass = 'text-secondary-foreground';
+                bgClass = 'bg-secondary/70'; // Very Light Purple at 70% opacity
             } else if (depth === 1) { // Child subtask
-                bgClass = 'bg-muted'; // Lighter version of Secondary (hsl(259 67% 92%))
-                textColorClass = 'text-muted-foreground'; // Muted Grey
-                expandChevronColorClass = 'text-muted-foreground';
+                bgClass = 'bg-muted/70'; // Lighter version of Secondary at 70% opacity
             } else { // Grandchild and deeper
                 bgClass = 'bg-card'; // White
-                textColorClass = 'text-card-foreground'; // Dark Grey
-                expandChevronColorClass = 'text-card-foreground';
             }
             
             return (
@@ -334,7 +329,7 @@ export default function GoalsPage() {
                                 size="icon"
                                 className={cn(
                                     "h-7 w-7 border-dashed",
-                                    subtask.completed ? "text-muted-foreground cursor-not-allowed" : textColorClass,
+                                    subtask.completed ? "text-muted-foreground cursor-not-allowed" : "text-card-foreground", // Use card-foreground for active
                                     subtask.completed ? "border-muted" : "border-current", 
                                     !subtask.completed && "hover:border-primary hover:text-primary"
                                 )}
@@ -393,7 +388,7 @@ export default function GoalsPage() {
                     </div>
 
                     {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                        <div className="pl-0"> 
+                        <div className=""> 
                            {renderSubtasks(subtask.subtasks, goalId, depth + 1)}
                         </div>
                     )}
