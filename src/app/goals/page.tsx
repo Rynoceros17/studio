@@ -78,6 +78,12 @@ export default function GoalsPage() {
 
     const [expandedSubtasks, setExpandedSubtasks] = useState<Record<string, boolean>>({});
     const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null); // State for toggling child input
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
 
     const toggleSubtaskExpansion = (subtaskId: string) => {
         setExpandedSubtasks(prev => ({ ...prev, [subtaskId]: !prev[subtaskId] }));
@@ -261,16 +267,16 @@ export default function GoalsPage() {
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtasks
-                bgClass = 'bg-secondary';
-                textColorClass = 'text-primary-foreground'; // Changed to white for parent tasks
-                expandChevronColorClass = 'text-primary-foreground'; // Changed to white for parent tasks chevron
+                bgClass = 'bg-secondary'; // Very Light Purple
+                textColorClass = 'text-primary-foreground'; // White
+                expandChevronColorClass = 'text-primary-foreground'; // White
             } else if (depth === 1) { // Child subtasks
-                bgClass = 'bg-muted/60';
-                textColorClass = 'text-card-foreground';
+                bgClass = 'bg-muted/60'; // Lighter Version of Secondary (Pale Purple) with 60% opacity
+                textColorClass = 'text-card-foreground'; // Dark Grey
                 expandChevronColorClass = 'text-card-foreground';
             } else { // Grandchild and deeper (depth >= 2)
-                bgClass = 'bg-card';
-                textColorClass = 'text-card-foreground';
+                bgClass = 'bg-card'; // White
+                textColorClass = 'text-card-foreground'; // Dark Grey
                 expandChevronColorClass = 'text-card-foreground';
             }
             
@@ -412,7 +418,9 @@ export default function GoalsPage() {
                         </div>
                     </div>
 
-                    {goals.length === 0 ? (
+                    {!isClient ? (
+                         <p className="text-base text-muted-foreground text-center py-8">Loading goals...</p>
+                    ) : goals.length === 0 ? (
                         <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one above to get started!</p>
                     ) : (
                         <ScrollArea className="max-h-[calc(100vh-300px)]">
