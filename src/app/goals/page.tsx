@@ -259,7 +259,7 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            let textColorClass = 'text-card-foreground';
+            let textColorClass = 'text-card-foreground'; // Default for active tasks
             let expandChevronColorClass = 'text-card-foreground';
 
             if (subtask.completed) {
@@ -267,12 +267,12 @@ export default function GoalsPage() {
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtasks
-                bgClass = 'bg-secondary'; // Very Light Purple
-                textColorClass = 'text-secondary-foreground'; // Dark Grey
-                expandChevronColorClass = 'text-secondary-foreground'; // Dark Grey
+                bgClass = 'bg-muted'; // New: Lighter Version of Secondary (solid)
+                textColorClass = 'text-muted-foreground'; // New: Muted Grey
+                expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 1) { // Child subtasks
-                bgClass = 'bg-muted/60'; // Lighter Version of Secondary (Pale Purple) with 60% opacity
-                textColorClass = 'text-card-foreground'; // Dark Grey
+                bgClass = 'bg-muted/60'; // New: Lighter Version of Secondary with 60% opacity (very pale)
+                textColorClass = 'text-card-foreground'; // Dark Grey is fine for this very light background
                 expandChevronColorClass = 'text-card-foreground';
             } else { // Grandchild and deeper (depth >= 2)
                 bgClass = 'bg-card'; // White
