@@ -253,19 +253,25 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            let textColorClass = 'text-card-foreground'; // Default for active tasks
-            let expandChevronColorClass = 'text-card-foreground'; // Default for active tasks
+            let textColorClass = 'text-card-foreground';
+            let expandChevronColorClass = 'text-card-foreground';
 
             if (subtask.completed) {
                 bgClass = 'bg-muted opacity-70';
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtasks
-                bgClass = 'bg-secondary'; // Very Light Purple (hsl(259 67% 88%))
+                bgClass = 'bg-secondary';
+                textColorClass = 'text-primary-foreground'; // Changed to white for parent tasks
+                expandChevronColorClass = 'text-primary-foreground'; // Changed to white for parent tasks chevron
             } else if (depth === 1) { // Child subtasks
-                bgClass = 'bg-muted/60'; // Lighter version of Secondary (hsl(259 67% 92%)) with 60% opacity
+                bgClass = 'bg-muted/60';
+                textColorClass = 'text-card-foreground';
+                expandChevronColorClass = 'text-card-foreground';
             } else { // Grandchild and deeper (depth >= 2)
-                bgClass = 'bg-card'; // White background
+                bgClass = 'bg-card';
+                textColorClass = 'text-card-foreground';
+                expandChevronColorClass = 'text-card-foreground';
             }
             
             return (
