@@ -252,54 +252,58 @@ export default function GoalsPage() {
 
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
-            const isEvenDepth = depth % 2 === 0;
-            
-            // Use lighter shades for background based on depth, with opacity
-            const baseBgClass = subtask.completed 
-                ? 'bg-muted opacity-70' 
-                : (isEvenDepth ? 'bg-secondary/70' : 'bg-muted/70'); 
-            
-            const textColorClass = subtask.completed 
-                ? 'text-muted-foreground' 
-                : (isEvenDepth ? 'text-secondary-foreground' : 'text-muted-foreground');
+            const baseBgClass = subtask.completed
+                ? 'bg-muted opacity-70'
+                : 'bg-card'; // Consistent background for active tasks
+
+            const textColorClass = subtask.completed
+                ? 'text-muted-foreground'
+                : 'text-card-foreground';
+
+            // Calculate padding based on depth for indentation
+            const paddingLeft = `${depth * 1.25}rem`; // e.g., depth 0 -> 0rem, depth 1 -> 1.25rem, depth 2 -> 2.5rem
 
             return (
                 <React.Fragment key={subtask.id}>
-                    <div className={cn(
-                        `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
-                        baseBgClass // Apply new background
-                    )}>
+                    <div
+                        className={cn(
+                            `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
+                            baseBgClass
+                        )}
+                        style={{ paddingLeft: paddingLeft }}
+                    >
                         <div className="flex items-center space-x-2.5 flex-grow min-w-0">
-                            {(subtask.subtasks && subtask.subtasks.length > 0) && (
+                            {(subtask.subtasks && subtask.subtasks.length > 0) ? (
                                  <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className={cn("h-6 w-6 shrink-0", textColorClass)}>
                                     {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                 </Button>
+                            ) : (
+                                <div className="w-6 shrink-0"></div> /* Placeholder for alignment if no children */
                             )}
-                            {!(subtask.subtasks && subtask.subtasks.length > 0) && <div className="w-6 shrink-0"></div> /* Placeholder for alignment */}
                             <Checkbox
                                 id={`subtask-${subtask.id}`}
                                 checked={subtask.completed}
                                 onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
-                                className={cn("shrink-0 h-5 w-5")} // Simplified: default checkbox style
+                                className={cn("shrink-0 h-5 w-5")}
                                 aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
                             />
                             <Label
                                 htmlFor={`subtask-${subtask.id}`}
                                 className={cn(
                                     "text-sm truncate cursor-pointer",
-                                    textColorClass, // Apply new text color
+                                    textColorClass,
                                     subtask.completed && "line-through"
                                 )}
                                 title={subtask.name}
                             >
-                                {truncateText(subtask.name, 35)}
+                                {truncateText(subtask.name, 30)}
                             </Label>
                         </div>
                         <div className="flex items-center shrink-0 space-x-1.5">
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-7 w-7 border-dashed hover:border-primary text-muted-foreground hover:text-foreground" // Simplified: default outline style
+                                className="h-7 w-7 border-dashed hover:border-primary text-muted-foreground hover:text-foreground"
                                 onClick={() => setShowAddChildInputFor(subtask.id)}
                                 aria-label={`Add child subtask to ${subtask.name}`}
                                 title="Add Child Subtask"
@@ -309,7 +313,7 @@ export default function GoalsPage() {
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-7 w-7 text-primary border-primary hover:bg-primary/10" // Simplified: default primary outline
+                                className="h-7 w-7 text-primary border-primary hover:bg-primary/10"
                                 onClick={() => handleCreateTaskFromSubtask(subtask)}
                                 aria-label={`Create calendar task for ${subtask.name}`}
                                 title="Create Calendar Task"
@@ -319,7 +323,7 @@ export default function GoalsPage() {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-destructive hover:bg-destructive/10" // Default destructive ghost
+                                className="h-7 w-7 text-destructive hover:bg-destructive/10"
                                 onClick={() => deleteSubtask(goalId, subtask.id)}
                                 aria-label={`Delete subtask ${subtask.name}`}
                             >
@@ -327,8 +331,8 @@ export default function GoalsPage() {
                             </Button>
                         </div>
                     </div>
-                    
-                    <div className={`my-1`}>
+
+                    <div className="my-1" style={{ paddingLeft: `${(depth + 1) * 1.25}rem` }}> {/* Indent input form further */}
                         {showAddChildInputFor === subtask.id && (
                             <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
                                 <Input
@@ -350,9 +354,8 @@ export default function GoalsPage() {
                     </div>
 
                     {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                        <div className="pl-1">
-                            {renderSubtasks(subtask.subtasks, goalId, depth + 1)}
-                        </div>
+                        // No additional padding div here, renderSubtasks will handle padding for its children
+                        renderSubtasks(subtask.subtasks, goalId, depth + 1)
                     )}
                 </React.Fragment>
             );
@@ -412,22 +415,22 @@ export default function GoalsPage() {
                                                         </Button>
                                                     </CardHeader>
                                                     <AccordionContent>
-                                                        <CardContent className="p-4 space-y-4 border-t">
+                                                        <CardContent className="p-4 space-y-4 border-t bg-muted/20"> {/* Lighter background for content area */}
                                                             <Progress value={progress} className="h-2.5" />
-                                                            <div className="space-y-2 max-h-80 overflow-y-auto pr-2"> {/* Increased max-h */}
+                                                            <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                                                                 {goal.subtasks.length === 0 ? (
-                                                                    <p className="text-sm text-muted-foreground italic">No subtasks yet. Add one below.</p>
+                                                                    <p className="text-sm text-muted-foreground italic text-center py-2">No subtasks yet. Add one below.</p>
                                                                 ) : (
                                                                     renderSubtasks(goal.subtasks, goal.id, 0) // Start depth at 0 for top-level subtasks
                                                                 )}
                                                             </div>
                                                             {/* Input for adding top-level subtask to the goal */}
-                                                            <div className="flex space-x-2 pt-3 border-t">
+                                                            <div className="flex space-x-2 pt-3 border-t mt-3">
                                                                 <Input
                                                                     value={newSubtaskInputs[goal.id] || ''}
                                                                     onChange={(e) => handleSubtaskInputChange(goal.id, e.target.value)}
                                                                     placeholder="Add a top-level subtask..."
-                                                                    className="h-9 text-sm flex-grow"
+                                                                    className="h-9 text-sm flex-grow bg-card" // Ensure input has distinct background
                                                                     onKeyPress={(e) => handleKeyPressSubtask(e, goal.id)}
                                                                 />
                                                                 <Button onClick={() => addSubtask(goal.id)} size="sm" className="h-9 px-3">
