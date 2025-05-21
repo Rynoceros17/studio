@@ -39,7 +39,6 @@ const findAndOperateOnSubtask = (
     }
     if (st.subtasks) {
       const updatedChildren = findAndOperateOnSubtask(st.subtasks, targetId, operation);
-      // If children array changed, it means the target was found and operated on (or a child was)
       if (updatedChildren !== st.subtasks) {
           return { ...st, subtasks: updatedChildren.filter(Boolean) as Subtask[] };
       }
@@ -77,7 +76,7 @@ export default function GoalsPage() {
     const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
 
     const [expandedSubtasks, setExpandedSubtasks] = useState<Record<string, boolean>>({});
-    const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null); // State for toggling child input
+    const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
@@ -147,20 +146,20 @@ export default function GoalsPage() {
 
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
-                if (!parentSubtaskId) { // Adding to goal's top-level subtasks
+                if (!parentSubtaskId) {
                     return { ...goal, subtasks: [...goal.subtasks, newSubtask] };
-                } else { // Adding to a nested subtask
+                } else {
                     const updatedSubtasks = addSubtaskToParentRecursive(goal.subtasks, parentSubtaskId, newSubtask);
                     return { ...goal, subtasks: updatedSubtasks };
                 }
             }
             return goal;
         }));
-        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' })); // Clear input for parent
+        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' }));
         toast({ title: "Subtask Added", description: `Subtask "${newSubtask.name}" added.` });
-        setShowAddChildInputFor(null); // Hide the input form after adding
+        setShowAddChildInputFor(null);
         if (parentSubtaskId) {
-            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true })); // Ensure parent is expanded
+            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true }));
         }
     }, [newSubtaskInputs, setGoals, toast, setExpandedSubtasks, setShowAddChildInputFor]);
 
@@ -181,13 +180,12 @@ export default function GoalsPage() {
             return { updatedSubtasks: filteredSubtasks, foundAndDeleted: true, deletedSubtaskName: deletedName };
         }
 
-        // If not found at current level, recurse into children
         const result = { updatedSubtasks: [] as Subtask[], foundAndDeleted: false, deletedSubtaskName: undefined as string | undefined };
         result.updatedSubtasks = subtasks.map(st => {
             if (st.subtasks) {
                 const childResult = deleteSubtaskRecursive(st.subtasks, subtaskIdToDelete);
                 if (childResult.foundAndDeleted) {
-                    foundAndDeleted = true; // Propagate found status
+                    foundAndDeleted = true;
                     deletedName = childResult.deletedSubtaskName;
                     return { ...st, subtasks: childResult.updatedSubtasks };
                 }
@@ -228,19 +226,21 @@ export default function GoalsPage() {
     }, [setGoals]);
 
 
-    const isSubtaskEffectivelyComplete = useCallback((subtask: Subtask): boolean => {
+    // Removed useCallback for isSubtaskEffectivelyComplete
+    const isSubtaskEffectivelyComplete = (subtask: Subtask): boolean => {
         if (!subtask.completed) return false;
         if (subtask.subtasks && subtask.subtasks.length > 0) {
             return subtask.subtasks.every(child => isSubtaskEffectivelyComplete(child));
         }
         return subtask.completed;
-    }, []);
+    };
 
-    const calculateProgress = useCallback((goal: Goal): number => {
+    // Removed useCallback for calculateProgress
+    const calculateProgress = (goal: Goal): number => {
         if (goal.subtasks.length === 0) return 0;
         const effectivelyCompletedCount = goal.subtasks.filter(st => isSubtaskEffectivelyComplete(st)).length;
         return Math.round((effectivelyCompletedCount / goal.subtasks.length) * 100);
-    }, [isSubtaskEffectivelyComplete]);
+    };
 
 
     const handleKeyPressGoal = (event: React.KeyboardEvent<HTMLInputElement>) => { if (event.key === 'Enter') addGoal(); };
@@ -259,25 +259,19 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            let textColorClass = 'text-card-foreground'; // Default dark grey for active tasks
-            let expandChevronColorClass = 'text-card-foreground'; // Default dark grey
+            let textColorClass = 'text-card-foreground';
+            let expandChevronColorClass = 'text-card-foreground';
 
             if (subtask.completed) {
                 bgClass = 'bg-muted opacity-70';
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
-            } else if (depth === 0) { // Parent subtasks
-                bgClass = 'bg-muted'; // Very Light Purple (solid)
-                // textColorClass is already 'text-card-foreground' by default (dark grey)
-                // expandChevronColorClass is already 'text-card-foreground' by default (dark grey)
-            } else if (depth === 1) { // Child subtasks
-                bgClass = 'bg-muted/60'; // Very pale purple (opacity)
-                // textColorClass is already 'text-card-foreground' by default (dark grey)
-                // expandChevronColorClass is already 'text-card-foreground' by default (dark grey)
-            } else { // Grandchild and deeper (depth >= 2)
-                bgClass = 'bg-card'; // White
-                // textColorClass is already 'text-card-foreground' by default (dark grey)
-                // expandChevronColorClass is already 'text-card-foreground' by default (dark grey)
+            } else if (depth === 0) {
+                bgClass = 'bg-muted';
+            } else if (depth === 1) {
+                bgClass = 'bg-muted/60';
+            } else {
+                bgClass = 'bg-card';
             }
             
             return (
@@ -381,7 +375,9 @@ export default function GoalsPage() {
                     </div>
 
                     {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                        renderSubtasks(subtask.subtasks, goalId, depth + 1)
+                        <div className="pl-0"> {/* Removed pl-6 to rely on color for hierarchy */}
+                           {renderSubtasks(subtask.subtasks, goalId, depth + 1)}
+                        </div>
                     )}
                 </React.Fragment>
             );
@@ -443,22 +439,21 @@ export default function GoalsPage() {
                                                         </Button>
                                                     </CardHeader>
                                                     <AccordionContent>
-                                                        <CardContent className="p-4 space-y-4 border-t bg-muted/20"> {/* Lighter background for content area */}
+                                                        <CardContent className="p-4 space-y-4 border-t bg-muted/20">
                                                             <Progress value={progress} className="h-2.5" />
                                                             <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                                                                 {goal.subtasks.length === 0 ? (
                                                                     <p className="text-sm text-muted-foreground italic text-center py-2">No subtasks yet. Add one below.</p>
                                                                 ) : (
-                                                                    renderSubtasks(goal.subtasks, goal.id, 0) // Start depth at 0 for top-level subtasks
+                                                                    renderSubtasks(goal.subtasks, goal.id, 0)
                                                                 )}
                                                             </div>
-                                                            {/* Input for adding top-level subtask to the goal */}
                                                             <div className="flex space-x-2 pt-3 border-t mt-3">
                                                                 <Input
                                                                     value={newSubtaskInputs[goal.id] || ''}
                                                                     onChange={(e) => handleSubtaskInputChange(goal.id, e.target.value)}
                                                                     placeholder="Add a top-level subtask..."
-                                                                    className="h-9 text-sm flex-grow bg-card" // Ensure input has distinct background
+                                                                    className="h-9 text-sm flex-grow bg-card"
                                                                     onKeyPress={(e) => handleKeyPressSubtask(e, goal.id)}
                                                                 />
                                                                 <Button onClick={() => addSubtask(goal.id)} size="sm" className="h-9 px-3">
