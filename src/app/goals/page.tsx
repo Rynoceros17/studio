@@ -2,7 +2,7 @@
 // src/app/goals/page.tsx
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'; // Changed from 'import type * as React'
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X } from 'lucide-react'; // Added X
 import { useToast } from "@/hooks/use-toast";
 import { cn, truncateText } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
@@ -77,6 +77,7 @@ export default function GoalsPage() {
     const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
 
     const [expandedSubtasks, setExpandedSubtasks] = useState<Record<string, boolean>>({});
+    const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null); // State for toggling child input
 
     const toggleSubtaskExpansion = (subtaskId: string) => {
         setExpandedSubtasks(prev => ({ ...prev, [subtaskId]: !prev[subtaskId] }));
@@ -149,9 +150,14 @@ export default function GoalsPage() {
             }
             return goal;
         }));
-        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' }));
+        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' })); // Clear input for parent
         toast({ title: "Subtask Added", description: `Subtask "${newSubtask.name}" added.` });
-    }, [newSubtaskInputs, setGoals, toast]);
+        setShowAddChildInputFor(null); // Hide the input form after adding
+        if (parentSubtaskId) {
+            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true })); // Ensure parent is expanded
+        }
+    }, [newSubtaskInputs, setGoals, toast, setExpandedSubtasks, setShowAddChildInputFor]);
+
 
     const deleteSubtaskRecursive = (subtasks: Subtask[], subtaskIdToDelete: string): { updatedSubtasks: Subtask[], foundAndDeleted: boolean, deletedSubtaskName?: string } => {
         let foundAndDeleted = false;
@@ -233,7 +239,9 @@ export default function GoalsPage() {
 
     const handleKeyPressGoal = (event: React.KeyboardEvent<HTMLInputElement>) => { if (event.key === 'Enter') addGoal(); };
     const handleKeyPressSubtask = (event: React.KeyboardEvent<HTMLInputElement>, goalId: string, parentSubtaskId?: string) => {
-        if (event.key === 'Enter') addSubtask(goalId, parentSubtaskId);
+        if (event.key === 'Enter') {
+            addSubtask(goalId, parentSubtaskId);
+        }
     };
 
     const handleCreateTaskFromSubtask = useCallback((subtask: Subtask) => {
@@ -290,19 +298,38 @@ export default function GoalsPage() {
                         </Button>
                     </div>
                 </div>
-                 {/* Input for adding child subtask */}
-                 <div className={`ml-${depth * 4 + 4} flex space-x-2 my-1`}>
-                    <Input
-                        value={newSubtaskInputs[subtask.id] || ''}
-                        onChange={(e) => handleSubtaskInputChange(subtask.id, e.target.value)}
-                        placeholder="Add a child subtask..."
-                        className="h-8 text-xs flex-grow"
-                        onKeyPress={(e) => handleKeyPressSubtask(e, goalId, subtask.id)}
-                    />
-                    <Button onClick={() => addSubtask(goalId, subtask.id)} size="sm" className="h-8 px-2.5 text-xs">
-                        <CornerDownRight className="mr-1 h-3 w-3" /> Add
-                    </Button>
+                
+                {/* Toggleable input for adding child subtask */}
+                <div className={`ml-${depth * 4 + 4} my-1`}>
+                    {showAddChildInputFor === subtask.id ? (
+                        <div className="flex space-x-2 items-center p-2 border rounded-md bg-secondary/20">
+                            <Input
+                                value={newSubtaskInputs[subtask.id] || ''}
+                                onChange={(e) => handleSubtaskInputChange(subtask.id, e.target.value)}
+                                placeholder="Add a child subtask..."
+                                className="h-8 text-xs flex-grow"
+                                onKeyPress={(e) => handleKeyPressSubtask(e, goalId, subtask.id)}
+                                autoFocus
+                            />
+                            <Button onClick={() => addSubtask(goalId, subtask.id)} size="sm" className="h-8 px-2.5 text-xs shrink-0">
+                                <CornerDownRight className="mr-1 h-3 w-3" /> Add
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-8 w-8 text-xs shrink-0">
+                                <X className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground border-dashed hover:border-primary"
+                            onClick={() => setShowAddChildInputFor(subtask.id)}
+                        >
+                            <Plus className="mr-1 h-3.5 w-3.5" /> Add Child
+                        </Button>
+                    )}
                 </div>
+
                 {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
                     <div className="pl-2 border-l-2 border-muted ml-2"> {/* Indent children further */}
                         {renderSubtasks(subtask.subtasks, goalId, depth + 1)}
