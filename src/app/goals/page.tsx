@@ -280,6 +280,16 @@ export default function GoalsPage() {
                         <Button
                             variant="outline"
                             size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground border-dashed hover:border-primary"
+                            onClick={() => setShowAddChildInputFor(subtask.id)}
+                            aria-label={`Add child subtask to ${subtask.name}`}
+                            title="Add Child Subtask"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
                             className="h-7 w-7 text-primary border-primary hover:bg-primary/10"
                             onClick={() => handleCreateTaskFromSubtask(subtask)}
                             aria-label={`Create calendar task for ${subtask.name}`}
@@ -299,9 +309,9 @@ export default function GoalsPage() {
                     </div>
                 </div>
                 
-                {/* Toggleable input for adding child subtask */}
+                {/* Input form for adding child subtask, shown below the parent subtask item */}
                 <div className={`ml-${depth * 4 + 4} my-1`}>
-                    {showAddChildInputFor === subtask.id ? (
+                    {showAddChildInputFor === subtask.id && (
                         <div className="flex space-x-2 items-center p-2 border rounded-md bg-secondary/20">
                             <Input
                                 value={newSubtaskInputs[subtask.id] || ''}
@@ -318,15 +328,6 @@ export default function GoalsPage() {
                                 <X className="h-3.5 w-3.5" />
                             </Button>
                         </div>
-                    ) : (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground border-dashed hover:border-primary"
-                            onClick={() => setShowAddChildInputFor(subtask.id)}
-                        >
-                            <Plus className="mr-1 h-3.5 w-3.5" /> Add Child
-                        </Button>
                     )}
                 </div>
 
