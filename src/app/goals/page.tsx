@@ -225,21 +225,31 @@ export default function GoalsPage() {
         }));
     }, [setGoals]);
 
-
-    // Removed useCallback for isSubtaskEffectivelyComplete
-    const isSubtaskEffectivelyComplete = (subtask: Subtask): boolean => {
-        if (!subtask.completed) return false;
-        if (subtask.subtasks && subtask.subtasks.length > 0) {
-            return subtask.subtasks.every(child => isSubtaskEffectivelyComplete(child));
-        }
-        return subtask.completed;
-    };
-
-    // Removed useCallback for calculateProgress
     const calculateProgress = (goal: Goal): number => {
-        if (goal.subtasks.length === 0) return 0;
-        const effectivelyCompletedCount = goal.subtasks.filter(st => isSubtaskEffectivelyComplete(st)).length;
-        return Math.round((effectivelyCompletedCount / goal.subtasks.length) * 100);
+        let totalSubtasks = 0;
+        let completedSubtasks = 0;
+
+        const countSubtasksRecursive = (subtasks: Subtask[]) => {
+            subtasks.forEach(subtask => {
+                totalSubtasks++;
+                if (subtask.completed) {
+                    completedSubtasks++;
+                }
+                if (subtask.subtasks && subtask.subtasks.length > 0) {
+                    countSubtasksRecursive(subtask.subtasks);
+                }
+            });
+        };
+
+        if (goal.subtasks && goal.subtasks.length > 0) {
+            countSubtasksRecursive(goal.subtasks);
+        }
+
+        if (totalSubtasks === 0) {
+            return 0;
+        }
+
+        return Math.round((completedSubtasks / totalSubtasks) * 100);
     };
 
 
@@ -259,19 +269,19 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            let textColorClass = 'text-card-foreground';
+            let textColorClass = 'text-card-foreground'; // Default to black text
             let expandChevronColorClass = 'text-card-foreground';
 
             if (subtask.completed) {
                 bgClass = 'bg-muted opacity-70';
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
-            } else if (depth === 0) {
-                bgClass = 'bg-muted';
-            } else if (depth === 1) {
-                bgClass = 'bg-muted/60';
-            } else {
-                bgClass = 'bg-card';
+            } else if (depth === 0) { // Parent subtask
+                bgClass = 'bg-secondary'; // Very Light Purple
+            } else if (depth === 1) { // Child subtask
+                bgClass = 'bg-muted/60'; // Lighter version of Secondary with opacity
+            } else { // Grandchild and deeper
+                bgClass = 'bg-card'; // White
             }
             
             return (
