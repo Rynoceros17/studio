@@ -2,8 +2,7 @@
 // src/app/goals/page.tsx
 "use client";
 
-import type * as React from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react'; // Changed from 'import type * as React'
 import Link from 'next/link';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Input } from "@/components/ui/input";
