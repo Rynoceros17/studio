@@ -268,8 +268,8 @@ export default function GoalsPage() {
                 expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtasks
                 bgClass = 'bg-secondary'; // Very Light Purple
-                textColorClass = 'text-primary-foreground'; // White
-                expandChevronColorClass = 'text-primary-foreground'; // White
+                textColorClass = 'text-secondary-foreground'; // Dark Grey
+                expandChevronColorClass = 'text-secondary-foreground'; // Dark Grey
             } else if (depth === 1) { // Child subtasks
                 bgClass = 'bg-muted/60'; // Lighter Version of Secondary (Pale Purple) with 60% opacity
                 textColorClass = 'text-card-foreground'; // Dark Grey
