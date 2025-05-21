@@ -16,7 +16,7 @@ import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
 // Removed import for QuickCaptureSheet
-import type { Task, Subtask } from '@/lib/types'; // Added Subtask type
+import type { Task } from '@/lib/types'; // Subtask type removed as Goals page handles its own
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet'; // Import BookmarkListSheet
-import { GoalsSheet } from '@/components/GoalsSheet'; // Import GoalsSheet
+// Removed GoalsSheet import
 // Removed Avatar imports
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react'; // Removed Camera, added LayoutDashboard, BookOpen
 import { format, parseISO } from 'date-fns';
@@ -69,10 +69,10 @@ export default function Home() {
 
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<Task> | null>(null); // State for prefilling task form
+  // Removed prefilledTaskData state as Goals page will handle its own prefill for subtask to task conversion
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for Bookmark sheet
-  const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // State for Goals sheet
+  // Removed isGoalsSheetOpen state
   // Removed state for Quick Capture sheet
   const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
@@ -168,7 +168,7 @@ export default function Home() {
            description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
        });
        setIsFormOpen(false); // Close form after adding
-       setPrefilledTaskData(null); // Clear prefilled data
+       // setPrefilledTaskData(null); // No longer needed here for goals
    }, [setTasks, toast, parseISOStrict]);
 
 
@@ -418,13 +418,7 @@ export default function Home() {
      });
    }, [setTasks, toast, parseISOStrict]);
 
-   // Function to handle creating a task from a subtask
-    const handleCreateTaskFromSubtask = useCallback((subtask: Subtask) => {
-        // Prefill task data with subtask name
-        setPrefilledTaskData({ name: subtask.name });
-        setIsGoalsSheetOpen(false); // Close the Goals sheet
-        setIsFormOpen(true); // Open the TaskForm dialog
-    }, []); // Dependencies: none
+   // Removed handleCreateTaskFromSubtask as Goals page will handle its own logic
 
 
   return (
@@ -464,26 +458,22 @@ export default function Home() {
                   size="icon"
                   className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
                   aria-label="Add new task"
-                  onClick={() => setPrefilledTaskData(null)} // Clear prefill when opening manually
+                  // onClick={() => setPrefilledTaskData(null)} // No longer prefilling from here for Goals
                  >
                   <Plus className="h-6 w-6" />
                  </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                   {/* Title changes based on whether it's prefilled */}
-                   <DialogTitle className="text-primary">
-                     {prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}
-                   </DialogTitle>
+                   <DialogTitle className="text-primary">Add New Task</DialogTitle>
                  </DialogHeader>
-                 {/* Pass prefilledTaskData to TaskForm */}
                  <TaskForm
                    addTask={addTask}
                    onTaskAdded={() => {
                      setIsFormOpen(false);
-                     setPrefilledTaskData(null); // Always clear after adding
+                     // setPrefilledTaskData(null); // No longer prefilling from here for Goals
                    }}
-                   initialData={prefilledTaskData} // Pass initial data
+                   // initialData={prefilledTaskData} // No longer prefilling from here for Goals
                   />
               </DialogContent>
             </Dialog>
@@ -524,26 +514,21 @@ export default function Home() {
                  </Button>
              </Link>
 
-              {/* Goals Sheet Trigger */}
-             <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
-                 <SheetTrigger asChild>
-                     <Button
-                         variant="outline"
-                         size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
-                         aria-label="View goals"
-                     >
-                         <Target className="h-6 w-6 text-primary" />
-                     </Button>
-                 </SheetTrigger>
-                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b shrink-0">
-                         <SheetTitle className="text-primary">Goals</SheetTitle>
-                     </SheetHeader>
-                      {/* Pass the callback to GoalsSheet */}
-                      <GoalsSheet onCreateTaskFromSubtask={handleCreateTaskFromSubtask} />
-                 </SheetContent>
-             </Sheet>
+              {/* Goals Page Link Button */}
+             <Link href="/goals" passHref legacyBehavior>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
+                    aria-label="View goals"
+                    asChild
+                >
+                    <a>
+                        <Target className="h-6 w-6 text-primary" />
+                    </a>
+                </Button>
+            </Link>
+
 
              {/* Bookmark List Sheet Trigger */}
              <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
@@ -643,3 +628,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
