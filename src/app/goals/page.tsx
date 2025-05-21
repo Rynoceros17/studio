@@ -268,9 +268,6 @@ export default function GoalsPage() {
                 bgClass = 'bg-card'; // White background
             }
             
-            // Removed paddingLeft calculation
-            // const paddingLeft = `${depth * 1.25}rem`;
-
             return (
                 <React.Fragment key={subtask.id}>
                     <div
@@ -278,7 +275,6 @@ export default function GoalsPage() {
                             `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
                             bgClass
                         )}
-                        // Removed style={{ paddingLeft: paddingLeft }}
                     >
                         <div className="flex items-center space-x-2.5 flex-grow min-w-0">
                             {(subtask.subtasks && subtask.subtasks.length > 0) ? (
@@ -293,8 +289,8 @@ export default function GoalsPage() {
                                 checked={subtask.completed}
                                 onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
                                 className={cn(
-                                    "shrink-0 h-5 w-5 border-primary", // Standard border
-                                    "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" // Standard checked state
+                                    "shrink-0 h-5 w-5 border-primary", 
+                                    "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                                 )}
                                 aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
                             />
@@ -351,7 +347,7 @@ export default function GoalsPage() {
                         </div>
                     </div>
 
-                    <div className="my-1" /* Removed style={{ paddingLeft: `${(depth + 1) * 1.25}rem` }} */ >
+                    <div className="my-1">
                         {showAddChildInputFor === subtask.id && (
                             <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
                                 <Input
