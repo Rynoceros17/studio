@@ -146,9 +146,9 @@ export default function GoalsPage() {
 
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
-                if (!parentSubtaskId) {
+                if (!parentSubtaskId) { // Adding a top-level subtask to a goal
                     return { ...goal, subtasks: [...goal.subtasks, newSubtask] };
-                } else {
+                } else { // Adding a child subtask to another subtask
                     const updatedSubtasks = addSubtaskToParentRecursive(goal.subtasks, parentSubtaskId, newSubtask);
                     return { ...goal, subtasks: updatedSubtasks };
                 }
@@ -157,8 +157,8 @@ export default function GoalsPage() {
         }));
         setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' }));
         toast({ title: "Subtask Added", description: `Subtask "${newSubtask.name}" added.` });
-        setShowAddChildInputFor(null);
-        if (parentSubtaskId) {
+        setShowAddChildInputFor(null); // Hide the input form after adding
+        if (parentSubtaskId) { // If it was a child subtask, expand its parent
             setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true }));
         }
     };
@@ -171,7 +171,7 @@ export default function GoalsPage() {
             if (st.id === subtaskIdToDelete) {
                 foundAndDeleted = true;
                 deletedName = st.name;
-                return false;
+                return false; // Remove the subtask
             }
             return true;
         });
@@ -180,13 +180,14 @@ export default function GoalsPage() {
             return { updatedSubtasks: filteredSubtasks, foundAndDeleted: true, deletedSubtaskName: deletedName };
         }
 
+        // If not found at this level, recurse into children
         const result = { updatedSubtasks: [] as Subtask[], foundAndDeleted: false, deletedSubtaskName: undefined as string | undefined };
         result.updatedSubtasks = subtasks.map(st => {
             if (st.subtasks) {
                 const childResult = deleteSubtaskRecursive(st.subtasks, subtaskIdToDelete);
                 if (childResult.foundAndDeleted) {
-                    foundAndDeleted = true;
-                    deletedName = childResult.deletedSubtaskName;
+                    foundAndDeleted = true; // Propagate found status up
+                    deletedName = childResult.deletedSubtaskName; // Propagate deleted name up
                     return { ...st, subtasks: childResult.updatedSubtasks };
                 }
             }
@@ -269,7 +270,7 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            let textColorClass = 'text-card-foreground'; // Default to black text
+            let textColorClass = 'text-card-foreground';
             let expandChevronColorClass = 'text-card-foreground';
 
             if (subtask.completed) {
@@ -277,11 +278,17 @@ export default function GoalsPage() {
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtask
-                bgClass = 'bg-secondary/70'; // Your "Very Light Purple" theme color at 70% opacity
+                bgClass = 'bg-secondary/70';
+                textColorClass = 'text-card-foreground'; // Black text for parent
+                expandChevronColorClass = 'text-card-foreground';
             } else if (depth === 1) { // Child subtask
-                bgClass = 'bg-muted/70'; // Your "Lighter version of Secondary" theme color at 70% opacity
+                bgClass = 'bg-muted/50'; // Lighter purple for child
+                textColorClass = 'text-card-foreground'; // Black text for child
+                expandChevronColorClass = 'text-card-foreground';
             } else { // Grandchild and deeper
                 bgClass = 'bg-card'; // White
+                textColorClass = 'text-card-foreground'; // Black text for grandchild
+                expandChevronColorClass = 'text-card-foreground';
             }
             
             return (
