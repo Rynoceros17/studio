@@ -1,101 +1,96 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+// Helper to safely parse JSON, now includes the key for better error logging
+function safeJsonParseWithKey<T>(jsonString: string | null, fallback: T, key: string): T {
+  if (jsonString === null) {
+    return fallback;
+  }
+  try {
+    // Handle the case where "undefined" string might have been stored.
+    if (jsonString === "undefined") {
+        // console.warn(`Found "undefined" string in localStorage for key "${key}", using fallback.`);
+        return fallback;
+    }
+    return JSON.parse(jsonString) as T;
+  } catch (e) {
+    console.warn(`Failed to parse JSON ("${jsonString}") from localStorage for key "${key}", using fallback.`, e);
+    return fallback;
+  }
+}
+
 function useLocalStorage<T>(
   key: string,
-  initialValue: T // This is the value used for SSR and initial client render
+  initialValue: T
 ): [T, (value: T | ((val: T) => T)) => void] {
-  const [storedValue, setStoredValue] = useState<T>(initialValue); // Always start with initialValue
+  const [value, setValueState] = useState<T>(initialValue); // Step 1: Always initialize with initialValue
 
-  // useEffect to load the value from localStorage after initial client render
+  // Step 2: On client mount, try to load from localStorage and update state
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    try {
-      const item = window.localStorage.getItem(key);
-      if (item !== null) {
-        // Ensure we don't try to parse "undefined" or other invalid JSON
-        if (item === "undefined") {
-            setStoredValue(initialValue);
-        } else {
-            setStoredValue(JSON.parse(item) as T);
+    if (typeof window !== 'undefined') {
+      try {
+        const item = window.localStorage.getItem(key);
+        // If item exists, parse it and set state. Otherwise, `value` remains `initialValue`.
+        // This might cause a re-render if localStorage has a different value than initialValue.
+        if (item !== null) {
+            setValueState(safeJsonParseWithKey(item, initialValue, key));
         }
+      } catch (error) {
+        // This catch is primarily for if localStorage itself is unavailable,
+        // parsing errors are handled in safeJsonParseWithKey.
+        console.warn(`Error accessing localStorage for key “${key}” during mount:`, error);
+        // `value` remains `initialValue`.
       }
-      // If item is null, storedValue remains the initialValue from useState, which is fine.
-    } catch (error) {
-      console.error(`Error reading localStorage key “${key}” from useEffect:`, error);
-      // Fallback to initialValue on error.
-      setStoredValue(initialValue);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]); // Only run on mount (client-side) or if key changes. initialValue removed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]); // Run only when key changes (effectively once on mount for a stable key)
 
-  // useEffect to update local storage when storedValue changes
+  // Step 3: Persist to localStorage whenever the `value` state changes.
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
+    if (typeof window !== 'undefined') {
+      try {
+        // If `value` is actually `undefined`, JSON.stringify will produce the string "undefined".
+        // localStorage.setItem will store this string.
+        // The loading part (safeJsonParseWithKey) handles parsing "undefined" string by falling back.
+        window.localStorage.setItem(key, JSON.stringify(value));
+      } catch (error) {
+        console.error(`Error setting localStorage key “${key}”:`, error);
+      }
     }
-    // Prevent overwriting localStorage with initialValue if storedValue hasn't changed from it yet
-    // and localStorage already contains some persisted data. This might happen during initial hydration.
-    if (storedValue === initialValue) {
-        const itemInLs = window.localStorage.getItem(key);
-        if (itemInLs !== null && itemInLs !== JSON.stringify(initialValue)) {
-            // If LS has something different than initialValue, and storedValue is still initialValue,
-            // it means the loading effect might not have finished, or initialValue is truly the current state.
-            // In this specific case, we might not want to save initialValue back if LS already has richer data.
-            // However, this can get complex. The primary load logic is in the first useEffect.
-            // This effect should simply reflect the current `storedValue`.
-        }
-    }
+  }, [key, value]); // Re-run if key or value changes
 
-    try {
-      window.localStorage.setItem(key, JSON.stringify(storedValue));
-    } catch (error) {
-      console.error(`Error setting localStorage key “${key}”:`, error);
-    }
-  }, [key, storedValue, initialValue]); // initialValue is included here to be cautious if the logic above for not overwriting is used.
-                                      // More simply, could be just [key, storedValue] if we always save current storedValue.
-
+  // The setValue function remains the same.
   const setValue = useCallback(
-    (value: T | ((val: T) => T)) => {
-      setStoredValue(value);
+    (newValue: T | ((val: T) => T)) => {
+      setValueState(newValue); // This will trigger the effect above to save to localStorage
     },
-    [] // setStoredValue from useState is stable
+    [] // setValueState from useState is stable
   );
 
-  // Effect for cross-tab sync (optional but good for robustness)
+  // Cross-tab synchronization
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === key && event.storageArea === window.localStorage) {
-        if (event.newValue) {
-          try {
-            // Ensure we don't try to parse "undefined" from another tab
-            if (event.newValue === "undefined") {
-                setStoredValue(initialValue);
-            } else {
-                setStoredValue(JSON.parse(event.newValue) as T);
-            }
-          } catch (error) {
-             console.error(`Error parsing storage change for key “${key}” from another tab:`, error);
-             setStoredValue(initialValue); // Fallback on error
-          }
-        } else {
-          // Key was removed or set to null in another tab
-          setStoredValue(initialValue);
+        // Check if the new value is actually different from the current state
+        // to avoid potential infinite loops if multiple tabs react.
+        const currentStringifiedValue = JSON.stringify(value);
+        if (event.newValue !== currentStringifiedValue) {
+          setValueState(safeJsonParseWithKey(event.newValue, initialValue, key));
         }
       }
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storage', handleStorageChange);
-      return () => {
-        window.removeEventListener('storage', handleStorageChange);
-      };
-    }
-  }, [key, initialValue]); // initialValue is used as a fallback
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, initialValue, value]); // Include `value` in dependencies for accurate comparison in handleStorageChange
 
-  return [storedValue, setValue];
+  return [value, setValue];
 }
 
 export default useLocalStorage;
