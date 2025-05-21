@@ -89,15 +89,15 @@ export default function GoalsPage() {
     };
 
 
-    const parseISOStrict = useCallback((dateString: string | undefined): Date | null => {
+    const parseISOStrict = (dateString: string | undefined): Date | null => {
         if (!dateString) return null;
         const datePart = dateString.split('T')[0];
         const date = parseISO(datePart + 'T00:00:00');
         if (isNaN(date.getTime())) return null;
         return date;
-    }, []);
+    };
 
-    const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
+    const addTask = (newTaskData: Omit<Task, 'id'>) => {
        const newTask: Task = { ...newTaskData, id: crypto.randomUUID(), files: newTaskData.files ?? [], details: newTaskData.details ?? '', dueDate: newTaskData.dueDate, recurring: newTaskData.recurring ?? false, highPriority: newTaskData.highPriority ?? false, exceptions: [], color: newTaskData.color };
        setTasks(prevTasks => {
            const updatedTasks = [...prevTasks, newTask];
@@ -114,9 +114,9 @@ export default function GoalsPage() {
        const taskDate = parseISOStrict(newTaskData.date);
        toast({ title: "Task Added", description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.` });
        setIsTaskFormOpen(false); setPrefilledTaskData(null);
-    }, [setTasks, toast, parseISOStrict]);
+    };
 
-    const addGoal = useCallback(() => {
+    const addGoal = () => {
         if (!newGoalName.trim()) {
             toast({ title: "Missing Goal Name", description: "Please provide a name for the goal.", variant: "destructive" }); return;
         }
@@ -124,19 +124,19 @@ export default function GoalsPage() {
         setGoals(prev => [...prev, newGoal]);
         setNewGoalName('');
         toast({ title: "Goal Added", description: `"${newGoal.name}" added successfully.` });
-    }, [newGoalName, setGoals, toast]);
+    };
 
-    const deleteGoal = useCallback((id: string) => {
+    const deleteGoal = (id: string) => {
         const goalToDelete = goals.find(g => g.id === id);
         setGoals(prev => prev.filter(goal => goal.id !== id));
         if (goalToDelete) toast({ title: "Goal Removed", description: `"${goalToDelete.name}" removed.`, variant: "destructive" });
-    }, [goals, setGoals, toast]);
+    };
 
     const handleSubtaskInputChange = (parentId: string, value: string) => {
         setNewSubtaskInputs(prev => ({ ...prev, [parentId]: value }));
     };
 
-    const addSubtask = useCallback((goalId: string, parentSubtaskId?: string) => {
+    const addSubtask = (goalId: string, parentSubtaskId?: string) => {
         const parentId = parentSubtaskId || goalId;
         const subtaskName = newSubtaskInputs[parentId]?.trim();
         if (!subtaskName) {
@@ -161,7 +161,7 @@ export default function GoalsPage() {
         if (parentSubtaskId) {
             setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true }));
         }
-    }, [newSubtaskInputs, setGoals, toast, setExpandedSubtasks, setShowAddChildInputFor]);
+    };
 
 
     const deleteSubtaskRecursive = (subtasks: Subtask[], subtaskIdToDelete: string): { updatedSubtasks: Subtask[], foundAndDeleted: boolean, deletedSubtaskName?: string } => {
@@ -198,7 +198,7 @@ export default function GoalsPage() {
     };
 
 
-    const deleteSubtask = useCallback((goalId: string, subtaskIdToDelete: string) => {
+    const deleteSubtask = (goalId: string, subtaskIdToDelete: string) => {
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
                 const { updatedSubtasks, foundAndDeleted, deletedSubtaskName } = deleteSubtaskRecursive(goal.subtasks, subtaskIdToDelete);
@@ -209,10 +209,10 @@ export default function GoalsPage() {
             }
             return goal;
         }));
-    }, [setGoals, toast]);
+    };
 
 
-    const toggleSubtaskCompletion = useCallback((goalId: string, subtaskIdToToggle: string) => {
+    const toggleSubtaskCompletion = (goalId: string, subtaskIdToToggle: string) => {
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
                 const newSubtasks = findAndOperateOnSubtask(goal.subtasks, subtaskIdToToggle, st => ({
@@ -223,7 +223,7 @@ export default function GoalsPage() {
             }
             return goal;
         }));
-    }, [setGoals]);
+    };
 
     const calculateProgress = (goal: Goal): number => {
         let totalSubtasks = 0;
@@ -260,17 +260,16 @@ export default function GoalsPage() {
         }
     };
 
-    const handleCreateTaskFromSubtask = useCallback((subtask: Subtask) => {
+    const handleCreateTaskFromSubtask = (subtask: Subtask) => {
         setPrefilledTaskData({ name: subtask.name });
         setIsTaskFormOpen(true);
-    }, []);
+    };
 
 
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
             let bgClass = '';
-            // Default to black text for active tasks
-            let textColorClass = 'text-card-foreground';
+            let textColorClass = 'text-card-foreground'; // Default to black text
             let expandChevronColorClass = 'text-card-foreground';
 
             if (subtask.completed) {
@@ -278,9 +277,9 @@ export default function GoalsPage() {
                 textColorClass = 'text-muted-foreground';
                 expandChevronColorClass = 'text-muted-foreground';
             } else if (depth === 0) { // Parent subtask
-                bgClass = 'bg-secondary/70'; // Very Light Purple at 70% opacity
+                bgClass = 'bg-secondary/70'; // Your "Very Light Purple" theme color at 70% opacity
             } else if (depth === 1) { // Child subtask
-                bgClass = 'bg-muted/70'; // Lighter version of Secondary at 70% opacity
+                bgClass = 'bg-muted/70'; // Your "Lighter version of Secondary" theme color at 70% opacity
             } else { // Grandchild and deeper
                 bgClass = 'bg-card'; // White
             }
@@ -329,7 +328,7 @@ export default function GoalsPage() {
                                 size="icon"
                                 className={cn(
                                     "h-7 w-7 border-dashed",
-                                    subtask.completed ? "text-muted-foreground cursor-not-allowed" : "text-card-foreground", // Use card-foreground for active
+                                    subtask.completed ? "text-muted-foreground cursor-not-allowed" : "text-card-foreground",
                                     subtask.completed ? "border-muted" : "border-current", 
                                     !subtask.completed && "hover:border-primary hover:text-primary"
                                 )}
@@ -438,7 +437,7 @@ export default function GoalsPage() {
                                     {goals.map((goal) => {
                                         const progress = calculateProgress(goal);
                                         return (
-                                            <AccordionItem key={goal.id} value={goal.id} className="border-none">
+                                            <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4"> {/* Added mb-4 here */}
                                                 <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
                                                     <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/30 rounded-t-md transition-colors">
                                                         <AccordionTrigger className="flex-grow p-4 text-base font-medium text-left text-primary hover:no-underline">
