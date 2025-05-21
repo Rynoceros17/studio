@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn, truncateText } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
@@ -26,6 +26,27 @@ import {
   DialogTitle as FormDialogTitle,
 } from "@/components/ui/dialog";
 import { format, parseISO } from 'date-fns';
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 
 // Helper function to recursively find and update a subtask
 const findAndOperateOnSubtask = (
@@ -64,11 +85,201 @@ const addSubtaskToParentRecursive = (
     });
 };
 
+// Props for SortableListItem - this will be extensive
+interface SortableListItemProps {
+    subtask: Subtask;
+    goalId: string;
+    depth: number;
+    expandedSubtasks: Record<string, boolean>;
+    toggleSubtaskExpansion: (subtaskId: string) => void;
+    newSubtaskInputs: Record<string, string>;
+    handleSubtaskInputChange: (parentId: string, value: string) => void;
+    handleKeyPressSubtask: (event: React.KeyboardEvent<HTMLInputElement>, goalId: string, parentSubtaskId?: string) => void;
+    addSubtask: (goalId: string, parentSubtaskId?: string) => void;
+    toggleSubtaskCompletion: (goalId: string, subtaskIdToToggle: string) => void;
+    showAddChildInputFor: string | null;
+    setShowAddChildInputFor: (id: string | null) => void;
+    handleCreateTaskFromSubtask: (subtask: Subtask) => void;
+    deleteSubtask: (goalId: string, subtaskIdToDelete: string) => void;
+    renderSubtasksFunction: (subtasks: Subtask[], goalId: string, depth: number) => JSX.Element;
+}
+
+// Component to render a single sortable subtask item
+function SortableListItem({
+    subtask, goalId, depth, expandedSubtasks, toggleSubtaskExpansion,
+    newSubtaskInputs, handleSubtaskInputChange, handleKeyPressSubtask, addSubtask,
+    toggleSubtaskCompletion, showAddChildInputFor, setShowAddChildInputFor,
+    handleCreateTaskFromSubtask, deleteSubtask, renderSubtasksFunction
+}: SortableListItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: subtask.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition: transition || 'transform 0.25s ease', // Ensure smooth transition
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 100 : 'auto',
+    };
+
+    let bgClass = '';
+    let textColorClass = 'text-card-foreground';
+    let expandChevronColorClass = 'text-card-foreground';
+
+    if (subtask.completed) {
+        bgClass = 'bg-muted opacity-70';
+        textColorClass = 'text-muted-foreground';
+        expandChevronColorClass = 'text-muted-foreground';
+    } else if (depth === 0) {
+        bgClass = 'bg-secondary/70';
+    } else if (depth === 1) {
+        bgClass = 'bg-muted/50';
+    } else {
+        bgClass = 'bg-card';
+    }
+
+    return (
+        <div ref={setNodeRef} style={style} className="mb-0.5"> {/* Reduced mb-1 to mb-0.5 */}
+            <div
+                className={cn(
+                    `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm`,
+                    bgClass
+                )}
+            >
+                <div className="flex items-center space-x-1.5 flex-grow min-w-0"> {/* Reduced space for handle */}
+                    <button
+                        {...attributes}
+                        {...listeners}
+                        type="button"
+                        className={cn("p-1 rounded cursor-grab hover:bg-black/10 active:cursor-grabbing", textColorClass, subtask.completed && "cursor-not-allowed opacity-50")}
+                        aria-label="Drag to reorder subtask"
+                        disabled={subtask.completed}
+                        onClick={(e) => e.stopPropagation()} // Prevent other clicks when dragging
+                    >
+                        <GripVertical className="h-4 w-4" />
+                    </button>
+
+                    {(subtask.subtasks && subtask.subtasks.length > 0) ? (
+                         <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className={cn("h-6 w-6 shrink-0", expandChevronColorClass, `hover:bg-transparent hover:opacity-75` )}>
+                            {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                    ) : (
+                        <div className="w-6 shrink-0"></div>
+                    )}
+                    <Checkbox
+                        id={`subtask-${subtask.id}`}
+                        checked={subtask.completed}
+                        onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
+                        className={cn(
+                            "shrink-0 h-5 w-5 border-primary",
+                            "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                        )}
+                        aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
+                    />
+                    <Label
+                        htmlFor={`subtask-${subtask.id}`}
+                        className={cn(
+                            "text-sm truncate cursor-pointer",
+                            textColorClass,
+                            subtask.completed && "line-through"
+                        )}
+                        title={subtask.name}
+                    >
+                        {truncateText(subtask.name, 30)}
+                    </Label>
+                </div>
+                <div className="flex items-center shrink-0 space-x-1.5">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className={cn(
+                            "h-7 w-7 border-dashed",
+                            subtask.completed ? "text-muted-foreground cursor-not-allowed" : "text-card-foreground",
+                            subtask.completed ? "border-muted" : "border-current",
+                            !subtask.completed && "hover:border-primary hover:text-primary"
+                        )}
+                        onClick={() => !subtask.completed && setShowAddChildInputFor(subtask.id)}
+                        aria-label={`Add child subtask to ${subtask.name}`}
+                        title="Add Child Subtask"
+                        disabled={subtask.completed}
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className={cn(
+                            "h-7 w-7",
+                            subtask.completed ? "text-muted-foreground border-muted cursor-not-allowed" : "text-primary border-primary hover:bg-primary/10"
+                        )}
+                        onClick={() => !subtask.completed && handleCreateTaskFromSubtask(subtask)}
+                        aria-label={`Create calendar task for ${subtask.name}`}
+                        title="Create Calendar Task"
+                        disabled={subtask.completed}
+                    >
+                        <PlusCircle className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn("h-7 w-7 text-destructive hover:bg-destructive/10")}
+                        onClick={() => deleteSubtask(goalId, subtask.id)}
+                        aria-label={`Delete subtask ${subtask.name}`}
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+            </div>
+
+            <div className="my-1 pl-6"> {/* Indent add child input */}
+                {showAddChildInputFor === subtask.id && (
+                    <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
+                        <Input
+                            value={newSubtaskInputs[subtask.id] || ''}
+                            onChange={(e) => handleSubtaskInputChange(subtask.id, e.target.value)}
+                            placeholder="Add a child subtask..."
+                            className="h-8 text-xs flex-grow"
+                            onKeyPress={(e) => handleKeyPressSubtask(e, goalId, subtask.id)}
+                            autoFocus
+                        />
+                        <Button onClick={() => addSubtask(goalId, subtask.id)} size="sm" className="h-8 px-2.5 text-xs shrink-0">
+                            <CornerDownRight className="mr-1 h-3 w-3" /> Add
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-8 w-8 text-xs shrink-0">
+                            <X className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
+                <div className="pl-6"> {/* Indent nested subtasks */}
+                   {renderSubtasksFunction(subtask.subtasks, goalId, depth + 1)}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Simple component for DragOverlay
+function DraggingSubtaskItem({ name }: { name: string }) {
+    return (
+        <Card className="p-2.5 rounded-md shadow-xl bg-primary text-primary-foreground border-primary">
+            <p className="text-sm truncate">{name}</p>
+        </Card>
+    );
+}
+
 
 export default function GoalsPage() {
     const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
     const [newGoalName, setNewGoalName] = useState('');
-    const [newSubtaskInputs, setNewSubtaskInputs] = useState<Record<string, string>>({}); // Key: parentId (goalId or subtaskId)
+    const [newSubtaskInputs, setNewSubtaskInputs] = useState<Record<string, string>>({});
     const { toast } = useToast();
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
@@ -78,16 +289,99 @@ export default function GoalsPage() {
     const [expandedSubtasks, setExpandedSubtasks] = useState<Record<string, boolean>>({});
     const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
+    const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null); // For DragOverlay
+
 
     useEffect(() => {
         setIsClient(true);
     }, []);
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5, // User must drag at least 5px
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const findSubtaskByIdRecursive = (subtasks: Subtask[], id: string): Subtask | null => {
+        for (const subtask of subtasks) {
+            if (subtask.id === id) return subtask;
+            if (subtask.subtasks) {
+                const found = findSubtaskByIdRecursive(subtask.subtasks, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+
+    const handleDragStart = (event: DragStartEvent) => {
+        const { active } = event;
+        let draggedItem: Subtask | null = null;
+        for (const goal of goals) {
+            draggedItem = findSubtaskByIdRecursive(goal.subtasks, active.id as string);
+            if (draggedItem) break;
+        }
+        setActiveDraggedItem(draggedItem);
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        setActiveDraggedItem(null);
+        const { active, over } = event;
+
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        setGoals((currentGoals) => {
+            // Create a deep copy to ensure immutability for complex nested updates
+            const newGoals = JSON.parse(JSON.stringify(currentGoals)) as Goal[];
+
+            // Recursive function to find the list containing both items and reorder
+            const reorderInList = (list: Subtask[]): boolean => {
+                const activeItemIndex = list.findIndex(item => item.id === activeId);
+                const overItemIndex = list.findIndex(item => item.id === overId);
+
+                if (activeItemIndex !== -1 && overItemIndex !== -1) {
+                    // Both items are in this list, reorder here
+                    const reorderedList = arrayMove(list, activeItemIndex, overItemIndex);
+                    // This modifies 'list' in place because it's part of the 'newGoals' deep copy
+                    list.length = 0; // Clear the original array part of the copied structure
+                    list.push(...reorderedList); // Push reordered items back
+                    return true; // Reordering happened
+                }
+
+                // If not in this list, check children
+                for (const item of list) {
+                    if (item.subtasks && item.subtasks.length > 0) {
+                        if (reorderInList(item.subtasks)) {
+                            return true; // Reordering happened in a child list
+                        }
+                    }
+                }
+                return false; // Reordering did not happen in this list or its children
+            };
+
+            // Try to reorder within each goal's top-level subtasks
+            for (const goal of newGoals) {
+                if (reorderInList(goal.subtasks)) {
+                    break; // Found and reordered, no need to check other goals
+                }
+            }
+            return newGoals; // Return the modified deep copy
+        });
+    };
+
 
     const toggleSubtaskExpansion = (subtaskId: string) => {
         setExpandedSubtasks(prev => ({ ...prev, [subtaskId]: !prev[subtaskId] }));
     };
-
 
     const parseISOStrict = (dateString: string | undefined): Date | null => {
         if (!dateString) return null;
@@ -146,9 +440,9 @@ export default function GoalsPage() {
 
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
-                if (!parentSubtaskId) { // Adding a top-level subtask to a goal
+                if (!parentSubtaskId) {
                     return { ...goal, subtasks: [...goal.subtasks, newSubtask] };
-                } else { // Adding a child subtask to another subtask
+                } else {
                     const updatedSubtasks = addSubtaskToParentRecursive(goal.subtasks, parentSubtaskId, newSubtask);
                     return { ...goal, subtasks: updatedSubtasks };
                 }
@@ -157,12 +451,11 @@ export default function GoalsPage() {
         }));
         setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' }));
         toast({ title: "Subtask Added", description: `Subtask "${newSubtask.name}" added.` });
-        setShowAddChildInputFor(null); // Hide the input form after adding
-        if (parentSubtaskId) { // If it was a child subtask, expand its parent
+        setShowAddChildInputFor(null);
+        if (parentSubtaskId) {
             setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true }));
         }
     };
-
 
     const deleteSubtaskRecursive = (subtasks: Subtask[], subtaskIdToDelete: string): { updatedSubtasks: Subtask[], foundAndDeleted: boolean, deletedSubtaskName?: string } => {
         let foundAndDeleted = false;
@@ -171,7 +464,7 @@ export default function GoalsPage() {
             if (st.id === subtaskIdToDelete) {
                 foundAndDeleted = true;
                 deletedName = st.name;
-                return false; // Remove the subtask
+                return false;
             }
             return true;
         });
@@ -180,14 +473,13 @@ export default function GoalsPage() {
             return { updatedSubtasks: filteredSubtasks, foundAndDeleted: true, deletedSubtaskName: deletedName };
         }
 
-        // If not found at this level, recurse into children
         const result = { updatedSubtasks: [] as Subtask[], foundAndDeleted: false, deletedSubtaskName: undefined as string | undefined };
         result.updatedSubtasks = subtasks.map(st => {
             if (st.subtasks) {
                 const childResult = deleteSubtaskRecursive(st.subtasks, subtaskIdToDelete);
                 if (childResult.foundAndDeleted) {
-                    foundAndDeleted = true; // Propagate found status up
-                    deletedName = childResult.deletedSubtaskName; // Propagate deleted name up
+                    foundAndDeleted = true;
+                    deletedName = childResult.deletedSubtaskName;
                     return { ...st, subtasks: childResult.updatedSubtasks };
                 }
             }
@@ -197,7 +489,6 @@ export default function GoalsPage() {
         result.deletedSubtaskName = deletedName;
         return result;
     };
-
 
     const deleteSubtask = (goalId: string, subtaskIdToDelete: string) => {
         setGoals(prevGoals => prevGoals.map(goal => {
@@ -211,7 +502,6 @@ export default function GoalsPage() {
             return goal;
         }));
     };
-
 
     const toggleSubtaskCompletion = (goalId: string, subtaskIdToToggle: string) => {
         setGoals(prevGoals => prevGoals.map(goal => {
@@ -229,7 +519,6 @@ export default function GoalsPage() {
     const calculateProgress = (goal: Goal): number => {
         let totalSubtasks = 0;
         let completedSubtasks = 0;
-
         const countSubtasksRecursive = (subtasks: Subtask[]) => {
             subtasks.forEach(subtask => {
                 totalSubtasks++;
@@ -241,18 +530,12 @@ export default function GoalsPage() {
                 }
             });
         };
-
         if (goal.subtasks && goal.subtasks.length > 0) {
             countSubtasksRecursive(goal.subtasks);
         }
-
-        if (totalSubtasks === 0) {
-            return 0;
-        }
-
+        if (totalSubtasks === 0) return 0;
         return Math.round((completedSubtasks / totalSubtasks) * 100);
     };
-
 
     const handleKeyPressGoal = (event: React.KeyboardEvent<HTMLInputElement>) => { if (event.key === 'Enter') addGoal(); };
     const handleKeyPressSubtask = (event: React.KeyboardEvent<HTMLInputElement>, goalId: string, parentSubtaskId?: string) => {
@@ -266,239 +549,138 @@ export default function GoalsPage() {
         setIsTaskFormOpen(true);
     };
 
-
-    const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
-        return subtasks.map(subtask => {
-            let bgClass = '';
-            let textColorClass = 'text-card-foreground';
-            let expandChevronColorClass = 'text-card-foreground';
-
-            if (subtask.completed) {
-                bgClass = 'bg-muted opacity-70';
-                textColorClass = 'text-muted-foreground';
-                expandChevronColorClass = 'text-muted-foreground';
-            } else if (depth === 0) { // Parent subtask
-                bgClass = 'bg-secondary/70';
-                textColorClass = 'text-card-foreground'; // Black text for parent
-                expandChevronColorClass = 'text-card-foreground';
-            } else if (depth === 1) { // Child subtask
-                bgClass = 'bg-muted/50'; // Lighter purple for child
-                textColorClass = 'text-card-foreground'; // Black text for child
-                expandChevronColorClass = 'text-card-foreground';
-            } else { // Grandchild and deeper
-                bgClass = 'bg-card'; // White
-                textColorClass = 'text-card-foreground'; // Black text for grandchild
-                expandChevronColorClass = 'text-card-foreground';
-            }
-            
-            return (
-                <React.Fragment key={subtask.id}>
-                    <div
-                        className={cn(
-                            `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
-                            bgClass
-                        )}
-                    >
-                        <div className="flex items-center space-x-2.5 flex-grow min-w-0">
-                            {(subtask.subtasks && subtask.subtasks.length > 0) ? (
-                                 <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className={cn("h-6 w-6 shrink-0", expandChevronColorClass, `hover:bg-transparent hover:opacity-75` )}>
-                                    {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                </Button>
-                            ) : (
-                                <div className="w-6 shrink-0"></div> 
-                            )}
-                            <Checkbox
-                                id={`subtask-${subtask.id}`}
-                                checked={subtask.completed}
-                                onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
-                                className={cn(
-                                    "shrink-0 h-5 w-5 border-primary", 
-                                    "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                                )}
-                                aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
-                            />
-                            <Label
-                                htmlFor={`subtask-${subtask.id}`}
-                                className={cn(
-                                    "text-sm truncate cursor-pointer",
-                                    textColorClass,
-                                    subtask.completed && "line-through"
-                                )}
-                                title={subtask.name}
-                            >
-                                {truncateText(subtask.name, 30)}
-                            </Label>
-                        </div>
-                        <div className="flex items-center shrink-0 space-x-1.5">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className={cn(
-                                    "h-7 w-7 border-dashed",
-                                    subtask.completed ? "text-muted-foreground cursor-not-allowed" : "text-card-foreground",
-                                    subtask.completed ? "border-muted" : "border-current", 
-                                    !subtask.completed && "hover:border-primary hover:text-primary"
-                                )}
-                                onClick={() => !subtask.completed && setShowAddChildInputFor(subtask.id)}
-                                aria-label={`Add child subtask to ${subtask.name}`}
-                                title="Add Child Subtask"
-                                disabled={subtask.completed}
-                            >
-                                <Plus className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className={cn(
-                                    "h-7 w-7",
-                                    subtask.completed ? "text-muted-foreground border-muted cursor-not-allowed" : "text-primary border-primary hover:bg-primary/10"
-                                )}
-                                onClick={() => !subtask.completed && handleCreateTaskFromSubtask(subtask)}
-                                aria-label={`Create calendar task for ${subtask.name}`}
-                                title="Create Calendar Task"
-                                disabled={subtask.completed}
-                            >
-                                <PlusCircle className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                                variant="ghost" 
-                                size="icon"
-                                className={cn("h-7 w-7 text-destructive hover:bg-destructive/10")}
-                                onClick={() => deleteSubtask(goalId, subtask.id)}
-                                aria-label={`Delete subtask ${subtask.name}`}
-                            >
-                                <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="my-1">
-                        {showAddChildInputFor === subtask.id && (
-                            <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
-                                <Input
-                                    value={newSubtaskInputs[subtask.id] || ''}
-                                    onChange={(e) => handleSubtaskInputChange(subtask.id, e.target.value)}
-                                    placeholder="Add a child subtask..."
-                                    className="h-8 text-xs flex-grow"
-                                    onKeyPress={(e) => handleKeyPressSubtask(e, goalId, subtask.id)}
-                                    autoFocus
-                                />
-                                <Button onClick={() => addSubtask(goalId, subtask.id)} size="sm" className="h-8 px-2.5 text-xs shrink-0">
-                                    <CornerDownRight className="mr-1 h-3 w-3" /> Add
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-8 w-8 text-xs shrink-0">
-                                    <X className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-
-                    {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                        <div className=""> 
-                           {renderSubtasks(subtask.subtasks, goalId, depth + 1)}
-                        </div>
-                    )}
-                </React.Fragment>
-            );
-        });
+    const renderSubtasks = (subtasksToRender: Subtask[], goalId: string, currentDepth: number): JSX.Element => {
+        return (
+          <SortableContext items={subtasksToRender.map(st => st.id)} strategy={verticalListSortingStrategy}>
+            <div className={cn(currentDepth > 0 && "pl-0")}> {/* Using pl-0 because SortableListItem handles its own content structure */}
+              {subtasksToRender.map(subtask => (
+                <SortableListItem
+                  key={subtask.id}
+                  subtask={subtask}
+                  goalId={goalId}
+                  depth={currentDepth}
+                  expandedSubtasks={expandedSubtasks}
+                  toggleSubtaskExpansion={toggleSubtaskExpansion}
+                  newSubtaskInputs={newSubtaskInputs}
+                  handleSubtaskInputChange={handleSubtaskInputChange}
+                  handleKeyPressSubtask={handleKeyPressSubtask}
+                  addSubtask={addSubtask}
+                  toggleSubtaskCompletion={toggleSubtaskCompletion}
+                  showAddChildInputFor={showAddChildInputFor}
+                  setShowAddChildInputFor={setShowAddChildInputFor}
+                  handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
+                  deleteSubtask={deleteSubtask}
+                  renderSubtasksFunction={renderSubtasks}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        );
     };
 
 
     return (
-        <div className="container mx-auto p-4 md:p-6 lg:p-8">
-            <Card className="shadow-lg overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-                    <div className="flex items-center gap-4">
-                        <Link href="/" passHref legacyBehavior>
-                            <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
-                                <ArrowLeft className="h-5 w-5" />
-                                <span className="sr-only">Back to Calendar</span>
-                            </Button>
-                        </Link>
-                        <div>
-                            <CardTitle className="text-2xl text-primary">Manage Your Goals</CardTitle>
-                            <CardDescription className="text-sm text-muted-foreground">
-                                Create goals, break them into subtasks (and sub-subtasks!), and track your progress.
-                            </CardDescription>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
+            <div className="container mx-auto p-4 md:p-6 lg:p-8">
+                <Card className="shadow-lg overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+                        <div className="flex items-center gap-4">
+                            <Link href="/" passHref legacyBehavior>
+                                <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
+                                    <ArrowLeft className="h-5 w-5" />
+                                    <span className="sr-only">Back to Calendar</span>
+                                </Button>
+                            </Link>
+                            <div>
+                                <CardTitle className="text-2xl text-primary">Manage Your Goals</CardTitle>
+                                <CardDescription className="text-sm text-muted-foreground">
+                                    Create goals, break them into subtasks, and track your progress. Drag to reorder.
+                                </CardDescription>
+                            </div>
                         </div>
-                    </div>
-                </CardHeader>
+                    </CardHeader>
 
-                <CardContent className="p-6 space-y-6">
-                    <div className="p-4 border rounded-md bg-secondary/30 shadow-sm">
-                        <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
-                        <div className="flex space-x-2">
-                            <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
-                            <Button onClick={addGoal} size="default" className="h-10"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
+                    <CardContent className="p-6 space-y-6">
+                        <div className="p-4 border rounded-md bg-secondary/30 shadow-sm">
+                            <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
+                            <div className="flex space-x-2">
+                                <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
+                                <Button onClick={addGoal} size="default" className="h-10"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
+                            </div>
                         </div>
-                    </div>
 
-                    {!isClient ? (
-                         <p className="text-base text-muted-foreground text-center py-8">Loading goals...</p>
-                    ) : goals.length === 0 ? (
-                        <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one above to get started!</p>
-                    ) : (
-                        <ScrollArea className="max-h-[calc(100vh-300px)]">
-                             <div className="space-y-4 pr-2">
-                                <Accordion type="multiple" className="w-full">
-                                    {goals.map((goal) => {
-                                        const progress = calculateProgress(goal);
-                                        return (
-                                            <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4"> {/* Added mb-4 here */}
-                                                <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
-                                                    <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/30 rounded-t-md transition-colors">
-                                                        <AccordionTrigger className="flex-grow p-4 text-base font-medium text-left text-primary hover:no-underline">
-                                                            <div className="flex items-center space-x-3 min-w-0">
-                                                                <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 40)}</span>
-                                                                <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0 h-6 px-2.5">{progress}%</Badge>
-                                                            </div>
-                                                        </AccordionTrigger>
-                                                        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 mr-3 shrink-0" onClick={(e) => { e.stopPropagation(); deleteGoal(goal.id); }} aria-label={`Delete goal ${goal.name}`}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </CardHeader>
-                                                    <AccordionContent>
-                                                        <CardContent className="p-4 space-y-4 border-t bg-muted/20">
-                                                            <Progress value={progress} className="h-2.5" />
-                                                            <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-                                                                {goal.subtasks.length === 0 ? (
-                                                                    <p className="text-sm text-muted-foreground italic text-center py-2">No subtasks yet. Add one below.</p>
-                                                                ) : (
-                                                                    renderSubtasks(goal.subtasks, goal.id, 0)
-                                                                )}
-                                                            </div>
-                                                            <div className="flex space-x-2 pt-3 border-t mt-3">
-                                                                <Input
-                                                                    value={newSubtaskInputs[goal.id] || ''}
-                                                                    onChange={(e) => handleSubtaskInputChange(goal.id, e.target.value)}
-                                                                    placeholder="Add a top-level subtask..."
-                                                                    className="h-9 text-sm flex-grow bg-card"
-                                                                    onKeyPress={(e) => handleKeyPressSubtask(e, goal.id)}
-                                                                />
-                                                                <Button onClick={() => addSubtask(goal.id)} size="sm" className="h-9 px-3">
-                                                                    <Plus className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </CardContent>
-                                                    </AccordionContent>
-                                                </Card>
-                                            </AccordionItem>
-                                        );
-                                    })}
-                                </Accordion>
-                             </div>
-                        </ScrollArea>
-                    )}
-                </CardContent>
-            </Card>
+                        {!isClient ? (
+                             <p className="text-base text-muted-foreground text-center py-8">Loading goals...</p>
+                        ) : goals.length === 0 ? (
+                            <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one above to get started!</p>
+                        ) : (
+                            <ScrollArea className="max-h-[calc(100vh-300px)]">
+                                 <div className="space-y-4 pr-2">
+                                    <Accordion type="multiple" className="w-full">
+                                        {goals.map((goal) => {
+                                            const progress = calculateProgress(goal);
+                                            return (
+                                                <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4">
+                                                    <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
+                                                        <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/30 rounded-t-md transition-colors">
+                                                            <AccordionTrigger className="flex-grow p-4 text-base font-medium text-left text-primary hover:no-underline">
+                                                                <div className="flex items-center space-x-3 min-w-0">
+                                                                    <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 40)}</span>
+                                                                    <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0 h-6 px-2.5">{progress}%</Badge>
+                                                                </div>
+                                                            </AccordionTrigger>
+                                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 mr-3 shrink-0" onClick={(e) => { e.stopPropagation(); deleteGoal(goal.id); }} aria-label={`Delete goal ${goal.name}`}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </CardHeader>
+                                                        <AccordionContent>
+                                                            <CardContent className="p-4 space-y-4 border-t bg-muted/20">
+                                                                <Progress value={progress} className="h-2.5" />
+                                                                <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                                                                    {goal.subtasks.length === 0 ? (
+                                                                        <p className="text-sm text-muted-foreground italic text-center py-2">No subtasks yet. Add one below.</p>
+                                                                    ) : (
+                                                                        renderSubtasks(goal.subtasks, goal.id, 0)
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex space-x-2 pt-3 border-t mt-3">
+                                                                    <Input
+                                                                        value={newSubtaskInputs[goal.id] || ''}
+                                                                        onChange={(e) => handleSubtaskInputChange(goal.id, e.target.value)}
+                                                                        placeholder="Add a top-level subtask..."
+                                                                        className="h-9 text-sm flex-grow bg-card"
+                                                                        onKeyPress={(e) => handleKeyPressSubtask(e, goal.id)}
+                                                                    />
+                                                                    <Button onClick={() => addSubtask(goal.id)} size="sm" className="h-9 px-3">
+                                                                        <Plus className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </CardContent>
+                                                        </AccordionContent>
+                                                    </Card>
+                                                </AccordionItem>
+                                            );
+                                        })}
+                                    </Accordion>
+                                 </div>
+                            </ScrollArea>
+                        )}
+                    </CardContent>
+                </Card>
 
-            <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader><FormDialogTitle className="text-primary">{prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}</FormDialogTitle></DialogHeader>
-                 <TaskForm addTask={addTask} onTaskAdded={() => { setIsTaskFormOpen(false); setPrefilledTaskData(null); }} initialData={prefilledTaskData}/>
-              </DialogContent>
-            </Dialog>
-        </div>
+                <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader><FormDialogTitle className="text-primary">{prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}</FormDialogTitle></DialogHeader>
+                     <TaskForm addTask={addTask} onTaskAdded={() => { setIsTaskFormOpen(false); setPrefilledTaskData(null); }} initialData={prefilledTaskData}/>
+                  </DialogContent>
+                </Dialog>
+            </div>
+            <DragOverlay>
+                {activeDraggedItem ? (
+                    <DraggingSubtaskItem name={activeDraggedItem.name} />
+                ) : null}
+            </DragOverlay>
+        </DndContext>
     );
 }
 
