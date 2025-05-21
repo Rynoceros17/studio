@@ -1,5 +1,4 @@
 
-
 export interface Task { // Changed 'type' to 'interface' for better clarity and extensibility
   id: string;
   name: string;
@@ -27,6 +26,7 @@ export interface Subtask {
     id: string;
     name: string;
     completed: boolean;
+    subtasks?: Subtask[]; // Optional: for nested subtasks
 }
 
 export interface Goal {
@@ -34,4 +34,3 @@ export interface Goal {
     name: string;
     subtasks: Subtask[];
 }
-```
