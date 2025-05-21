@@ -252,39 +252,76 @@ export default function GoalsPage() {
 
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => {
-            const baseBgClass = subtask.completed
-                ? 'bg-muted opacity-70'
-                : 'bg-card'; // Consistent background for active tasks
+            let bgClass = '';
+            let textColorClass = '';
+            let checkboxBorderClass = 'border-primary'; // Default for primary and secondary backgrounds
+            let checkmarkColorClass = 'text-primary-foreground'; // Default for primary background
+            let expandChevronColorClass = 'text-primary-foreground'; // Default for primary background
+            let actionButtonVariant: "ghost" | "outline" = "ghost";
+            let actionButtonTextColor = 'text-primary-foreground';
 
-            const textColorClass = subtask.completed
-                ? 'text-muted-foreground'
-                : 'text-card-foreground';
 
-            // Calculate padding based on depth for indentation
-            const paddingLeft = `${depth * 1.25}rem`; // e.g., depth 0 -> 0rem, depth 1 -> 1.25rem, depth 2 -> 2.5rem
+            if (subtask.completed) {
+                bgClass = 'bg-muted opacity-70';
+                textColorClass = 'text-muted-foreground';
+                checkboxBorderClass = 'border-primary'; // Keep primary border for completed
+                checkmarkColorClass = 'text-primary-foreground';
+                expandChevronColorClass = 'text-muted-foreground';
+                actionButtonTextColor = 'text-muted-foreground';
+            } else if (depth === 0) {
+                bgClass = 'bg-primary';
+                textColorClass = 'text-primary-foreground';
+                checkboxBorderClass = 'border-primary-foreground';
+                checkmarkColorClass = 'text-primary';
+                expandChevronColorClass = 'text-primary-foreground';
+                actionButtonTextColor = 'text-primary-foreground';
+            } else if (depth === 1) {
+                bgClass = 'bg-secondary';
+                textColorClass = 'text-secondary-foreground';
+                checkboxBorderClass = 'border-primary'; // Secondary fg is dark, so primary border is fine
+                checkmarkColorClass = 'text-primary';
+                expandChevronColorClass = 'text-secondary-foreground';
+                actionButtonTextColor = 'text-secondary-foreground';
+                actionButtonVariant = 'outline'; // Use outline for better contrast on secondary
+            } else { // depth >= 2
+                bgClass = 'bg-card'; // White background
+                textColorClass = 'text-card-foreground';
+                checkboxBorderClass = 'border-primary';
+                checkmarkColorClass = 'text-primary';
+                expandChevronColorClass = 'text-card-foreground';
+                actionButtonTextColor = 'text-card-foreground';
+                actionButtonVariant = 'outline'; // Use outline for better contrast on card
+            }
+            
+            const paddingLeft = `${depth * 1.25}rem`;
 
             return (
                 <React.Fragment key={subtask.id}>
                     <div
                         className={cn(
                             `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
-                            baseBgClass
+                            bgClass
                         )}
                         style={{ paddingLeft: paddingLeft }}
                     >
                         <div className="flex items-center space-x-2.5 flex-grow min-w-0">
                             {(subtask.subtasks && subtask.subtasks.length > 0) ? (
-                                 <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className={cn("h-6 w-6 shrink-0", textColorClass)}>
+                                 <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className={cn("h-6 w-6 shrink-0", expandChevronColorClass, `hover:bg-transparent hover:opacity-75` )}>
                                     {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                 </Button>
                             ) : (
-                                <div className="w-6 shrink-0"></div> /* Placeholder for alignment if no children */
+                                <div className="w-6 shrink-0"></div> 
                             )}
                             <Checkbox
                                 id={`subtask-${subtask.id}`}
                                 checked={subtask.completed}
                                 onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
-                                className={cn("shrink-0 h-5 w-5")}
+                                className={cn(
+                                    "shrink-0 h-5 w-5",
+                                    checkboxBorderClass,
+                                    subtask.completed && depth === 0 && "data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary", // Specific for primary bg completed
+                                    subtask.completed && depth !== 0 && "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" // Default for others
+                                )}
                                 aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
                             />
                             <Label
@@ -301,9 +338,9 @@ export default function GoalsPage() {
                         </div>
                         <div className="flex items-center shrink-0 space-x-1.5">
                             <Button
-                                variant="outline"
+                                variant={actionButtonVariant}
                                 size="icon"
-                                className="h-7 w-7 border-dashed hover:border-primary text-muted-foreground hover:text-foreground"
+                                className={cn("h-7 w-7 border-dashed", actionButtonTextColor, depth === 0 && !subtask.completed && "border-primary-foreground hover:bg-primary-foreground/10", depth !==0 && !subtask.completed && "hover:border-primary hover:text-primary" )}
                                 onClick={() => setShowAddChildInputFor(subtask.id)}
                                 aria-label={`Add child subtask to ${subtask.name}`}
                                 title="Add Child Subtask"
@@ -311,9 +348,9 @@ export default function GoalsPage() {
                                 <Plus className="h-3.5 w-3.5" />
                             </Button>
                             <Button
-                                variant="outline"
+                                variant={actionButtonVariant}
                                 size="icon"
-                                className="h-7 w-7 text-primary border-primary hover:bg-primary/10"
+                                className={cn("h-7 w-7", actionButtonTextColor, depth === 0 && !subtask.completed && "border-primary-foreground hover:bg-primary-foreground/10", depth !==0 && !subtask.completed && "text-primary border-primary hover:bg-primary/10" )}
                                 onClick={() => handleCreateTaskFromSubtask(subtask)}
                                 aria-label={`Create calendar task for ${subtask.name}`}
                                 title="Create Calendar Task"
@@ -321,9 +358,9 @@ export default function GoalsPage() {
                                 <PlusCircle className="h-3.5 w-3.5" />
                             </Button>
                             <Button
-                                variant="ghost"
+                                variant="ghost" 
                                 size="icon"
-                                className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                                className={cn("h-7 w-7 text-destructive hover:bg-destructive/10", subtask.completed && "hover:bg-destructive/20")}
                                 onClick={() => deleteSubtask(goalId, subtask.id)}
                                 aria-label={`Delete subtask ${subtask.name}`}
                             >
@@ -332,7 +369,7 @@ export default function GoalsPage() {
                         </div>
                     </div>
 
-                    <div className="my-1" style={{ paddingLeft: `${(depth + 1) * 1.25}rem` }}> {/* Indent input form further */}
+                    <div className="my-1" style={{ paddingLeft: `${(depth + 1) * 1.25}rem` }}>
                         {showAddChildInputFor === subtask.id && (
                             <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
                                 <Input
@@ -354,7 +391,6 @@ export default function GoalsPage() {
                     </div>
 
                     {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                        // No additional padding div here, renderSubtasks will handle padding for its children
                         renderSubtasks(subtask.subtasks, goalId, depth + 1)
                     )}
                 </React.Fragment>
