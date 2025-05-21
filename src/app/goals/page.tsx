@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X } from 'lucide-react'; // Added X
+import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn, truncateText } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
@@ -253,7 +253,10 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasks: Subtask[], goalId: string, depth: number): JSX.Element[] => {
         return subtasks.map(subtask => (
             <React.Fragment key={subtask.id}>
-                <div className={`ml-${depth * 4} flex items-center justify-between space-x-2 bg-background/70 p-2.5 rounded-md border shadow-sm my-1`}>
+                <div className={cn(
+                    `ml-${depth * 4} flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm my-1`,
+                    subtask.completed ? 'bg-muted opacity-70' : 'bg-secondary/60'
+                )}>
                     <div className="flex items-center space-x-2.5 flex-grow min-w-0">
                         {(subtask.subtasks && subtask.subtasks.length > 0) && (
                              <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className="h-6 w-6 shrink-0">
@@ -270,7 +273,10 @@ export default function GoalsPage() {
                         />
                         <Label
                             htmlFor={`subtask-${subtask.id}`}
-                            className={cn("text-sm truncate cursor-pointer", subtask.completed && "line-through text-muted-foreground")}
+                            className={cn(
+                                "text-sm truncate cursor-pointer",
+                                subtask.completed ? "line-through text-muted-foreground" : "text-secondary-foreground"
+                            )}
                             title={subtask.name}
                         >
                             {truncateText(subtask.name, 35 - depth * 2)}
