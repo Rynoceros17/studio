@@ -1,58 +1,59 @@
+
 import { useState, useEffect, useCallback } from 'react';
 
-function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
-  // Function to safely get initial value from localStorage
-  const getInitialValue = (): T => {
-    if (typeof window === 'undefined') {
-      return initialValue;
-    }
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error(`Error reading localStorage key “${key}”:`, error);
-      return initialValue;
-    }
-  };
+function useLocalStorage<T>(
+  key: string,
+  initialValue: T
+): [T, (value: T | ((val: T) => T)) => void] {
+  // State to store our value.
+  // Initialize with initialValue. Actual value from localStorage will be loaded in useEffect.
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
 
-  // State to store our value
-  const [storedValue, setStoredValue] = useState<T>(getInitialValue);
-
-  // useEffect to update local storage when the state changes
+  // Effect to load stored value from localStorage on mount (client-side only)
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
     try {
-      // Save state to local storage
+      const item = window.localStorage.getItem(key);
+      if (item !== null) {
+        setStoredValue(JSON.parse(item) as T);
+      }
+      // If item is null, storedValue remains initialValue, which is correct.
+    } catch (error) {
+      console.error(`Error reading localStorage key “${key}”:`, error);
+      // Fallback to initialValue if reading/parsing fails
+      setStoredValue(initialValue);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]); // Only re-run if key changes
+
+  // Effect to save value to localStorage whenever storedValue changes
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
       window.localStorage.setItem(key, JSON.stringify(storedValue));
     } catch (error) {
       console.error(`Error setting localStorage key “${key}”:`, error);
     }
-  }, [key, storedValue]); // Depend on storedValue directly
+  }, [key, storedValue]);
 
-  // Define the setter function using useCallback for stability
-   const setValue = useCallback((value: T | ((val: T) => T)) => {
-       try {
-           // Allow value to be a function so we have the same API as useState
-           const valueToStore = value instanceof Function ? value(storedValue) : value;
-           // Set state
-           setStoredValue(valueToStore);
-           // Update local storage immediately as well (redundant with useEffect but ensures consistency if effect hasn't run)
-           if (typeof window !== 'undefined') {
-               window.localStorage.setItem(key, JSON.stringify(valueToStore));
-           }
-       } catch (error) {
-            console.error(`Error setting value for key “${key}”:`, error);
-       }
-   }, [key, storedValue]); // Include storedValue in dependency array if needed by functional updates
-
-
-  // Re-sync with local storage if the key changes (though unlikely in this app)
-  useEffect(() => {
-      setStoredValue(getInitialValue());
-  }, [key]);
-
+  // Setter function
+  const setValue = useCallback(
+    (value: T | ((val: T) => T)) => {
+      // Allow value to be a function, similar to useState's setter
+      setStoredValue(value);
+    },
+    // setStoredValue from useState is stable, so no dependencies needed here
+    // if we only pass it. However, if the component using this hook passes
+    // `setValue` as a prop that might cause re-renders, this `useCallback`
+    // without dependencies on `storedValue` itself can be beneficial.
+    // For this implementation, `key` is not strictly needed as `setStoredValue`
+    // is stable, but it's harmless.
+    [key] 
+  );
 
   return [storedValue, setValue];
 }
