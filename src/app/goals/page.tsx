@@ -254,43 +254,30 @@ export default function GoalsPage() {
         return subtasks.map(subtask => {
             let bgClass = '';
             let textColorClass = '';
-            let checkboxBorderClass = 'border-primary'; // Default for primary and secondary backgrounds
-            let checkmarkColorClass = 'text-primary-foreground'; // Default for primary background
-            let expandChevronColorClass = 'text-primary-foreground'; // Default for primary background
-            let actionButtonVariant: "ghost" | "outline" = "ghost";
-            let actionButtonTextColor = 'text-primary-foreground';
-
+            let checkboxBorderClass = 'border-primary';
+            let expandChevronColorClass = 'text-foreground'; // Default for card background
+            let actionButtonVariant: "ghost" | "outline" = "outline"; // Default to outline for contrast
 
             if (subtask.completed) {
                 bgClass = 'bg-muted opacity-70';
                 textColorClass = 'text-muted-foreground';
-                checkboxBorderClass = 'border-primary'; // Keep primary border for completed
-                checkmarkColorClass = 'text-primary-foreground';
-                expandChevronColorClass = 'text-muted-foreground';
-                actionButtonTextColor = 'text-muted-foreground';
-            } else if (depth === 0) {
-                bgClass = 'bg-primary';
-                textColorClass = 'text-primary-foreground';
-                checkboxBorderClass = 'border-primary-foreground';
-                checkmarkColorClass = 'text-primary';
-                expandChevronColorClass = 'text-primary-foreground';
-                actionButtonTextColor = 'text-primary-foreground';
-            } else if (depth === 1) {
-                bgClass = 'bg-secondary';
-                textColorClass = 'text-secondary-foreground';
-                checkboxBorderClass = 'border-primary'; // Secondary fg is dark, so primary border is fine
-                checkmarkColorClass = 'text-primary';
-                expandChevronColorClass = 'text-secondary-foreground';
-                actionButtonTextColor = 'text-secondary-foreground';
-                actionButtonVariant = 'outline'; // Use outline for better contrast on secondary
-            } else { // depth >= 2
-                bgClass = 'bg-card'; // White background
-                textColorClass = 'text-card-foreground';
                 checkboxBorderClass = 'border-primary';
-                checkmarkColorClass = 'text-primary';
+                expandChevronColorClass = 'text-muted-foreground';
+            } else if (depth === 0) { // Parent subtasks
+                bgClass = 'bg-secondary'; // Very Light Purple
+                textColorClass = 'text-secondary-foreground'; // Dark Grey
+                checkboxBorderClass = 'border-primary'; // Primary border (purple)
+                expandChevronColorClass = 'text-secondary-foreground';
+            } else if (depth === 1) { // Child subtasks
+                bgClass = 'bg-muted'; // Lighter version of Secondary
+                textColorClass = 'text-muted-foreground'; // Muted Grey
+                checkboxBorderClass = 'border-primary';
+                expandChevronColorClass = 'text-muted-foreground';
+            } else { // Grandchild and deeper (depth >= 2)
+                bgClass = 'bg-card'; // White background
+                textColorClass = 'text-card-foreground'; // Dark Grey
+                checkboxBorderClass = 'border-primary';
                 expandChevronColorClass = 'text-card-foreground';
-                actionButtonTextColor = 'text-card-foreground';
-                actionButtonVariant = 'outline'; // Use outline for better contrast on card
             }
             
             const paddingLeft = `${depth * 1.25}rem`;
@@ -319,8 +306,8 @@ export default function GoalsPage() {
                                 className={cn(
                                     "shrink-0 h-5 w-5",
                                     checkboxBorderClass,
-                                    subtask.completed && depth === 0 && "data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary", // Specific for primary bg completed
-                                    subtask.completed && depth !== 0 && "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" // Default for others
+                                    // Standard checked state for all depths, as backgrounds are light
+                                    "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                                 )}
                                 aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
                             />
@@ -340,7 +327,11 @@ export default function GoalsPage() {
                             <Button
                                 variant={actionButtonVariant}
                                 size="icon"
-                                className={cn("h-7 w-7 border-dashed", actionButtonTextColor, depth === 0 && !subtask.completed && "border-primary-foreground hover:bg-primary-foreground/10", depth !==0 && !subtask.completed && "hover:border-primary hover:text-primary" )}
+                                className={cn(
+                                    "h-7 w-7 border-dashed",
+                                    textColorClass, // Use the general text color for the icon
+                                    !subtask.completed && "hover:border-primary hover:text-primary" // Consistent hover for active tasks
+                                )}
                                 onClick={() => setShowAddChildInputFor(subtask.id)}
                                 aria-label={`Add child subtask to ${subtask.name}`}
                                 title="Add Child Subtask"
@@ -350,7 +341,11 @@ export default function GoalsPage() {
                             <Button
                                 variant={actionButtonVariant}
                                 size="icon"
-                                className={cn("h-7 w-7", actionButtonTextColor, depth === 0 && !subtask.completed && "border-primary-foreground hover:bg-primary-foreground/10", depth !==0 && !subtask.completed && "text-primary border-primary hover:bg-primary/10" )}
+                                className={cn(
+                                    "h-7 w-7",
+                                    textColorClass,
+                                    !subtask.completed && "text-primary border-primary hover:bg-primary/10" // Make "Create Task" stand out
+                                )}
                                 onClick={() => handleCreateTaskFromSubtask(subtask)}
                                 aria-label={`Create calendar task for ${subtask.name}`}
                                 title="Create Calendar Task"
