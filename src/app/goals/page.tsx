@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
+import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon } from 'lucide-react'; // Removed Sparkles
 import { useToast } from "@/hooks/use-toast";
 import { cn, truncateText } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
@@ -28,7 +28,7 @@ import {
 import { format, parseISO, isValid } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { suggestSubtasksForGoal } from '@/ai/flows/suggest-subtasks-flow';
+// Removed: import { suggestSubtasksForGoal } from '@/ai/flows/suggest-subtasks-flow';
 
 
 import {
@@ -131,7 +131,7 @@ function SortableListItem({
         zIndex: isDragging ? 100 : 'auto',
     };
 
-    let bgClass = 'bg-card'; // Default for depth 2+
+    let bgClass = 'bg-card';
     let textColorClass = 'text-card-foreground';
     let expandChevronColorClass = 'text-card-foreground';
 
@@ -140,9 +140,9 @@ function SortableListItem({
         textColorClass = 'text-muted-foreground';
         expandChevronColorClass = 'text-muted-foreground';
     } else if (depth === 0) {
-        bgClass = 'bg-secondary/70'; // Lighter purple for parent
+        bgClass = 'bg-secondary/70'; // Parent
     } else if (depth === 1) {
-        bgClass = 'bg-muted/50'; // Even lighter for child
+        bgClass = 'bg-muted/70';    // Child
     }
     // Deeper levels (depth >= 2) use default bg-card
 
@@ -262,7 +262,7 @@ function SortableListItem({
             </div>
 
             {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                <div className="pl-0"> {/* Removed pl-6 */}
+                <div className="pl-0">
                    {renderSubtasksFunction(subtask.subtasks, goalId, depth + 1)}
                 </div>
             )}
@@ -297,8 +297,9 @@ export default function GoalsPage() {
     const [isClient, setIsClient] = useState(false);
     const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null);
     
-    const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
-    const [isSuggestingSubtasks, setIsSuggestingSubtasks] = useState(false);
+    // Removed states for subtask suggestions
+    // const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
+    // const [isSuggestingSubtasks, setIsSuggestingSubtasks] = useState(false);
 
 
     useEffect(() => {
@@ -410,28 +411,7 @@ export default function GoalsPage() {
        setIsTaskFormOpen(false); setPrefilledTaskData(null);
     };
 
-    const handleSuggestSubtasks = async () => {
-        if (!newGoalName.trim()) {
-            toast({ title: "Goal Name Required", description: "Please enter a goal name to get subtask suggestions.", variant: "destructive" });
-            return;
-        }
-        setIsSuggestingSubtasks(true);
-        try {
-            const suggestions = await suggestSubtasksForGoal({ goalName: newGoalName.trim() });
-            setSuggestedSubtasks(suggestions.subtaskNames || []);
-            if ((suggestions.subtaskNames || []).length > 0) {
-              toast({ title: "Subtasks Suggested!", description: "Review the suggestions below." });
-            } else {
-              toast({ title: "No Suggestions", description: "Couldn't generate subtasks for this goal. Try rephrasing.", variant: "default" });
-            }
-        } catch (error) {
-            console.error("Error suggesting subtasks:", error);
-            toast({ title: "Suggestion Error", description: "Could not generate subtask suggestions at this time.", variant: "destructive" });
-            setSuggestedSubtasks([]);
-        } finally {
-            setIsSuggestingSubtasks(false);
-        }
-    };
+    // Removed handleSuggestSubtasks function
 
     const addGoal = () => {
         if (!newGoalName.trim()) {
@@ -441,12 +421,12 @@ export default function GoalsPage() {
             id: crypto.randomUUID(), 
             name: newGoalName.trim(), 
             dueDate: newGoalDueDate ? format(newGoalDueDate, 'yyyy-MM-dd') : undefined,
-            subtasks: suggestedSubtasks.map(name => ({ id: crypto.randomUUID(), name, completed: false, subtasks: [] }))
+            subtasks: [] // Subtasks are no longer pre-filled by suggestions
         };
         setGoals(prev => [...prev, newGoal]);
         setNewGoalName('');
         setNewGoalDueDate(undefined);
-        setSuggestedSubtasks([]);
+        // Removed: setSuggestedSubtasks([]);
         toast({ title: "Goal Added", description: `"${newGoal.name}" ${newGoal.dueDate ? `(Due: ${format(parseISO(newGoal.dueDate), 'PPP')})` : ''} added successfully.` });
     };
 
@@ -636,20 +616,10 @@ export default function GoalsPage() {
                                 <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
                                 <div className="flex space-x-2">
                                     <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
-                                     <Button onClick={handleSuggestSubtasks} variant="outline" size="default" className="h-10 shrink-0" disabled={isSuggestingSubtasks || !newGoalName.trim()}>
-                                        {isSuggestingSubtasks ? <Sparkles className="mr-2 h-4 w-4 animate-pulse" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                        Suggest
-                                    </Button>
+                                     {/* Removed Suggest Subtasks Button */}
                                 </div>
                             </div>
-                             {suggestedSubtasks.length > 0 && !isSuggestingSubtasks && (
-                                <div className="p-3 border rounded-md bg-background/70 shadow-inner">
-                                    <p className="text-xs font-medium text-muted-foreground mb-2">Suggested Subtasks (will be added with goal):</p>
-                                    <ul className="list-disc list-inside space-y-1 text-sm">
-                                        {suggestedSubtasks.map((s, i) => <li key={i} className="text-card-foreground">{s}</li>)}
-                                    </ul>
-                                </div>
-                            )}
+                             {/* Removed suggested subtasks display */}
                             <div>
                                 <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
                                 <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
