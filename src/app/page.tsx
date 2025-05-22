@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core';
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
-import { PomodoroTimer } from '@/components/PomodoroTimer';
+import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
 import type { Task, Goal, UpcomingItem } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
@@ -44,10 +44,10 @@ import {
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
-import { GoalsSheet } from '@/components/GoalsSheet';
-import { NaturalLanguageTaskDialog } from '@/components/NaturalLanguageTaskDialog';
+// import { GoalsSheet } from '@/components/GoalsSheet'; // Goals is now a page
+// import { NaturalLanguageTaskDialog } from '@/components/NaturalLanguageTaskDialog'; // Removing this
 import { TopTaskBar } from '@/components/TopTaskBar';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2 } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react'; // Removed Wand2
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader as PageCardHeader, CardTitle as PageCardTitle } from '@/components/ui/card';
@@ -67,18 +67,21 @@ export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false);
+  // const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // Removed, goals is a page
   const [isTimerVisible, setIsTimerVisible] = useState(false);
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
-  const [isNaturalLanguageTaskDialogOpen, setIsNaturalLanguageTaskDialogOpen] = useState(false);
+  // const [isNaturalLanguageTaskDialogOpen, setIsNaturalLanguageTaskDialogOpen] = useState(false); // Removing this
   const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
-    const initialX = typeof window !== 'undefined' ? window.innerWidth - 300 - 24 : 0;
-    const initialY = 24;
-    setTimerPosition({ x: initialX, y: initialY });
+    if (typeof window !== 'undefined') {
+        const initialX = window.innerWidth - 300 - 24;
+        const initialY = 24;
+        setTimerPosition({ x: initialX, y: initialY });
+    }
   }, []);
 
   const sensors = useSensors(
@@ -149,7 +152,7 @@ export default function Home() {
          description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
      });
      setIsFormOpen(false);
-     setIsNaturalLanguageTaskDialogOpen(false);
+     // setIsNaturalLanguageTaskDialogOpen(false); // Removing this
   }, [setTasks, toast, parseISOStrict]);
 
   const deleteAllOccurrences = useCallback((id: string) => {
@@ -350,7 +353,7 @@ export default function Home() {
   }, [setTasks, toast, parseISOStrict]);
 
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
-    if (!isClient) return [];
+    if (!isClient) return []; // Ensure this runs only on client
     const today = startOfDay(new Date());
 
     const mappedTasks: UpcomingItem[] = tasks
@@ -388,11 +391,11 @@ export default function Home() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header className={cn(
-        "bg-background border-b shadow-sm w-full", // Always a row, full width
-        "flex h-16 items-center justify-between px-4" // Consistent height and padding
+        "bg-background border-b shadow-sm w-full",
+        "flex h-16 items-center justify-between px-4"
       )}>
         <nav className={cn(
-          "flex items-center space-x-1" // Icons always on the left
+          "flex items-center space-x-1"
         )}>
           <Link href="/dashboard" passHref legacyBehavior>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
@@ -448,11 +451,11 @@ export default function Home() {
 
         <h1 className={cn(
           "text-xl md:text-2xl font-bold text-primary tracking-tight",
-          "flex-grow text-center" // Title takes available space and centers its text
+          "flex-grow text-center"
         )}>WeekWise</h1>
         
         <div className={cn(
-          "flex items-center space-x-1 invisible" // Always present but invisible spacer
+          "flex items-center space-x-1 invisible"
         )} aria-hidden="true">
           {/* Spacer to balance the nav icons for centering the title */}
             <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
@@ -490,7 +493,8 @@ export default function Home() {
 
 
            <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col space-y-2 items-end">
-                <Button
+                {/* Removing Natural Language Task Button */}
+                {/* <Button
                     variant="outline"
                     size="icon"
                     className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
@@ -498,7 +502,7 @@ export default function Home() {
                     onClick={() => setIsNaturalLanguageTaskDialogOpen(true)}
                 >
                     <Wand2 className="h-6 w-6 text-primary" />
-                </Button>
+                </Button> */}
 
                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                   <DialogTrigger asChild>
@@ -531,11 +535,12 @@ export default function Home() {
           />
         )}
 
-        <NaturalLanguageTaskDialog
+        {/* Removing NaturalLanguageTaskDialog invocation */}
+        {/* <NaturalLanguageTaskDialog
             isOpen={isNaturalLanguageTaskDialogOpen}
             onClose={() => setIsNaturalLanguageTaskDialogOpen(false)}
             onTaskAdd={addTask}
-        />
+        /> */}
 
         <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
             <AlertDialogContent>
@@ -568,4 +573,3 @@ export default function Home() {
 }
         
     
-
