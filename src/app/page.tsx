@@ -13,9 +13,8 @@ import {
 } from '@dnd-kit/core';
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
-import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
-import { QuickCaptureSheet } from '@/components/QuickCaptureSheet'; // Import QuickCaptureSheet
-import type { Task, Subtask } from '@/lib/types'; // Added Subtask type
+import { PomodoroTimer } from '@/components/PomodoroTimer';
+import type { Task, Subtask } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -45,13 +44,14 @@ import {
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
-import { GoalsSheet } from '@/components/GoalsSheet'; // Import GoalsSheet
+import { GoalsSheet } from '@/components/GoalsSheet';
 import { NaturalLanguageTaskDialog } from '@/components/NaturalLanguageTaskDialog';
-import { DueDateTaskDialog } from '@/components/DueDateTaskDialog'; // New Import
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // Added Card imports
-import { ScrollArea } from '@/components/ui/scroll-area'; // Added ScrollArea import
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2, Camera, CalendarPlus } from 'lucide-react'; // Added Wand2, Camera, CalendarPlus
-import { format, parseISO } from 'date-fns';
+import { DueDateTaskDialog } from '@/components/DueDateTaskDialog';
+import { TopTaskBar } from '@/components/TopTaskBar'; // New Import
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2, CalendarPlus } from 'lucide-react';
+import { format, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 
@@ -67,15 +67,15 @@ export default function Home() {
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
-  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for BookmarkListSheet
-  const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // State for GoalsSheet
-  const [isQuickCaptureSheetOpen, setIsQuickCaptureSheetOpen] = useState(false); // State for QuickCaptureSheet
+  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false);
+  const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false);
   const [isTimerVisible, setIsTimerVisible] = useState(false);
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [isNaturalLanguageTaskDialogOpen, setIsNaturalLanguageTaskDialogOpen] = useState(false);
-  const [isDueDateTaskDialogOpen, setIsDueDateTaskDialogOpen] = useState(false); // New state
+  const [isDueDateTaskDialogOpen, setIsDueDateTaskDialogOpen] = useState(false);
+  const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(false); // New state for top bar
 
   useEffect(() => {
     setIsClient(true);
@@ -118,7 +118,7 @@ export default function Home() {
          id: crypto.randomUUID(),
          files: newTaskData.files ?? [],
          details: newTaskData.details ?? '',
-         dueDate: newTaskData.dueDate, // Ensure dueDate is included
+         dueDate: newTaskData.dueDate,
          recurring: newTaskData.recurring ?? false,
          highPriority: newTaskData.highPriority ?? false,
          exceptions: [],
@@ -152,8 +152,8 @@ export default function Home() {
          description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
      });
      setIsFormOpen(false);
-     setIsNaturalLanguageTaskDialogOpen(false); // Close natural language dialog if open
-     setIsDueDateTaskDialogOpen(false); // Close due date task dialog if open
+     setIsNaturalLanguageTaskDialogOpen(false);
+     setIsDueDateTaskDialogOpen(false);
   }, [setTasks, toast, parseISOStrict]);
 
   const deleteAllOccurrences = useCallback((id: string) => {
@@ -323,11 +323,14 @@ export default function Home() {
      const updatedTasks = prevTasks.map(task => {
        if (task.id === id) {
            const updatedTask = { ...task, ...updates };
+            if (updates.dueDate && updates.dueDate !== task.dueDate) {
+                needsResort = true; // Due date change might affect sorting if bar uses it
+            }
          return updatedTask;
        }
        return task;
      });
-      if (needsResort) {
+      if (needsResort) { // Placeholder for more complex sorting if top bar sorting relies on this
            updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
@@ -368,10 +371,34 @@ export default function Home() {
     });
   }, [tasks, parseISOStrict]);
 
+  const tasksWithUpcomingDueDates = useMemo(() => {
+    if (!isClient || !tasks) return [];
+    const today = startOfDay(new Date());
+    return tasks
+      .filter(task => {
+        if (!task.dueDate) return false;
+        try {
+          const dueDate = parseISOStrict(task.dueDate);
+          return dueDate && dueDate >= today;
+        } catch (e) {
+          return false;
+        }
+      })
+      .sort((a, b) => {
+        // Ensure dueDate exists before parsing for sort
+        const dueDateA = a.dueDate ? parseISOStrict(a.dueDate) : null;
+        const dueDateB = b.dueDate ? parseISOStrict(b.dueDate) : null;
+        if (!dueDateA && !dueDateB) return 0;
+        if (!dueDateA) return 1;
+        if (!dueDateB) return -1;
+        return dueDateA.getTime() - dueDateB.getTime();
+      });
+  }, [tasks, isClient, parseISOStrict]);
+
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden">
-        {/* Top-left fixed icon for DueDateTaskDialog */}
         <div className="fixed top-4 left-4 z-50">
           <Button
             variant="outline"
@@ -385,6 +412,14 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-7xl space-y-4">
+          {isClient && (
+            <TopTaskBar
+              tasks={tasksWithUpcomingDueDates}
+              isExpanded={isTopTaskBarExpanded}
+              onToggle={() => setIsTopTaskBarExpanded(!isTopTaskBarExpanded)}
+            />
+          )}
+
           <header className="text-center py-2 relative z-10">
             <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
           </header>
@@ -402,7 +437,6 @@ export default function Home() {
               />
           )}
 
-          {/* Ongoing Projects Section */}
           {isClient && ongoingProjects.length > 0 && (
             <Card className="mt-4 shadow-lg bg-card border-border">
               <CardHeader>
@@ -433,9 +467,7 @@ export default function Home() {
             </Card>
           )}
 
-           {/* Bottom Right Icons */}
            <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col space-y-2 items-end">
-                {/* Natural Language Task Adder FAB */}
                 <Button
                     variant="outline"
                     size="icon"
@@ -446,7 +478,6 @@ export default function Home() {
                     <Wand2 className="h-6 w-6 text-primary" />
                 </Button>
 
-                {/* Standard Add Task FAB */}
                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                   <DialogTrigger asChild>
                     <Button
@@ -611,4 +642,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
