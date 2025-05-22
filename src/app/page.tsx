@@ -46,11 +46,8 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { GoalsSheet } from '@/components/GoalsSheet';
 import { NaturalLanguageTaskDialog } from '@/components/NaturalLanguageTaskDialog';
-// import { DueDateTaskDialog } from '@/components/DueDateTaskDialog'; // Removed this import
 import { TopTaskBar } from '@/components/TopTaskBar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2 } from 'lucide-react'; // Removed CalendarPlus
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2 } from 'lucide-react';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -87,8 +84,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [isNaturalLanguageTaskDialogOpen, setIsNaturalLanguageTaskDialogOpen] = useState(false);
-  // const [isDueDateTaskDialogOpen, setIsDueDateTaskDialogOpen] = useState(false); // Removed this state
-  const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(false);
+  const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(true); // Set to true to be open by default
 
   useEffect(() => {
     setIsClient(true);
@@ -166,7 +162,6 @@ export default function Home() {
      });
      setIsFormOpen(false);
      setIsNaturalLanguageTaskDialogOpen(false);
-    //  setIsDueDateTaskDialogOpen(false); // Removed this line
   }, [setTasks, toast, parseISOStrict]);
 
   const deleteAllOccurrences = useCallback((id: string) => {
@@ -337,13 +332,13 @@ export default function Home() {
        if (task.id === id) {
            const updatedTask = { ...task, ...updates };
             if (updates.dueDate && updates.dueDate !== task.dueDate) {
-                needsResort = true; 
+                needsResort = true;
             }
          return updatedTask;
        }
        return task;
      });
-      if (needsResort) { 
+      if (needsResort) {
            updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
@@ -365,24 +360,6 @@ export default function Home() {
      description: "Additional details have been updated.",
    });
   }, [setTasks, toast, parseISOStrict]);
-
-  const ongoingProjects = useMemo(() => {
-    if (!tasks) return [];
-    return tasks.filter(task => {
-      if (task.recurring || !task.dueDate || !task.date) return false;
-      try {
-        const startDate = parseISOStrict(task.date);
-        const dueDate = parseISOStrict(task.dueDate);
-        return startDate && dueDate && dueDate > startDate;
-      } catch (e) {
-        return false;
-      }
-    }).sort((a, b) => {
-        const dateA = parseISOStrict(a.date) ?? new Date(0);
-        const dateB = parseISOStrict(b.date) ?? new Date(0);
-        return dateA.getTime() - dateB.getTime();
-    });
-  }, [tasks, parseISOStrict]);
 
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
     if (!isClient) return [];
@@ -409,7 +386,7 @@ export default function Home() {
         dueDate: goal.dueDate!,
         type: 'goal',
       }));
-    
+
     const combinedItems = [...mappedTasks, ...mappedGoals];
 
     return combinedItems.sort((a, b) => {
@@ -423,7 +400,6 @@ export default function Home() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden">
-        {/* Removed Top-Left CalendarPlus Icon Button */}
 
         <div className="w-full max-w-7xl space-y-4">
           <header className="text-center py-2 relative z-10">
@@ -445,40 +421,10 @@ export default function Home() {
 
           {isClient && (
             <TopTaskBar
-              items={upcomingItemsForBar} // Changed prop name
+              items={upcomingItemsForBar}
               isExpanded={isTopTaskBarExpanded}
               onToggle={() => setIsTopTaskBarExpanded(!isTopTaskBarExpanded)}
             />
-          )}
-
-          {isClient && ongoingProjects.length > 0 && (
-            <Card className="mt-4 shadow-lg bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-xl text-primary flex items-center">
-                  <LayoutDashboard className="mr-2 h-5 w-5" /> Ongoing Projects
-                </CardTitle>
-                <CardDescription>Tasks spanning multiple days.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="max-h-[200px] pr-2">
-                  <div className="space-y-3">
-                    {ongoingProjects.map(project => (
-                      <Card key={project.id} className="p-3 bg-secondary/50 border-border shadow-sm">
-                        <h4 className="font-semibold text-sm text-secondary-foreground truncate" title={project.name}>{project.name}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {format(parseISOStrict(project.date)!, 'MMM d')} - {format(parseISOStrict(project.dueDate!)!, 'MMM d, yyyy')}
-                        </p>
-                        {project.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2" title={project.description}>
-                            {project.description}
-                          </p>
-                        )}
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
           )}
 
            <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col space-y-2 items-end">
@@ -620,8 +566,6 @@ export default function Home() {
             onClose={() => setIsNaturalLanguageTaskDialogOpen(false)}
             onTaskAdd={addTask}
         />
-
-        {/* Removed DueDateTaskDialog usage */}
 
         <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
             <AlertDialogContent>
