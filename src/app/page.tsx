@@ -47,7 +47,7 @@ import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { GoalsSheet } from '@/components/GoalsSheet';
 import { NaturalLanguageTaskDialog } from '@/components/NaturalLanguageTaskDialog';
 import { DueDateTaskDialog } from '@/components/DueDateTaskDialog';
-import { TopTaskBar } from '@/components/TopTaskBar'; // New Import
+import { TopTaskBar } from '@/components/TopTaskBar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2, CalendarPlus } from 'lucide-react';
@@ -75,7 +75,7 @@ export default function Home() {
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [isNaturalLanguageTaskDialogOpen, setIsNaturalLanguageTaskDialogOpen] = useState(false);
   const [isDueDateTaskDialogOpen, setIsDueDateTaskDialogOpen] = useState(false);
-  const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(false); // New state for top bar
+  const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -412,14 +412,6 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-7xl space-y-4">
-          {isClient && (
-            <TopTaskBar
-              tasks={tasksWithUpcomingDueDates}
-              isExpanded={isTopTaskBarExpanded}
-              onToggle={() => setIsTopTaskBarExpanded(!isTopTaskBarExpanded)}
-            />
-          )}
-
           <header className="text-center py-2 relative z-10">
             <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
           </header>
@@ -435,6 +427,14 @@ export default function Home() {
                 updateTask={updateTask}
                 completedCount={completedCount}
               />
+          )}
+
+          {isClient && (
+            <TopTaskBar
+              tasks={tasksWithUpcomingDueDates}
+              isExpanded={isTopTaskBarExpanded}
+              onToggle={() => setIsTopTaskBarExpanded(!isTopTaskBarExpanded)}
+            />
           )}
 
           {isClient && ongoingProjects.length > 0 && (
@@ -642,3 +642,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
