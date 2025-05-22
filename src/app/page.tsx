@@ -14,7 +14,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Subtask, Goal } from '@/lib/types'; // Added Goal
+import type { Task, Subtask, Goal } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -50,6 +50,8 @@ import { TopTaskBar } from '@/components/TopTaskBar';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2 } from 'lucide-react';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle as PageCardTitle } from '@/components/ui/card';
+
 
 // Define a common structure for items in the TopTaskBar
 export interface UpcomingItem {
@@ -66,7 +68,7 @@ export interface UpcomingItem {
 
 export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
-  const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []); // Load goals
+  const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -84,7 +86,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [isNaturalLanguageTaskDialogOpen, setIsNaturalLanguageTaskDialogOpen] = useState(false);
-  const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(true); // Set to true to be open by default
+  const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
@@ -399,12 +401,84 @@ export default function Home() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
-      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden">
+      <header className="fixed top-0 left-0 right-0 z-30 h-16 bg-background border-b shadow-sm flex items-center justify-between px-4">
+        <nav className="flex items-center space-x-1">
+          <Link href="/dashboard" passHref legacyBehavior>
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
+              <LayoutDashboard className="h-5 w-5" />
+            </Button>
+          </Link>
+          <Link href="/study-tracker" passHref legacyBehavior>
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to study tracker">
+              <BookOpen className="h-5 w-5" />
+            </Button>
+          </Link>
+          <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View goals">
+                <Target className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+              <SheetHeader className="p-4 border-b shrink-0">
+                <SheetTitle className="text-primary">Goals</SheetTitle>
+              </SheetHeader>
+              <GoalsSheet />
+            </SheetContent>
+          </Sheet>
+          <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View bookmarks">
+                <BookmarkIcon className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+              <SheetHeader className="p-4 border-b shrink-0">
+                <SheetTitle className="text-primary">Bookmarks</SheetTitle>
+              </SheetHeader>
+              <BookmarkListSheet />
+            </SheetContent>
+          </Sheet>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-primary hover:bg-primary/10"
+            aria-label="Toggle Pomodoro Timer"
+            onClick={() => setIsTimerVisible(!isTimerVisible)}
+          >
+            <TimerIcon className="h-5 w-5" />
+          </Button>
+          <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View scratchpad">
+                <List className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+              <SheetHeader className="p-4 border-b shrink-0">
+                <SheetTitle className="text-primary">Scratchpad</SheetTitle>
+              </SheetHeader>
+              <TaskListSheet />
+            </SheetContent>
+          </Sheet>
+        </nav>
 
+        <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">WeekWise</h1>
+        
+        {/* Spacer div to balance the left navigation icons for centering the title */}
+        <div className="flex items-center space-x-1 invisible" aria-hidden="true">
+          <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9"><BookOpen className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9"><Target className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9"><BookmarkIcon className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9"><TimerIcon className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9"><List className="h-5 w-5" /></Button>
+        </div>
+      </header>
+
+      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden pt-16">
         <div className="w-full max-w-7xl space-y-4">
-          <header className="text-center py-2 relative z-10">
-            <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
-          </header>
+          {/* The old header with "WeekWise" title is removed from here */}
 
           {isClient && (
               <CalendarView
@@ -460,98 +534,6 @@ export default function Home() {
                   </DialogContent>
                 </Dialog>
            </div>
-
-         <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2">
-             <Link href="/dashboard" passHref legacyBehavior>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-                    aria-label="Go to dashboard"
-                    asChild
-                >
-                    <a>
-                      <LayoutDashboard className="h-6 w-6 text-primary" />
-                    </a>
-                </Button>
-             </Link>
-             <Link href="/study-tracker" passHref legacyBehavior>
-                 <Button
-                     variant="outline"
-                     size="icon"
-                     className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-                     aria-label="Go to study tracker"
-                     asChild
-                 >
-                     <a>
-                         <BookOpen className="h-6 w-6 text-primary" />
-                     </a>
-                 </Button>
-             </Link>
-             <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
-                <SheetTrigger asChild>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-                        aria-label="View goals"
-                    >
-                        <Target className="h-6 w-6 text-primary" />
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b shrink-0">
-                         <SheetTitle className="text-primary">Goals</SheetTitle>
-                     </SheetHeader>
-                     <GoalsSheet />
-                 </SheetContent>
-             </Sheet>
-             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
-                 <SheetTrigger asChild>
-                     <Button
-                         variant="outline"
-                         size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-                         aria-label="View bookmarks"
-                     >
-                         <BookmarkIcon className="h-6 w-6 text-primary" />
-                     </Button>
-                 </SheetTrigger>
-                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b shrink-0">
-                         <SheetTitle className="text-primary">Bookmarks</SheetTitle>
-                     </SheetHeader>
-                     <BookmarkListSheet />
-                 </SheetContent>
-             </Sheet>
-             <Button
-                 variant="outline"
-                 size="icon"
-                 className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-                 aria-label="Toggle Pomodoro Timer"
-                 onClick={() => setIsTimerVisible(!isTimerVisible)}
-             >
-                 <TimerIcon className="h-6 w-6 text-primary" />
-             </Button>
-             <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
-                 <SheetTrigger asChild>
-                     <Button
-                         variant="outline"
-                         size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-                         aria-label="View scratchpad"
-                     >
-                         <List className="h-6 w-6 text-primary" />
-                     </Button>
-                 </SheetTrigger>
-                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b shrink-0">
-                         <SheetTitle className="text-primary">Scratchpad</SheetTitle>
-                     </SheetHeader>
-                     <TaskListSheet />
-                 </SheetContent>
-             </Sheet>
-         </div>
         </div>
 
         {isClient && isTimerVisible && (
@@ -596,3 +578,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
