@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
 
 // Helper function to safely parse JSON
 function safeJsonParse<T>(jsonString: string | null, fallback: T): T {
@@ -21,50 +21,45 @@ function safeJsonParse<T>(jsonString: string | null, fallback: T): T {
 function useLocalStorage<T>(
   key: string,
   initialValue: T
-): [T, React.Dispatch<React.SetStateAction<T>>] {
+): [T, Dispatch<SetStateAction<T>>] {
   // State to store our value
-  // Pass initial state function to useState so logic is only executed once
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    // This part runs only on the client during initial hydration/mount for useState.
-    // However, to prevent hydration errors, it's safer to always return initialValue here,
-    // and then load from localStorage in a useEffect.
-    return initialValue;
-  });
-
-  // useEffect to update the state with the value from localStorage on mount (client-side only)
-  useEffect(() => {
+  // Pass initial state function to useState so logic is only executed once on client.
+  const [storedValue, setStoredValueState] = useState<T>(() => {
     if (typeof window === "undefined") {
-      return;
+      return initialValue;
     }
     try {
       const item = window.localStorage.getItem(key);
       // Parse stored json or if none return initialValue
-      if (item !== null) { // Only update if item actually exists
-        setStoredValue(safeJsonParse(item, initialValue));
-      }
+      return item ? safeJsonParse(item, initialValue) : initialValue;
     } catch (error) {
       // If error also return initialValue
-      console.warn(`Error reading localStorage key “${key}”:`, error);
-      setStoredValue(initialValue);
+      console.warn(`Error reading localStorage key “${key}” on init:`, error);
+      return initialValue;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]); // Only re-run if key changes
+  });
 
-  // useEffect to update localStorage when the storedValue state changes
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      // Allow value to be a function so we have same API as useState
-      const valueToStore = storedValue;
-      // Save state
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      // A more advanced implementation would handle the error case
-      console.warn(`Error setting localStorage key “${key}”:`, error);
-    }
-  }, [key, storedValue]);
+  // Return a wrapped version of useState's setter function that ...
+  // ... persists the new value to localStorage.
+  const setValue: Dispatch<SetStateAction<T>> = useCallback(
+    (value) => {
+      try {
+        // Allow value to be a function so we have the same API as useState
+        const valueToStore =
+          value instanceof Function ? value(storedValue) : value;
+        // Save state
+        setStoredValueState(valueToStore);
+        // Save to local storage
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        }
+      } catch (error) {
+        // A more advanced implementation would handle the error case
+        console.warn(`Error setting localStorage key “${key}”:`, error);
+      }
+    },
+    [key, storedValue] // Add storedValue to ensure the functional update form `value(storedValue)` uses the latest state.
+  );
 
 
   // useEffect for cross-tab synchronization
@@ -73,11 +68,11 @@ function useLocalStorage<T>(
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === key && event.storageArea === window.localStorage) {
-        if (event.newValue) {
-            setStoredValue(safeJsonParse(event.newValue, initialValue));
+        if (event.newValue !== null) { // Check for null explicitly, as empty string is valid JSON ("")
+            setStoredValueState(safeJsonParse(event.newValue, initialValue));
         } else {
             // If newValue is null, it means the item was removed from localStorage
-            setStoredValue(initialValue);
+            setStoredValueState(initialValue);
         }
       }
     };
@@ -87,9 +82,9 @@ function useLocalStorage<T>(
       window.removeEventListener('storage', handleStorageChange);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]); // initialValue is not needed as a dep here, safeJsonParse handles fallback
+  }, [key, initialValue]); // initialValue is used in safeJsonParse and as fallback.
 
-  return [storedValue, setStoredValue];
+  return [storedValue, setValue];
 }
 
 export default useLocalStorage;
