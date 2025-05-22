@@ -23,7 +23,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger, // Ensure DialogTrigger is imported
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -40,7 +40,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
+  SheetTrigger, // Ensure SheetTrigger is imported
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
@@ -67,7 +67,6 @@ export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false);
-  const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false);
   const [isTimerVisible, setIsTimerVisible] = useState(false);
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
@@ -388,8 +387,15 @@ export default function Home() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
-      <header className="w-full h-16 bg-background border-b shadow-sm flex items-center justify-between px-4">
-        <nav className="flex items-center space-x-1">
+      <header className={cn(
+        "bg-background border-b shadow-sm",
+        "flex flex-col items-center p-4", // Default for small screens
+        "sm:flex-row sm:h-16 sm:items-center sm:px-4 sm:py-0" // For sm screens and up
+      )}>
+        <nav className={cn(
+          "flex items-center space-x-1 order-2", // Below title on small screens
+          "sm:order-none" // First on larger screens
+        )}>
           <Link href="/dashboard" passHref legacyBehavior>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
               <LayoutDashboard className="h-5 w-5" />
@@ -400,19 +406,11 @@ export default function Home() {
               <BookOpen className="h-5 w-5" />
             </Button>
           </Link>
-          <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View goals">
-                <Target className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-              <SheetHeader className="p-4 border-b shrink-0">
-                <SheetTitle className="text-primary">Goals</SheetTitle>
-              </SheetHeader>
-              <GoalsSheet />
-            </SheetContent>
-          </Sheet>
+          <Link href="/goals" passHref legacyBehavior>
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View goals">
+              <Target className="h-5 w-5" />
+            </Button>
+          </Link>
           <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View bookmarks">
@@ -450,15 +448,25 @@ export default function Home() {
           </Sheet>
         </nav>
 
-        <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">WeekWise</h1>
+        <h1 className={cn(
+          "text-xl md:text-2xl font-bold text-primary tracking-tight",
+          "order-1 mb-3 text-center", // On top, centered for small screens
+          "sm:order-none sm:flex-grow sm:text-center sm:mx-4" // Centered in available space for larger screens
+        )}>WeekWise</h1>
         
-        <div className="flex items-center space-x-1 invisible" aria-hidden="true">
-          <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9"><BookOpen className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9"><Target className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9"><BookmarkIcon className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9"><TimerIcon className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9"><List className="h-5 w-5" /></Button>
+        <div className={cn(
+          "hidden", // Hidden by default
+          "sm:flex sm:order-none" // Visible on larger screens to balance nav
+        )} aria-hidden="true">
+          {/* Spacer to balance the nav icons for centering the title */}
+          <div className="flex items-center space-x-1 invisible">
+              <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9"><BookOpen className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9"><Target className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9"><BookmarkIcon className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9"><TimerIcon className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9"><List className="h-5 w-5" /></Button>
+          </div>
         </div>
       </header>
 
@@ -566,3 +574,4 @@ export default function Home() {
 }
         
     
+
