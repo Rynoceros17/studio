@@ -14,7 +14,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Subtask } from '@/lib/types';
+import type { Task, Subtask, Goal } from '@/lib/types'; // Added Goal
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -46,17 +46,30 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { GoalsSheet } from '@/components/GoalsSheet';
 import { NaturalLanguageTaskDialog } from '@/components/NaturalLanguageTaskDialog';
-import { DueDateTaskDialog } from '@/components/DueDateTaskDialog';
+// import { DueDateTaskDialog } from '@/components/DueDateTaskDialog'; // Removed this import
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2, CalendarPlus } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2 } from 'lucide-react'; // Removed CalendarPlus
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+// Define a common structure for items in the TopTaskBar
+export interface UpcomingItem {
+  id: string;
+  name: string;
+  dueDate: string; // yyyy-MM-dd
+  type: 'task' | 'goal';
+  originalDate?: string; // For tasks, their primary calendar date
+  description?: string; // For tasks
+  highPriority?: boolean; // For tasks
+  color?: string; // For tasks
+}
 
 
 export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
+  const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []); // Load goals
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -74,7 +87,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [isNaturalLanguageTaskDialogOpen, setIsNaturalLanguageTaskDialogOpen] = useState(false);
-  const [isDueDateTaskDialogOpen, setIsDueDateTaskDialogOpen] = useState(false);
+  // const [isDueDateTaskDialogOpen, setIsDueDateTaskDialogOpen] = useState(false); // Removed this state
   const [isTopTaskBarExpanded, setIsTopTaskBarExpanded] = useState(false);
 
   useEffect(() => {
@@ -153,7 +166,7 @@ export default function Home() {
      });
      setIsFormOpen(false);
      setIsNaturalLanguageTaskDialogOpen(false);
-     setIsDueDateTaskDialogOpen(false);
+    //  setIsDueDateTaskDialogOpen(false); // Removed this line
   }, [setTasks, toast, parseISOStrict]);
 
   const deleteAllOccurrences = useCallback((id: string) => {
@@ -324,13 +337,13 @@ export default function Home() {
        if (task.id === id) {
            const updatedTask = { ...task, ...updates };
             if (updates.dueDate && updates.dueDate !== task.dueDate) {
-                needsResort = true; // Due date change might affect sorting if bar uses it
+                needsResort = true; 
             }
          return updatedTask;
        }
        return task;
      });
-      if (needsResort) { // Placeholder for more complex sorting if top bar sorting relies on this
+      if (needsResort) { 
            updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
@@ -371,45 +384,46 @@ export default function Home() {
     });
   }, [tasks, parseISOStrict]);
 
-  const tasksWithUpcomingDueDates = useMemo(() => {
-    if (!isClient || !tasks) return [];
+  const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
+    if (!isClient) return [];
     const today = startOfDay(new Date());
-    return tasks
-      .filter(task => {
-        if (!task.dueDate) return false;
-        try {
-          const dueDate = parseISOStrict(task.dueDate);
-          return dueDate && dueDate >= today;
-        } catch (e) {
-          return false;
-        }
-      })
-      .sort((a, b) => {
-        // Ensure dueDate exists before parsing for sort
-        const dueDateA = a.dueDate ? parseISOStrict(a.dueDate) : null;
-        const dueDateB = b.dueDate ? parseISOStrict(b.dueDate) : null;
-        if (!dueDateA && !dueDateB) return 0;
-        if (!dueDateA) return 1;
-        if (!dueDateB) return -1;
-        return dueDateA.getTime() - dueDateB.getTime();
-      });
-  }, [tasks, isClient, parseISOStrict]);
+
+    const mappedTasks: UpcomingItem[] = tasks
+      .filter(task => task.dueDate && parseISOStrict(task.dueDate) && parseISOStrict(task.dueDate)! >= today)
+      .map(task => ({
+        id: task.id,
+        name: task.name,
+        dueDate: task.dueDate!,
+        type: 'task',
+        originalDate: task.date,
+        description: task.description,
+        highPriority: task.highPriority,
+        color: task.color,
+      }));
+
+    const mappedGoals: UpcomingItem[] = goals
+      .filter(goal => goal.dueDate && parseISOStrict(goal.dueDate) && parseISOStrict(goal.dueDate)! >= today)
+      .map(goal => ({
+        id: goal.id,
+        name: goal.name,
+        dueDate: goal.dueDate!,
+        type: 'goal',
+      }));
+    
+    const combinedItems = [...mappedTasks, ...mappedGoals];
+
+    return combinedItems.sort((a, b) => {
+      const dueDateA = parseISOStrict(a.dueDate)!;
+      const dueDateB = parseISOStrict(b.dueDate)!;
+      return dueDateA.getTime() - dueDateB.getTime();
+    });
+  }, [tasks, goals, isClient, parseISOStrict]);
 
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden">
-        <div className="fixed top-4 left-4 z-50">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-            aria-label="Add task with due date"
-            onClick={() => setIsDueDateTaskDialogOpen(true)}
-          >
-            <CalendarPlus className="h-6 w-6 text-primary" />
-          </Button>
-        </div>
+        {/* Removed Top-Left CalendarPlus Icon Button */}
 
         <div className="w-full max-w-7xl space-y-4">
           <header className="text-center py-2 relative z-10">
@@ -431,7 +445,7 @@ export default function Home() {
 
           {isClient && (
             <TopTaskBar
-              tasks={tasksWithUpcomingDueDates}
+              items={upcomingItemsForBar} // Changed prop name
               isExpanded={isTopTaskBarExpanded}
               onToggle={() => setIsTopTaskBarExpanded(!isTopTaskBarExpanded)}
             />
@@ -607,11 +621,7 @@ export default function Home() {
             onTaskAdd={addTask}
         />
 
-        <DueDateTaskDialog
-            isOpen={isDueDateTaskDialogOpen}
-            onClose={() => setIsDueDateTaskDialogOpen(false)}
-            addTask={addTask}
-        />
+        {/* Removed DueDateTaskDialog usage */}
 
         <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
             <AlertDialogContent>
@@ -642,4 +652,3 @@ export default function Home() {
     </DndContext>
   );
 }
-

@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical } from 'lucide-react';
+import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn, truncateText } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
@@ -25,7 +25,11 @@ import {
   DialogHeader,
   DialogTitle as FormDialogTitle,
 } from "@/components/ui/dialog";
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { suggestSubtasksForGoal } from '@/ai/flows/suggest-subtasks-flow';
+
 
 import {
   DndContext,
@@ -85,7 +89,7 @@ const addSubtaskToParentRecursive = (
     });
 };
 
-// Props for SortableListItem - this will be extensive
+// Props for SortableListItem
 interface SortableListItemProps {
     subtask: Subtask;
     goalId: string;
@@ -122,12 +126,12 @@ function SortableListItem({
 
     const style = {
         transform: CSS.Transform.toString(transform),
-        transition: transition || 'transform 0.25s ease', // Ensure smooth transition
+        transition: transition || 'transform 0.25s ease',
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 100 : 'auto',
     };
 
-    let bgClass = '';
+    let bgClass = 'bg-card'; // Default for depth 2+
     let textColorClass = 'text-card-foreground';
     let expandChevronColorClass = 'text-card-foreground';
 
@@ -136,22 +140,22 @@ function SortableListItem({
         textColorClass = 'text-muted-foreground';
         expandChevronColorClass = 'text-muted-foreground';
     } else if (depth === 0) {
-        bgClass = 'bg-secondary/70';
+        bgClass = 'bg-secondary/70'; // Lighter purple for parent
     } else if (depth === 1) {
-        bgClass = 'bg-muted/50';
-    } else {
-        bgClass = 'bg-card';
+        bgClass = 'bg-muted/50'; // Even lighter for child
     }
+    // Deeper levels (depth >= 2) use default bg-card
+
 
     return (
-        <div ref={setNodeRef} style={style} className="mb-0.5"> {/* Reduced mb-1 to mb-0.5 */}
+        <div ref={setNodeRef} style={style} className="mb-0.5">
             <div
                 className={cn(
                     `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm`,
                     bgClass
                 )}
             >
-                <div className="flex items-center space-x-1.5 flex-grow min-w-0"> {/* Reduced space for handle */}
+                <div className="flex items-center space-x-1.5 flex-grow min-w-0">
                     <button
                         {...attributes}
                         {...listeners}
@@ -159,7 +163,7 @@ function SortableListItem({
                         className={cn("p-1 rounded cursor-grab hover:bg-black/10 active:cursor-grabbing", textColorClass, subtask.completed && "cursor-not-allowed opacity-50")}
                         aria-label="Drag to reorder subtask"
                         disabled={subtask.completed}
-                        onClick={(e) => e.stopPropagation()} // Prevent other clicks when dragging
+                        onClick={(e) => e.stopPropagation()}
                     >
                         <GripVertical className="h-4 w-4" />
                     </button>
@@ -199,7 +203,7 @@ function SortableListItem({
                         size="icon"
                         className={cn(
                             "h-7 w-7 border-dashed",
-                            subtask.completed ? "text-muted-foreground cursor-not-allowed" : "text-card-foreground",
+                            subtask.completed ? "text-muted-foreground cursor-not-allowed" : textColorClass,
                             subtask.completed ? "border-muted" : "border-current",
                             !subtask.completed && "hover:border-primary hover:text-primary"
                         )}
@@ -236,7 +240,7 @@ function SortableListItem({
                 </div>
             </div>
 
-            <div className="my-1 pl-6"> {/* Indent add child input */}
+            <div className="my-1">
                 {showAddChildInputFor === subtask.id && (
                     <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
                         <Input
@@ -258,7 +262,7 @@ function SortableListItem({
             </div>
 
             {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                <div className="pl-6"> {/* Indent nested subtasks */}
+                <div className="pl-0"> {/* Removed pl-6 */}
                    {renderSubtasksFunction(subtask.subtasks, goalId, depth + 1)}
                 </div>
             )}
@@ -279,6 +283,8 @@ function DraggingSubtaskItem({ name }: { name: string }) {
 export default function GoalsPage() {
     const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
     const [newGoalName, setNewGoalName] = useState('');
+    const [newGoalDueDate, setNewGoalDueDate] = useState<Date | undefined>(undefined);
+    const [isGoalDatePickerOpen, setIsGoalDatePickerOpen] = useState(false);
     const [newSubtaskInputs, setNewSubtaskInputs] = useState<Record<string, string>>({});
     const { toast } = useToast();
 
@@ -289,7 +295,10 @@ export default function GoalsPage() {
     const [expandedSubtasks, setExpandedSubtasks] = useState<Record<string, boolean>>({});
     const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
-    const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null); // For DragOverlay
+    const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null);
+    
+    const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
+    const [isSuggestingSubtasks, setIsSuggestingSubtasks] = useState(false);
 
 
     useEffect(() => {
@@ -299,7 +308,7 @@ export default function GoalsPage() {
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5, // User must drag at least 5px
+                distance: 5,
             },
         }),
         useSensor(KeyboardSensor, {
@@ -340,41 +349,32 @@ export default function GoalsPage() {
         const overId = over.id as string;
 
         setGoals((currentGoals) => {
-            // Create a deep copy to ensure immutability for complex nested updates
             const newGoals = JSON.parse(JSON.stringify(currentGoals)) as Goal[];
-
-            // Recursive function to find the list containing both items and reorder
             const reorderInList = (list: Subtask[]): boolean => {
                 const activeItemIndex = list.findIndex(item => item.id === activeId);
                 const overItemIndex = list.findIndex(item => item.id === overId);
 
                 if (activeItemIndex !== -1 && overItemIndex !== -1) {
-                    // Both items are in this list, reorder here
                     const reorderedList = arrayMove(list, activeItemIndex, overItemIndex);
-                    // This modifies 'list' in place because it's part of the 'newGoals' deep copy
-                    list.length = 0; // Clear the original array part of the copied structure
-                    list.push(...reorderedList); // Push reordered items back
-                    return true; // Reordering happened
+                    list.length = 0; 
+                    list.push(...reorderedList); 
+                    return true; 
                 }
-
-                // If not in this list, check children
                 for (const item of list) {
                     if (item.subtasks && item.subtasks.length > 0) {
                         if (reorderInList(item.subtasks)) {
-                            return true; // Reordering happened in a child list
+                            return true; 
                         }
                     }
                 }
-                return false; // Reordering did not happen in this list or its children
+                return false; 
             };
-
-            // Try to reorder within each goal's top-level subtasks
             for (const goal of newGoals) {
                 if (reorderInList(goal.subtasks)) {
-                    break; // Found and reordered, no need to check other goals
+                    break; 
                 }
             }
-            return newGoals; // Return the modified deep copy
+            return newGoals; 
         });
     };
 
@@ -410,14 +410,44 @@ export default function GoalsPage() {
        setIsTaskFormOpen(false); setPrefilledTaskData(null);
     };
 
+    const handleSuggestSubtasks = async () => {
+        if (!newGoalName.trim()) {
+            toast({ title: "Goal Name Required", description: "Please enter a goal name to get subtask suggestions.", variant: "destructive" });
+            return;
+        }
+        setIsSuggestingSubtasks(true);
+        try {
+            const suggestions = await suggestSubtasksForGoal({ goalName: newGoalName.trim() });
+            setSuggestedSubtasks(suggestions.subtaskNames || []);
+            if ((suggestions.subtaskNames || []).length > 0) {
+              toast({ title: "Subtasks Suggested!", description: "Review the suggestions below." });
+            } else {
+              toast({ title: "No Suggestions", description: "Couldn't generate subtasks for this goal. Try rephrasing.", variant: "default" });
+            }
+        } catch (error) {
+            console.error("Error suggesting subtasks:", error);
+            toast({ title: "Suggestion Error", description: "Could not generate subtask suggestions at this time.", variant: "destructive" });
+            setSuggestedSubtasks([]);
+        } finally {
+            setIsSuggestingSubtasks(false);
+        }
+    };
+
     const addGoal = () => {
         if (!newGoalName.trim()) {
             toast({ title: "Missing Goal Name", description: "Please provide a name for the goal.", variant: "destructive" }); return;
         }
-        const newGoal: Goal = { id: crypto.randomUUID(), name: newGoalName.trim(), subtasks: [] };
+        const newGoal: Goal = { 
+            id: crypto.randomUUID(), 
+            name: newGoalName.trim(), 
+            dueDate: newGoalDueDate ? format(newGoalDueDate, 'yyyy-MM-dd') : undefined,
+            subtasks: suggestedSubtasks.map(name => ({ id: crypto.randomUUID(), name, completed: false, subtasks: [] }))
+        };
         setGoals(prev => [...prev, newGoal]);
         setNewGoalName('');
-        toast({ title: "Goal Added", description: `"${newGoal.name}" added successfully.` });
+        setNewGoalDueDate(undefined);
+        setSuggestedSubtasks([]);
+        toast({ title: "Goal Added", description: `"${newGoal.name}" ${newGoal.dueDate ? `(Due: ${format(parseISO(newGoal.dueDate), 'PPP')})` : ''} added successfully.` });
     };
 
     const deleteGoal = (id: string) => {
@@ -552,7 +582,7 @@ export default function GoalsPage() {
     const renderSubtasks = (subtasksToRender: Subtask[], goalId: string, currentDepth: number): JSX.Element => {
         return (
           <SortableContext items={subtasksToRender.map(st => st.id)} strategy={verticalListSortingStrategy}>
-            <div className={cn(currentDepth > 0 && "pl-0")}> {/* Using pl-0 because SortableListItem handles its own content structure */}
+            <div className={cn(currentDepth > 0 && "pl-0")}>
               {subtasksToRender.map(subtask => (
                 <SortableListItem
                   key={subtask.id}
@@ -601,12 +631,52 @@ export default function GoalsPage() {
                     </CardHeader>
 
                     <CardContent className="p-6 space-y-6">
-                        <div className="p-4 border rounded-md bg-secondary/30 shadow-sm">
-                            <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
-                            <div className="flex space-x-2">
-                                <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
-                                <Button onClick={addGoal} size="default" className="h-10"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
+                        <div className="p-4 border rounded-md bg-secondary/30 shadow-sm space-y-3">
+                            <div>
+                                <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
+                                <div className="flex space-x-2">
+                                    <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
+                                     <Button onClick={handleSuggestSubtasks} variant="outline" size="default" className="h-10 shrink-0" disabled={isSuggestingSubtasks || !newGoalName.trim()}>
+                                        {isSuggestingSubtasks ? <Sparkles className="mr-2 h-4 w-4 animate-pulse" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                        Suggest
+                                    </Button>
+                                </div>
                             </div>
+                             {suggestedSubtasks.length > 0 && !isSuggestingSubtasks && (
+                                <div className="p-3 border rounded-md bg-background/70 shadow-inner">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">Suggested Subtasks (will be added with goal):</p>
+                                    <ul className="list-disc list-inside space-y-1 text-sm">
+                                        {suggestedSubtasks.map((s, i) => <li key={i} className="text-card-foreground">{s}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                            <div>
+                                <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
+                                <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full justify-start text-left font-normal h-10",
+                                                !newGoalDueDate && "text-muted-foreground"
+                                            )}
+                                            onClick={() => setIsGoalDatePickerOpen(true)}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {newGoalDueDate ? format(newGoalDueDate, "PPP") : <span>Pick a due date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={newGoalDueDate}
+                                            onSelect={(date) => { setNewGoalDueDate(date); setIsGoalDatePickerOpen(false); }}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <Button onClick={addGoal} size="default" className="h-10 w-full"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
                         </div>
 
                         {!isClient ? (
@@ -614,7 +684,7 @@ export default function GoalsPage() {
                         ) : goals.length === 0 ? (
                             <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one above to get started!</p>
                         ) : (
-                            <ScrollArea className="max-h-[calc(100vh-300px)]">
+                            <ScrollArea className="max-h-[calc(100vh-450px)]"> {/* Adjusted height */}
                                  <div className="space-y-4 pr-2">
                                     <Accordion type="multiple" className="w-full">
                                         {goals.map((goal) => {
@@ -624,9 +694,16 @@ export default function GoalsPage() {
                                                     <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
                                                         <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/30 rounded-t-md transition-colors">
                                                             <AccordionTrigger className="flex-grow p-4 text-base font-medium text-left text-primary hover:no-underline">
-                                                                <div className="flex items-center space-x-3 min-w-0">
-                                                                    <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 40)}</span>
-                                                                    <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0 h-6 px-2.5">{progress}%</Badge>
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <div className="flex items-center space-x-3">
+                                                                        <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 40)}</span>
+                                                                        <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0 h-6 px-2.5">{progress}%</Badge>
+                                                                    </div>
+                                                                    {goal.dueDate && isValid(parseISO(goal.dueDate)) && (
+                                                                        <span className="text-xs text-muted-foreground mt-1">
+                                                                            Due: {format(parseISO(goal.dueDate), 'MMM d, yyyy')}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </AccordionTrigger>
                                                             <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 mr-3 shrink-0" onClick={(e) => { e.stopPropagation(); deleteGoal(goal.id); }} aria-label={`Delete goal ${goal.name}`}>
@@ -683,4 +760,3 @@ export default function GoalsPage() {
         </DndContext>
     );
 }
-

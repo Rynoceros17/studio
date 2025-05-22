@@ -33,4 +33,5 @@ export interface Goal {
     id: string;
     name: string;
     subtasks: Subtask[];
+    dueDate?: string; // Optional due date for the goal
 }
