@@ -14,7 +14,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Goal, UpcomingItem } from '@/lib/types'; // Updated UpcomingItem import
+import type { Task, Goal, UpcomingItem } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -50,7 +50,7 @@ import { TopTaskBar } from '@/components/TopTaskBar';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2 } from 'lucide-react';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle as PageCardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader as PageCardHeader, CardTitle as PageCardTitle } from '@/components/ui/card';
 
 
 export default function Home() {
@@ -388,7 +388,7 @@ export default function Home() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
-      <header className="fixed top-0 left-0 right-0 z-30 h-16 bg-background border-b shadow-sm flex items-center justify-between px-4">
+      <header className="w-full h-16 bg-background border-b shadow-sm flex items-center justify-between px-4">
         <nav className="flex items-center space-x-1">
           <Link href="/dashboard" passHref legacyBehavior>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
@@ -462,7 +462,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden pt-20">
+      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden">
         <div className="w-full max-w-7xl space-y-4">
 
           {isClient && (
