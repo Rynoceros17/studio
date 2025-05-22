@@ -3,6 +3,7 @@
 
 import type * as React from 'react';
 import { useState, useCallback } from 'react'; // Removed useMemo as it's not used here
+import Link from 'next/link'; // Added Link import
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,9 +35,24 @@ export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
     const { toast } = useToast(); // Kept for potential future interactions
 
     const calculateProgress = (goal: Goal): number => {
-        if (goal.subtasks.length === 0) return 0;
-        const completedCount = goal.subtasks.filter(st => st.completed).length;
-        return Math.round((completedCount / goal.subtasks.length) * 100);
+        let totalSubtasks = 0;
+        let completedSubtasks = 0;
+        const countSubtasksRecursive = (subtasks: Subtask[]) => {
+            subtasks.forEach(subtask => {
+                totalSubtasks++;
+                if (subtask.completed) {
+                    completedSubtasks++;
+                }
+                if (subtask.subtasks && subtask.subtasks.length > 0) {
+                    countSubtasksRecursive(subtask.subtasks);
+                }
+            });
+        };
+        if (goal.subtasks && goal.subtasks.length > 0) {
+            countSubtasksRecursive(goal.subtasks);
+        }
+        if (totalSubtasks === 0) return 0;
+        return Math.round((completedSubtasks / totalSubtasks) * 100);
     };
 
     return (
@@ -56,17 +72,27 @@ export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
                             {goals.map((goal) => {
                                 const progress = calculateProgress(goal);
                                 return (
-                                    <AccordionItem key={goal.id} value={goal.id}>
-                                        <Card className="overflow-hidden shadow-sm border mb-2 bg-card">
-                                            <AccordionTrigger className="w-full p-3 text-sm font-medium text-left hover:bg-muted/30 rounded-t-md transition-colors">
-                                                <div className="flex items-center justify-between space-x-2 min-w-0">
-                                                    <span className="truncate" title={goal.name}>{truncateText(goal.name, 30)}</span>
-                                                    <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0">{progress}%</Badge>
-                                                </div>
-                                            </AccordionTrigger>
+                                    <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4">
+                                        <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
+                                            <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/30 rounded-t-md transition-colors">
+                                                <AccordionTrigger className="flex-grow p-4 text-base font-medium text-left text-primary hover:no-underline">
+                                                    <div className="flex flex-col min-w-0">
+                                                        <div className="flex items-center space-x-3">
+                                                            <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 40)}</span>
+                                                            <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0 h-6 px-2.5">{progress}%</Badge>
+                                                        </div>
+                                                        {goal.dueDate && (
+                                                            <span className="text-xs text-muted-foreground mt-1">
+                                                                Due: {goal.dueDate} {/* Consider formatting this date */}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </AccordionTrigger>
+                                                {/* Optionally add delete or other actions here if needed in the sheet */}
+                                            </CardHeader>
                                             <AccordionContent>
-                                                <CardContent className="p-3 space-y-2 border-t">
-                                                    <Progress value={progress} className="h-2" />
+                                                <CardContent className="p-4 space-y-2 border-t bg-muted/20">
+                                                    <Progress value={progress} className="h-2.5" />
                                                     {goal.subtasks.length > 0 && (
                                                         <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                                             {goal.subtasks.map(subtask => (
@@ -78,6 +104,9 @@ export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
                                                                 </div>
                                                             ))}
                                                         </div>
+                                                    )}
+                                                    {goal.subtasks.length === 0 && (
+                                                         <p className="text-xs text-muted-foreground italic text-center py-1">No subtasks for this goal.</p>
                                                     )}
                                                 </CardContent>
                                             </AccordionContent>
