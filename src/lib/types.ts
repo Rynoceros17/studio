@@ -35,3 +35,15 @@ export interface Goal {
     subtasks: Subtask[];
     dueDate?: string; // Optional due date for the goal
 }
+
+// Item type for the "Upcoming Deadlines" bar
+export interface UpcomingItem {
+  id: string;
+  name: string;
+  dueDate: string; // yyyy-MM-dd
+  type: 'task' | 'goal';
+  originalDate?: string; // For tasks, the date it's scheduled on
+  description?: string; // For tasks
+  highPriority?: boolean; // For tasks
+  color?: string; // For tasks
+}
