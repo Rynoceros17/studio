@@ -23,7 +23,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger, // Ensure DialogTrigger is imported
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -40,7 +40,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger, // Ensure SheetTrigger is imported
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
@@ -388,13 +388,11 @@ export default function Home() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header className={cn(
-        "bg-background border-b shadow-sm",
-        "flex flex-col items-center p-4", // Default for small screens
-        "sm:flex-row sm:h-16 sm:items-center sm:px-4 sm:py-0" // For sm screens and up
+        "bg-background border-b shadow-sm w-full", // Always a row, full width
+        "flex h-16 items-center justify-between px-4" // Consistent height and padding
       )}>
         <nav className={cn(
-          "flex items-center space-x-1 order-2", // Below title on small screens
-          "sm:order-none" // First on larger screens
+          "flex items-center space-x-1" // Icons always on the left
         )}>
           <Link href="/dashboard" passHref legacyBehavior>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
@@ -450,23 +448,19 @@ export default function Home() {
 
         <h1 className={cn(
           "text-xl md:text-2xl font-bold text-primary tracking-tight",
-          "order-1 mb-3 text-center", // On top, centered for small screens
-          "sm:order-none sm:flex-grow sm:text-center sm:mx-4" // Centered in available space for larger screens
+          "flex-grow text-center" // Title takes available space and centers its text
         )}>WeekWise</h1>
         
         <div className={cn(
-          "hidden", // Hidden by default
-          "sm:flex sm:order-none" // Visible on larger screens to balance nav
+          "flex items-center space-x-1 invisible" // Always present but invisible spacer
         )} aria-hidden="true">
           {/* Spacer to balance the nav icons for centering the title */}
-          <div className="flex items-center space-x-1 invisible">
-              <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9"><BookOpen className="h-5 w-5" /></Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9"><Target className="h-5 w-5" /></Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9"><BookmarkIcon className="h-5 w-5" /></Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9"><TimerIcon className="h-5 w-5" /></Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9"><List className="h-5 w-5" /></Button>
-          </div>
+            <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9"><BookOpen className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9"><Target className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9"><BookmarkIcon className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9"><TimerIcon className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9"><List className="h-5 w-5" /></Button>
         </div>
       </header>
 
