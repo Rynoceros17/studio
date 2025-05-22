@@ -14,7 +14,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Subtask, Goal } from '@/lib/types';
+import type { Task, Goal, UpcomingItem } from '@/lib/types'; // Updated UpcomingItem import
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -51,19 +51,6 @@ import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, Layou
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle as PageCardTitle } from '@/components/ui/card';
-
-
-// Define a common structure for items in the TopTaskBar
-export interface UpcomingItem {
-  id: string;
-  name: string;
-  dueDate: string; // yyyy-MM-dd
-  type: 'task' | 'goal';
-  originalDate?: string; // For tasks, their primary calendar date
-  description?: string; // For tasks
-  highPriority?: boolean; // For tasks
-  color?: string; // For tasks
-}
 
 
 export default function Home() {
@@ -465,7 +452,6 @@ export default function Home() {
 
         <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">WeekWise</h1>
         
-        {/* Spacer div to balance the left navigation icons for centering the title */}
         <div className="flex items-center space-x-1 invisible" aria-hidden="true">
           <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
           <Button variant="ghost" size="icon" className="h-9 w-9"><BookOpen className="h-5 w-5" /></Button>
@@ -476,9 +462,8 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden pt-16">
+      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden pt-20">
         <div className="w-full max-w-7xl space-y-4">
-          {/* The old header with "WeekWise" title is removed from here */}
 
           {isClient && (
               <CalendarView
@@ -492,7 +477,7 @@ export default function Home() {
                 completedCount={completedCount}
               />
           )}
-
+          
           {isClient && (
             <TopTaskBar
               items={upcomingItemsForBar}
@@ -500,6 +485,7 @@ export default function Home() {
               onToggle={() => setIsTopTaskBarExpanded(!isTopTaskBarExpanded)}
             />
           )}
+
 
            <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col space-y-2 items-end">
                 <Button
@@ -578,4 +564,5 @@ export default function Home() {
     </DndContext>
   );
 }
-
+        
+    
