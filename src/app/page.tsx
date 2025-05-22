@@ -13,8 +13,9 @@ import {
 } from '@dnd-kit/core';
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
-import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task } from '@/lib/types';
+import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
+import { QuickCaptureSheet } from '@/components/QuickCaptureSheet'; // Import QuickCaptureSheet
+import type { Task, Subtask } from '@/lib/types'; // Added Subtask type
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -44,9 +45,12 @@ import {
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
+import { GoalsSheet } from '@/components/GoalsSheet'; // Import GoalsSheet
 import { NaturalLanguageTaskDialog } from '@/components/NaturalLanguageTaskDialog';
 import { DueDateTaskDialog } from '@/components/DueDateTaskDialog'; // New Import
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2, CalendarPlus } from 'lucide-react'; // Added Wand2, CalendarPlus
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // Added Card imports
+import { ScrollArea } from '@/components/ui/scroll-area'; // Added ScrollArea import
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2, Camera, CalendarPlus } from 'lucide-react'; // Added Wand2, Camera, CalendarPlus
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -63,7 +67,9 @@ export default function Home() {
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
-  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false);
+  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for BookmarkListSheet
+  const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // State for GoalsSheet
+  const [isQuickCaptureSheetOpen, setIsQuickCaptureSheetOpen] = useState(false); // State for QuickCaptureSheet
   const [isTimerVisible, setIsTimerVisible] = useState(false);
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
@@ -491,19 +497,24 @@ export default function Home() {
                      </a>
                  </Button>
              </Link>
-             <Link href="/goals" passHref legacyBehavior>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
-                    aria-label="View goals"
-                    asChild
-                >
-                    <a>
+             <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
+                <SheetTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
+                        aria-label="View goals"
+                    >
                         <Target className="h-6 w-6 text-primary" />
-                    </a>
-                </Button>
-            </Link>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                     <SheetHeader className="p-4 border-b shrink-0">
+                         <SheetTitle className="text-primary">Goals</SheetTitle>
+                     </SheetHeader>
+                     <GoalsSheet />
+                 </SheetContent>
+             </Sheet>
              <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                  <SheetTrigger asChild>
                      <Button
@@ -600,3 +611,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
