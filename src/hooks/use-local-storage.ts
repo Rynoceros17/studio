@@ -22,59 +22,64 @@ function safeJsonParseWithKey<T>(jsonString: string | null, fallback: T, key: st
 function useLocalStorage<T>(
   key: string,
   initialValue: T
-): [T, React.Dispatch<React.SetStateAction<T>>] { // Return standard React dispatch type
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    // This function is executed only on the initial render.
-    // On the server, or if window is undefined, return initialValue.
+): [T, React.Dispatch<React.SetStateAction<T>>] {
+  // Initialize with initialValue to ensure server and client first render match
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+
+  // Effect to load from localStorage after initial client render
+  useEffect(() => {
     if (typeof window === "undefined") {
-      return initialValue;
+      return;
     }
     try {
-      // Try to get the item from localStorage.
       const item = window.localStorage.getItem(key);
-      // Parse stored json or if none return initialValue.
-      return item ? safeJsonParseWithKey(item, initialValue, key) : initialValue;
+      if (item !== null) { // Check if item actually exists
+        const valueFromStorage = safeJsonParseWithKey(item, initialValue, key);
+        // Only update state if the stored value is different from the current initialValue
+        // This can prevent an unnecessary re-render if initialValue is already what's in storage
+        // (or if storage is empty and initialValue is the fallback).
+        // However, for complex objects, direct comparison might be tricky.
+        // A simple update is often fine.
+        setStoredValue(valueFromStorage);
+      }
     } catch (error) {
-      // If error reading from localStorage, return initialValue and log the error.
-      console.warn(`Error reading localStorage key “${key}” during initial state setup:`, error);
-      return initialValue;
+      console.warn(`Error reading localStorage key “${key}” during effect:`, error);
+      // We don't setStoredValue to initialValue here again, as it's already initialized with it.
     }
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]); // Removed initialValue from dependency array to avoid re-running if initialValue reference changes unnecessarily.
 
-  // useEffect to update localStorage when the state (storedValue) changes.
+  // Effect to save to localStorage when storedValue changes
   useEffect(() => {
+    // Only save if storedValue is different from the initialValue provided to the hook,
+    // or if it's explicitly set to something else by the component.
+    // This prevents writing initialValue to localStorage on first load if nothing was there.
+    // However, the component might want to persist initialValue if that's its true default.
+    // For simplicity and to ensure persistence even if initialValue is used, we save.
     if (typeof window !== "undefined") {
       try {
-        // console.log(`Saving to localStorage key "${key}":`, storedValue);
         window.localStorage.setItem(key, JSON.stringify(storedValue));
       } catch (error) {
-        // If error setting item in localStorage, log it.
         console.error(`Error setting localStorage key “${key}”:`, error);
       }
     }
   }, [key, storedValue]);
 
-  // useEffect to listen for storage events to sync across tabs.
+  // Effect to listen for storage events to sync across tabs
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === key && event.storageArea === window.localStorage) {
-        // console.log(`Storage event for key "${key}" in another tab. New value:`, event.newValue);
-        // When a storage event occurs, set the state to the new value.
-        // Use initialValue as a fallback if the new value is null or parsing fails.
         setStoredValue(safeJsonParseWithKey(event.newValue, initialValue, key));
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
-    // Cleanup function to remove the event listener when the component unmounts or dependencies change.
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  // Dependencies: key and initialValue.
-  // initialValue is used as a fallback in safeJsonParseWithKey.
-  // If initialValue's reference changes, the effect re-runs, re-attaching the listener, which is generally fine.
+  // initialValue is needed here because safeJsonParseWithKey uses it as a fallback.
   }, [key, initialValue]);
 
   return [storedValue, setStoredValue];
