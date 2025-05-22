@@ -1,25 +1,23 @@
 
-
 "use client";
 
 import type * as React from 'react';
 import { useCallback, useState, useMemo, useEffect } from 'react';
-import Link from 'next/link'; // Import Link for navigation
+import Link from 'next/link';
 import {
   DndContext,
   type DragEndEvent,
-  PointerSensor, // Import PointerSensor
-  useSensor, // Import useSensor
-  useSensors, // Import useSensors
+  PointerSensor,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
-import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
-// Removed import for QuickCaptureSheet
-import type { Task } from '@/lib/types'; // Subtask type removed as Goals page handles its own
+import { PomodoroTimer } from '@/components/PomodoroTimer';
+import type { Task } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
-import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -45,53 +43,43 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
-import { BookmarkListSheet } from '@/components/BookmarkListSheet'; // Import BookmarkListSheet
-// Removed GoalsSheet import
-// Removed Avatar imports
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react'; // Removed Camera, added LayoutDashboard, BookOpen
+import { BookmarkListSheet } from '@/components/BookmarkListSheet';
+import { NaturalLanguageTaskDialog } from '@/components/NaturalLanguageTaskDialog';
+import { DueDateTaskDialog } from '@/components/DueDateTaskDialog'; // New Import
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, Wand2, CalendarPlus } from 'lucide-react'; // Added Wand2, CalendarPlus
 import { format, parseISO } from 'date-fns';
-import { cn } from '@/lib/utils'; // Import cn
+import { cn } from '@/lib/utils';
 
 
 export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
-  // completedTaskIds now stores strings in the format: `${taskId}_${dateStr}`
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
-  // Calculate completed count based on unique task IDs present in completedTaskIds
   const completedCount = useMemo(() => {
-      // Count based on unique tasks ever completed, might need adjustment based on exact requirement
-      // For now, just count the number of completion entries
       return completedTaskIds.length;
   }, [completedTaskIds]);
 
-
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  // Removed prefilledTaskData state as Goals page will handle its own prefill for subtask to task conversion
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
-  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for Bookmark sheet
-  // Removed isGoalsSheetOpen state
-  // Removed state for Quick Capture sheet
-  const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
-  const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
+  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false);
+  const [isTimerVisible, setIsTimerVisible] = useState(false);
+  const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
-
+  const [isNaturalLanguageTaskDialogOpen, setIsNaturalLanguageTaskDialogOpen] = useState(false);
+  const [isDueDateTaskDialogOpen, setIsDueDateTaskDialogOpen] = useState(false); // New state
 
   useEffect(() => {
     setIsClient(true);
-    // Initial position slightly offset from top-right corner
-    const initialX = typeof window !== 'undefined' ? window.innerWidth - 300 - 24 : 0; // Adjust 300 based on timer width
+    const initialX = typeof window !== 'undefined' ? window.innerWidth - 300 - 24 : 0;
     const initialY = 24;
     setTimerPosition({ x: initialX, y: initialY });
   }, []);
 
-  // Configure sensors for dragging the timer
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      // Require the mouse to move by 10 pixels before activating
       activationConstraint: {
         distance: 10,
       },
@@ -107,399 +95,389 @@ export default function Home() {
     }
   };
 
+  const parseISOStrict = useCallback((dateString: string | undefined): Date | null => {
+      if (!dateString) return null;
+      const datePart = dateString.split('T')[0];
+      const date = parseISO(datePart + 'T00:00:00');
+      if (isNaN(date.getTime())) {
+          console.error("Invalid date string received:", dateString);
+          return null;
+      }
+      return date;
+  }, []);
 
-    const parseISOStrict = useCallback((dateString: string | undefined): Date | null => {
-        if (!dateString) return null;
-        const datePart = dateString.split('T')[0];
-        const date = parseISO(datePart + 'T00:00:00');
-        if (isNaN(date.getTime())) {
-            console.error("Invalid date string received:", dateString);
-            return null;
-        }
-        return date;
-    }, []); // Added useCallback with empty dependency array
+  const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
+     const newTask: Task = {
+         ...newTaskData,
+         id: crypto.randomUUID(),
+         files: newTaskData.files ?? [],
+         details: newTaskData.details ?? '',
+         dueDate: newTaskData.dueDate, // Ensure dueDate is included
+         recurring: newTaskData.recurring ?? false,
+         highPriority: newTaskData.highPriority ?? false,
+         exceptions: [],
+         color: newTaskData.color,
+     };
+     setTasks((prevTasks) => {
+         const updatedTasks = [...prevTasks, newTask];
+         updatedTasks.sort((a, b) => {
+             const dateA = parseISOStrict(a.date);
+             const dateB = parseISOStrict(b.date);
+             if (!dateA && !dateB) return 0;
+             if (!dateA) return 1;
+             if (!dateB) return -1;
+             const dateComparison = dateA.getTime() - dateB.getTime();
+             if (dateComparison !== 0) return dateComparison;
+             if (a.highPriority !== b.highPriority) {
+                  return a.highPriority ? -1 : 1;
+             }
+             const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
+             const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
+             if (originalAIndex === -1 && originalBIndex === -1) return 0;
+             if (originalAIndex === -1) return 1;
+             if (originalBIndex === -1) return -1;
+             return originalAIndex - originalBIndex;
+         });
+         return updatedTasks;
+     });
+     const taskDate = parseISOStrict(newTaskData.date);
+     toast({
+         title: "Task Added",
+         description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
+     });
+     setIsFormOpen(false);
+     setIsNaturalLanguageTaskDialogOpen(false); // Close natural language dialog if open
+     setIsDueDateTaskDialogOpen(false); // Close due date task dialog if open
+  }, [setTasks, toast, parseISOStrict]);
 
+  const deleteAllOccurrences = useCallback((id: string) => {
+      const taskToDelete = tasks.find(task => task.id === id);
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+      setCompletedTaskIds(prevIds => prevIds.filter(completionKey => !completionKey.startsWith(`${id}_`)));
+      if (taskToDelete) {
+          toast({
+              title: "Task Deleted",
+              description: `"${taskToDelete.name}" and all its future occurrences have been removed.`,
+              variant: "destructive",
+          });
+      }
+       setDeleteConfirmation(null);
+  }, [tasks, setTasks, setCompletedTaskIds, toast]);
 
-   const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
-       const newTask: Task = {
-           ...newTaskData,
-           id: crypto.randomUUID(),
-           files: newTaskData.files ?? [],
-           details: newTaskData.details ?? '',
-           dueDate: newTaskData.dueDate,
-           recurring: newTaskData.recurring ?? false,
-           highPriority: newTaskData.highPriority ?? false, // Add high priority
-           exceptions: [], // Initialize exceptions array
-           color: newTaskData.color, // Ensure color is passed
-       };
-       setTasks((prevTasks) => {
-           const updatedTasks = [...prevTasks, newTask];
-           updatedTasks.sort((a, b) => {
-               const dateA = parseISOStrict(a.date);
-               const dateB = parseISOStrict(b.date);
+  const deleteRecurringInstance = useCallback((taskId: string, dateStr: string) => {
+      const taskToModify = tasks.find(task => task.id === taskId);
+      setTasks(prevTasks => prevTasks.map(task => {
+          if (task.id === taskId) {
+              const updatedExceptions = [...(task.exceptions || []), dateStr];
+              return { ...task, exceptions: updatedExceptions };
+          }
+          return task;
+      }));
+      setCompletedTaskIds(prevIds => prevIds.filter(completionKey => completionKey !== `${taskId}_${dateStr}`));
+      if (taskToModify) {
+          toast({
+              title: "Task Instance Skipped",
+              description: `"${taskToModify.name}" for ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} will be skipped.`,
+          });
+      }
+      setDeleteConfirmation(null);
+  }, [tasks, setTasks, setCompletedTaskIds, toast, parseISOStrict]);
 
-               if (!dateA && !dateB) return 0;
-               if (!dateA) return 1;
-               if (!dateB) return -1;
+  const requestDeleteTask = useCallback((task: Task, dateStr: string) => {
+      if (task.recurring) {
+          setDeleteConfirmation({ task, dateStr });
+      } else {
+          deleteAllOccurrences(task.id);
+      }
+  }, [deleteAllOccurrences]);
 
-               const dateComparison = dateA.getTime() - dateB.getTime();
-               if (dateComparison !== 0) return dateComparison;
-
-               // Sort by priority within the same day (High priority first)
-               if (a.highPriority !== b.highPriority) {
-                    return a.highPriority ? -1 : 1;
-               }
-
-               // Keep original order if dates and priority are the same
-               const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
-               const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
-               if (originalAIndex === -1 && originalBIndex === -1) return 0;
-               if (originalAIndex === -1) return 1;
-               if (originalBIndex === -1) return -1;
-               return originalAIndex - originalBIndex;
-
-           });
-           return updatedTasks;
-       });
-
-       const taskDate = parseISOStrict(newTaskData.date);
-       toast({
-           title: "Task Added",
-           description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
-       });
-       setIsFormOpen(false); // Close form after adding
-       // setPrefilledTaskData(null); // No longer needed here for goals
-   }, [setTasks, toast, parseISOStrict]);
-
-
-    // Deletes the base task (and therefore all its occurrences)
-    const deleteAllOccurrences = useCallback((id: string) => {
-        const taskToDelete = tasks.find(task => task.id === id);
-        setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
-        // Remove all completion entries associated with this task ID
-        setCompletedTaskIds(prevIds => prevIds.filter(completionKey => !completionKey.startsWith(`${id}_`)));
-        if (taskToDelete) {
-            toast({
-                title: "Task Deleted",
-                description: `"${taskToDelete.name}" and all its future occurrences have been removed.`,
-                variant: "destructive",
-            });
-        }
-         setDeleteConfirmation(null); // Close confirmation dialog
-    }, [tasks, setTasks, setCompletedTaskIds, toast]);
-
-    // Adds an exception for a specific date instance of a recurring task
-    const deleteRecurringInstance = useCallback((taskId: string, dateStr: string) => {
-        const taskToModify = tasks.find(task => task.id === taskId);
-        setTasks(prevTasks => prevTasks.map(task => {
-            if (task.id === taskId) {
-                const updatedExceptions = [...(task.exceptions || []), dateStr];
-                return { ...task, exceptions: updatedExceptions };
-            }
-            return task;
-        }));
-        // Optionally remove completion entry if it exists for this specific instance
-        setCompletedTaskIds(prevIds => prevIds.filter(completionKey => completionKey !== `${taskId}_${dateStr}`));
-
-        if (taskToModify) {
-            toast({
-                title: "Task Instance Skipped",
-                description: `"${taskToModify.name}" for ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} will be skipped.`,
-            });
-        }
-        setDeleteConfirmation(null); // Close confirmation dialog
-    }, [tasks, setTasks, setCompletedTaskIds, toast, parseISOStrict]);
-
-    // This function is called by CalendarView to initiate the deletion process
-    const requestDeleteTask = useCallback((task: Task, dateStr: string) => {
-        if (task.recurring) {
-            setDeleteConfirmation({ task, dateStr }); // Open confirmation dialog for recurring tasks
-        } else {
-            deleteAllOccurrences(task.id); // Delete non-recurring task directly
-        }
-    }, [deleteAllOccurrences]);
-
-
-
-    const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => {
-        setTasks(prevTasks => {
-            let needsResort = false;
-            const updatedTasks = prevTasks.map(task => {
-                if (task.id === id) {
-                    const updatedTask = { ...task, ...updates };
-                    if ((updates.date && updates.date !== task.date) || (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)) {
-                        needsResort = true;
-                    }
-                    return updatedTask;
-                }
-                return task;
-            });
-
-            if (needsResort) {
-                updatedTasks.sort((a, b) => {
-                    const dateA = parseISOStrict(a.date);
-                    const dateB = parseISOStrict(b.date);
-                    if (!dateA && !dateB) return 0;
-                    if (!dateA) return 1;
-                    if (!dateB) return -1;
-                    const dateComparison = dateA.getTime() - dateB.getTime();
-                    if (dateComparison !== 0) return dateComparison;
-
-                     // Sort by priority within the same day (High priority first)
-                    if (a.highPriority !== b.highPriority) {
-                        return a.highPriority ? -1 : 1;
-                    }
-                    return 0; // Maintain relative order otherwise
-                });
-            }
-            return updatedTasks;
-        });
-        toast({
-            title: "Task Updated",
-            description: "Core task details have been updated.",
-        });
-    }, [setTasks, toast, parseISOStrict]);
-
+  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => {
+      setTasks(prevTasks => {
+          let needsResort = false;
+          const updatedTasks = prevTasks.map(task => {
+              if (task.id === id) {
+                  const updatedTask = { ...task, ...updates };
+                  if ((updates.date && updates.date !== task.date) || (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)) {
+                      needsResort = true;
+                  }
+                  return updatedTask;
+              }
+              return task;
+          });
+          if (needsResort) {
+              updatedTasks.sort((a, b) => {
+                  const dateA = parseISOStrict(a.date);
+                  const dateB = parseISOStrict(b.date);
+                  if (!dateA && !dateB) return 0;
+                  if (!dateA) return 1;
+                  if (!dateB) return -1;
+                  const dateComparison = dateA.getTime() - dateB.getTime();
+                  if (dateComparison !== 0) return dateComparison;
+                  if (a.highPriority !== b.highPriority) {
+                      return a.highPriority ? -1 : 1;
+                  }
+                  return 0;
+              });
+          }
+          return updatedTasks;
+      });
+      toast({
+          title: "Task Updated",
+          description: "Core task details have been updated.",
+      });
+  }, [setTasks, toast, parseISOStrict]);
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
-      setTasks(prevTasks => {
-          const tasksForDate = prevTasks.filter(task => {
-              const taskDateObj = parseISOStrict(task.date);
-               const currentDay = parseISOStrict(date);
-
-              // Skip if task date or current day is invalid
-               if (!taskDateObj || !currentDay) return false;
-
-               // Skip if the task has an exception for this date
-               if (task.exceptions?.includes(date)) return false;
-
-               if (task.recurring) {
-                   const taskStartDayOfWeek = taskDateObj.getDay();
-                   const currentDayOfWeek = currentDay.getDay();
-                   return taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj;
-               } else {
-                    return format(taskDateObj, 'yyyy-MM-dd') === date;
-               }
-          });
-          const otherTasks = prevTasks.filter(task => {
-             const taskDateObj = parseISOStrict(task.date);
-             if (!taskDateObj) return true; // Keep tasks without dates
+    setTasks(prevTasks => {
+        const tasksForDate = prevTasks.filter(task => {
+            const taskDateObj = parseISOStrict(task.date);
              const currentDay = parseISOStrict(date);
-             if (!currentDay) return true; // Keep if target date is invalid
-
-             // Skip if the task has an exception for this date (already handled above but good for clarity)
-             if (task.exceptions?.includes(date)) return true;
-
+             if (!taskDateObj || !currentDay) return false;
+             if (task.exceptions?.includes(date)) return false;
              if (task.recurring) {
                  const taskStartDayOfWeek = taskDateObj.getDay();
                  const currentDayOfWeek = currentDay.getDay();
-                 // Exclude if it's recurring and matches the target date's day of week
-                 return !(taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj);
+                 return taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj;
              } else {
-                 // Exclude if it matches the target date directly
-                 return format(taskDateObj, 'yyyy-MM-dd') !== date;
+                  return format(taskDateObj, 'yyyy-MM-dd') === date;
              }
+        });
+        const otherTasks = prevTasks.filter(task => {
+           const taskDateObj = parseISOStrict(task.date);
+           if (!taskDateObj) return true;
+           const currentDay = parseISOStrict(date);
+           if (!currentDay) return true;
+           if (task.exceptions?.includes(date)) return true;
+           if (task.recurring) {
+               const taskStartDayOfWeek = taskDateObj.getDay();
+               const currentDayOfWeek = currentDay.getDay();
+               return !(taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj);
+           } else {
+               return format(taskDateObj, 'yyyy-MM-dd') !== date;
+           }
+        });
+        const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
+        const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
+        const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
+         combinedTasks.sort((a, b) => {
+             const dateA = parseISOStrict(a.date);
+             const dateB = parseISOStrict(b.date);
+             if (!dateA && !dateB) return 0;
+             if (!dateA) return 1;
+             if (!dateB) return -1;
+             const dateComparison = dateA.getTime() - dateB.getTime();
+             if (dateComparison !== 0) return dateComparison;
+             const aIsForTargetDate = tasksForDate.some(t => t.id === a.id);
+             const bIsForTargetDate = tasksForDate.some(t => t.id === b.id);
+             if (aIsForTargetDate && bIsForTargetDate) {
+                 const aIndex = orderedTaskIds.indexOf(a.id);
+                 const bIndex = orderedTaskIds.indexOf(b.id);
+                 if (aIndex !== -1 && bIndex !== -1) {
+                     return aIndex - bIndex;
+                 }
+             }
+              if (a.highPriority !== b.highPriority) {
+                  return a.highPriority ? -1 : 1;
+              }
+             const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
+             const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
+              if (originalAIndex === -1 && originalBIndex === -1) return 0;
+              if (originalAIndex === -1) return 1;
+              if (originalBIndex === -1) return -1;
+             return originalAIndex - originalBIndex;
+        });
+        return combinedTasks;
+    });
+  }, [setTasks, parseISOStrict]);
+
+  const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const completionKey = `${taskId}_${dateStr}`;
+      const currentCompletedKeys = new Set(completedTaskIds);
+      if (currentCompletedKeys.has(completionKey)) {
+          currentCompletedKeys.delete(completionKey);
+          toast({
+              title: "Task Incomplete",
+              description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as incomplete.`,
           });
+      } else {
+          currentCompletedKeys.add(completionKey);
+          toast({
+              title: "Task Completed!",
+              description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as complete.`,
+          });
+      }
+      setCompletedTaskIds(Array.from(currentCompletedKeys));
+  }, [tasks, completedTaskIds, setCompletedTaskIds, toast, parseISOStrict]);
 
-          const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
-          const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
-
-          const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
-
-          // Keep the existing sort logic, which should place reordered tasks correctly at the end
-           combinedTasks.sort((a, b) => {
+  const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => {
+   setTasks(prevTasks => {
+      let needsResort = false;
+     const updatedTasks = prevTasks.map(task => {
+       if (task.id === id) {
+           const updatedTask = { ...task, ...updates };
+         return updatedTask;
+       }
+       return task;
+     });
+      if (needsResort) {
+           updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
-
                if (!dateA && !dateB) return 0;
                if (!dateA) return 1;
                if (!dateB) return -1;
-
                const dateComparison = dateA.getTime() - dateB.getTime();
                if (dateComparison !== 0) return dateComparison;
-
-               // Within the same date, check if these tasks belong to the day being reordered
-               const aIsForTargetDate = tasksForDate.some(t => t.id === a.id);
-               const bIsForTargetDate = tasksForDate.some(t => t.id === b.id);
-
-               if (aIsForTargetDate && bIsForTargetDate) {
-                   // If both tasks are for the specific date being reordered, use the provided order
-                   const aIndex = orderedTaskIds.indexOf(a.id);
-                   const bIndex = orderedTaskIds.indexOf(b.id);
-                   if (aIndex !== -1 && bIndex !== -1) {
-                       return aIndex - bIndex;
-                   }
+               if (a.highPriority !== b.highPriority) {
+                   return a.highPriority ? -1 : 1;
                }
+               return 0;
+           });
+       }
+     return updatedTasks;
+   });
+   toast({
+     title: "Task Details Updated",
+     description: "Additional details have been updated.",
+   });
+  }, [setTasks, toast, parseISOStrict]);
 
-               // If not part of the reorder for this specific date, sort by priority
-                if (a.highPriority !== b.highPriority) {
-                    return a.highPriority ? -1 : 1;
-                }
-
-               // Fallback to original overall order if dates and priority are the same
-               const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
-               const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
-                if (originalAIndex === -1 && originalBIndex === -1) return 0;
-                if (originalAIndex === -1) return 1;
-                if (originalBIndex === -1) return -1;
-               return originalAIndex - originalBIndex;
-          });
-
-
-          return combinedTasks;
-      });
-  }, [setTasks, parseISOStrict]);
-
-
-    const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
-        const task = tasks.find(t => t.id === taskId);
-        if (!task) return;
-
-        const completionKey = `${taskId}_${dateStr}`;
-        const currentCompletedKeys = new Set(completedTaskIds);
-
-        if (currentCompletedKeys.has(completionKey)) {
-            currentCompletedKeys.delete(completionKey);
-            toast({
-                title: "Task Incomplete",
-                description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as incomplete.`,
-            });
-        } else {
-            currentCompletedKeys.add(completionKey);
-            toast({
-                title: "Task Completed!",
-                description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as complete.`,
-            });
-        }
-        setCompletedTaskIds(Array.from(currentCompletedKeys));
-        // Trigger re-render by creating a new array - might not be needed if CalendarView reacts to completedTasks change
-        // setTasks(prevTasks => [...prevTasks]);
-
-    }, [tasks, completedTaskIds, setCompletedTaskIds, toast, parseISOStrict]);
-
-
-   // Removed highPriority from updates type
-   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => {
-     setTasks(prevTasks => {
-        let needsResort = false; // Keep for potential future use or if other updates require resorting
-       const updatedTasks = prevTasks.map(task => {
-         if (task.id === id) {
-             const updatedTask = { ...task, ...updates };
-             // Removed check if priority changed
-           return updatedTask;
-         }
-         return task;
-       });
-
-        // Keep the sorting logic in case other updates might require it in the future
-        if (needsResort) {
-             updatedTasks.sort((a, b) => {
-                 const dateA = parseISOStrict(a.date);
-                 const dateB = parseISOStrict(b.date);
-                 if (!dateA && !dateB) return 0;
-                 if (!dateA) return 1;
-                 if (!dateB) return -1;
-                 const dateComparison = dateA.getTime() - dateB.getTime();
-                 if (dateComparison !== 0) return dateComparison;
-
-                  // Sort by priority within the same day (High priority first)
-                 if (a.highPriority !== b.highPriority) {
-                     return a.highPriority ? -1 : 1;
-                 }
-                 return 0; // Maintain relative order otherwise
-             });
-         }
-
-       return updatedTasks;
-     });
-     toast({
-       title: "Task Details Updated",
-       description: "Additional details have been updated.",
-     });
-   }, [setTasks, toast, parseISOStrict]);
-
-   // Removed handleCreateTaskFromSubtask as Goals page will handle its own logic
-
+  const ongoingProjects = useMemo(() => {
+    if (!tasks) return [];
+    return tasks.filter(task => {
+      if (task.recurring || !task.dueDate || !task.date) return false;
+      try {
+        const startDate = parseISOStrict(task.date);
+        const dueDate = parseISOStrict(task.dueDate);
+        return startDate && dueDate && dueDate > startDate;
+      } catch (e) {
+        return false;
+      }
+    }).sort((a, b) => {
+        const dateA = parseISOStrict(a.date) ?? new Date(0);
+        const dateB = parseISOStrict(b.date) ?? new Date(0);
+        return dateA.getTime() - dateB.getTime();
+    });
+  }, [tasks, parseISOStrict]);
 
   return (
-    // Wrap the relevant part in DndContext for the timer
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
-      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden"> {/* Added overflow-hidden */}
+      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden">
+        {/* Top-left fixed icon for DueDateTaskDialog */}
+        <div className="fixed top-4 left-4 z-50">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
+            aria-label="Add task with due date"
+            onClick={() => setIsDueDateTaskDialogOpen(true)}
+          >
+            <CalendarPlus className="h-6 w-6 text-primary" />
+          </Button>
+        </div>
+
         <div className="w-full max-w-7xl space-y-4">
-          <header className="text-center py-2 relative z-10"> {/* Ensure header is above timer */}
+          <header className="text-center py-2 relative z-10">
             <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
-             {/* Completed Task Count - Moved here */}
-             {isClient && (
-                 <p className="text-sm text-muted-foreground mt-1">
-                     Completed Tasks: {completedCount}
-                 </p>
-             )}
           </header>
 
-          {/* Conditionally render CalendarView only on the client */}
           {isClient && (
               <CalendarView
                 tasks={tasks}
-                requestDeleteTask={requestDeleteTask} // Pass the request function
+                requestDeleteTask={requestDeleteTask}
                 updateTaskOrder={updateTaskOrder}
-                toggleTaskCompletion={toggleTaskCompletion} // Pass the modified function
-                completedTasks={completedTasks} // Pass the Set of completion keys
-                updateTaskDetails={updateTaskDetails} // Pass the modified updateTaskDetails
+                toggleTaskCompletion={toggleTaskCompletion}
+                completedTasks={completedTasks}
+                updateTaskDetails={updateTaskDetails}
                 updateTask={updateTask}
-                completedCount={completedCount} // Pass the completed count
+                completedCount={completedCount}
               />
           )}
 
-           {/* Bottom Right Icons - Add New Task */}
-           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogTrigger asChild>
+          {/* Ongoing Projects Section */}
+          {isClient && ongoingProjects.length > 0 && (
+            <Card className="mt-4 shadow-lg bg-card border-border">
+              <CardHeader>
+                <CardTitle className="text-xl text-primary flex items-center">
+                  <LayoutDashboard className="mr-2 h-5 w-5" /> Ongoing Projects
+                </CardTitle>
+                <CardDescription>Tasks spanning multiple days.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[200px] pr-2">
+                  <div className="space-y-3">
+                    {ongoingProjects.map(project => (
+                      <Card key={project.id} className="p-3 bg-secondary/50 border-border shadow-sm">
+                        <h4 className="font-semibold text-sm text-secondary-foreground truncate" title={project.name}>{project.name}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          {format(parseISOStrict(project.date)!, 'MMM d')} - {format(parseISOStrict(project.dueDate!)!, 'MMM d, yyyy')}
+                        </p>
+                        {project.description && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2" title={project.description}>
+                            {project.description}
+                          </p>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+
+           {/* Bottom Right Icons */}
+           <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col space-y-2 items-end">
+                {/* Natural Language Task Adder FAB */}
                 <Button
-                  variant="default"
-                  size="icon"
-                  className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
-                  aria-label="Add new task"
-                  // onClick={() => setPrefilledTaskData(null)} // No longer prefilling from here for Goals
-                 >
-                  <Plus className="h-6 w-6" />
-                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                   <DialogTitle className="text-primary">Add New Task</DialogTitle>
-                 </DialogHeader>
-                 <TaskForm
-                   addTask={addTask}
-                   onTaskAdded={() => {
-                     setIsFormOpen(false);
-                     // setPrefilledTaskData(null); // No longer prefilling from here for Goals
-                   }}
-                   // initialData={prefilledTaskData} // No longer prefilling from here for Goals
-                  />
-              </DialogContent>
-            </Dialog>
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
+                    aria-label="Add task with natural language"
+                    onClick={() => setIsNaturalLanguageTaskDialogOpen(true)}
+                >
+                    <Wand2 className="h-6 w-6 text-primary" />
+                </Button>
 
+                {/* Standard Add Task FAB */}
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="icon"
+                      className="h-12 w-12 rounded-full shadow-lg"
+                      aria-label="Add new task"
+                    >
+                      <Plus className="h-6 w-6" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                       <DialogTitle className="text-primary">Add New Task</DialogTitle>
+                    </DialogHeader>
+                    <TaskForm
+                       addTask={addTask}
+                       onTaskAdded={() => setIsFormOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+           </div>
 
-         {/* Left Side Icons Container */}
-         <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2"> {/* Container with spacing */}
-
-             {/* Removed User Avatar */}
-
-             {/* Dashboard Page Link Button */}
+         <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2">
              <Link href="/dashboard" passHref legacyBehavior>
                 <Button
                     variant="outline"
                     size="icon"
                     className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
                     aria-label="Go to dashboard"
-                    asChild // Important: Allows Button to act as the child of Link
+                    asChild
                 >
-                    <a> {/* This anchor tag receives the href from Link */}
+                    <a>
                       <LayoutDashboard className="h-6 w-6 text-primary" />
                     </a>
                 </Button>
              </Link>
-
-              {/* Study Tracker Page Link Button */}
              <Link href="/study-tracker" passHref legacyBehavior>
                  <Button
                      variant="outline"
@@ -509,12 +487,10 @@ export default function Home() {
                      asChild
                  >
                      <a>
-                         <BookOpen className="h-6 w-6 text-primary" /> {/* Study icon */}
+                         <BookOpen className="h-6 w-6 text-primary" />
                      </a>
                  </Button>
              </Link>
-
-              {/* Goals Page Link Button */}
              <Link href="/goals" passHref legacyBehavior>
                 <Button
                     variant="outline"
@@ -528,15 +504,12 @@ export default function Home() {
                     </a>
                 </Button>
             </Link>
-
-
-             {/* Bookmark List Sheet Trigger */}
              <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                  <SheetTrigger asChild>
                      <Button
                          variant="outline"
                          size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
+                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
                          aria-label="View bookmarks"
                      >
                          <BookmarkIcon className="h-6 w-6 text-primary" />
@@ -549,27 +522,21 @@ export default function Home() {
                      <BookmarkListSheet />
                  </SheetContent>
              </Sheet>
-
-             {/* Removed Quick Capture Sheet Trigger */}
-
-             {/* Pomodoro Timer Trigger */}
              <Button
                  variant="outline"
                  size="icon"
-                 className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
+                 className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
                  aria-label="Toggle Pomodoro Timer"
                  onClick={() => setIsTimerVisible(!isTimerVisible)}
              >
                  <TimerIcon className="h-6 w-6 text-primary" />
              </Button>
-
-             {/* Task List (Scratchpad) Sheet Trigger */}
              <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
                  <SheetTrigger asChild>
                      <Button
                          variant="outline"
                          size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
+                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary"
                          aria-label="View scratchpad"
                      >
                          <List className="h-6 w-6 text-primary" />
@@ -582,13 +549,9 @@ export default function Home() {
                      <TaskListSheet />
                  </SheetContent>
              </Sheet>
-
          </div>
-
-
         </div>
 
-        {/* Render Pomodoro Timer if visible and on client */}
         {isClient && isTimerVisible && (
           <PomodoroTimer
             position={timerPosition}
@@ -596,7 +559,18 @@ export default function Home() {
           />
         )}
 
-         {/* Recurring Task Delete Confirmation Dialog */}
+        <NaturalLanguageTaskDialog
+            isOpen={isNaturalLanguageTaskDialogOpen}
+            onClose={() => setIsNaturalLanguageTaskDialogOpen(false)}
+            onTaskAdd={addTask}
+        />
+
+        <DueDateTaskDialog
+            isOpen={isDueDateTaskDialogOpen}
+            onClose={() => setIsDueDateTaskDialogOpen(false)}
+            addTask={addTask}
+        />
+
         <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -609,7 +583,6 @@ export default function Home() {
                     <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
-                         // Apply buttonVariants for outline and ensure text color contrasts
                          className={cn(buttonVariants({ variant: "outline" }), "text-foreground")}
                     >
                         Delete This Occurrence Only
@@ -623,9 +596,7 @@ export default function Home() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-
       </main>
     </DndContext>
   );
 }
-
