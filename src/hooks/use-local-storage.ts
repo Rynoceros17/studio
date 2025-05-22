@@ -23,41 +23,30 @@ function useLocalStorage<T>(
   key: string,
   initialValue: T
 ): [T, React.Dispatch<React.SetStateAction<T>>] {
-  // Initialize with initialValue to ensure server and client first render match
-  const [storedValue, setStoredValue] = useState<T>(initialValue);
-
-  // Effect to load from localStorage after initial client render
-  useEffect(() => {
+  // State to store our value
+  // Read initial value from localStorage if on client, otherwise use initialValue.
+  // This function is only executed on the initial render.
+  const [storedValue, setStoredValue] = useState<T>(() => {
     if (typeof window === "undefined") {
-      return;
+      return initialValue; // Server-side rendering, use initialValue
     }
     try {
       const item = window.localStorage.getItem(key);
-      if (item !== null) { // Check if item actually exists
-        const valueFromStorage = safeJsonParseWithKey(item, initialValue, key);
-        // Only update state if the stored value is different from the current initialValue
-        // This can prevent an unnecessary re-render if initialValue is already what's in storage
-        // (or if storage is empty and initialValue is the fallback).
-        // However, for complex objects, direct comparison might be tricky.
-        // A simple update is often fine.
-        setStoredValue(valueFromStorage);
-      }
+      // If item exists, parse it. Otherwise, use initialValue.
+      return item ? safeJsonParseWithKey(item, initialValue, key) : initialValue;
     } catch (error) {
-      console.warn(`Error reading localStorage key “${key}” during effect:`, error);
-      // We don't setStoredValue to initialValue here again, as it's already initialized with it.
+      // If error reading, fallback to initialValue
+      console.warn(`Error reading localStorage key “${key}” during initial state setup:`, error);
+      return initialValue;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]); // Removed initialValue from dependency array to avoid re-running if initialValue reference changes unnecessarily.
+  });
 
-  // Effect to save to localStorage when storedValue changes
+  // useEffect to update localStorage when storedValue changes.
+  // This runs on the client after every render where key or storedValue changes.
   useEffect(() => {
-    // Only save if storedValue is different from the initialValue provided to the hook,
-    // or if it's explicitly set to something else by the component.
-    // This prevents writing initialValue to localStorage on first load if nothing was there.
-    // However, the component might want to persist initialValue if that's its true default.
-    // For simplicity and to ensure persistence even if initialValue is used, we save.
     if (typeof window !== "undefined") {
       try {
+        // console.log(`Saving to localStorage key "${key}":`, storedValue);
         window.localStorage.setItem(key, JSON.stringify(storedValue));
       } catch (error) {
         console.error(`Error setting localStorage key “${key}”:`, error);
@@ -65,12 +54,14 @@ function useLocalStorage<T>(
     }
   }, [key, storedValue]);
 
-  // Effect to listen for storage events to sync across tabs
+  // useEffect to listen for storage events (for cross-tab sync).
+  // This runs on the client after mount and if key or initialValue (for fallback) changes.
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === key && event.storageArea === window.localStorage) {
+        // console.log(`Storage event for key "${key}":`, event.newValue);
         setStoredValue(safeJsonParseWithKey(event.newValue, initialValue, key));
       }
     };
@@ -79,7 +70,7 @@ function useLocalStorage<T>(
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  // initialValue is needed here because safeJsonParseWithKey uses it as a fallback.
+    // initialValue is a dependency because safeJsonParseWithKey uses it as a fallback.
   }, [key, initialValue]);
 
   return [storedValue, setStoredValue];
