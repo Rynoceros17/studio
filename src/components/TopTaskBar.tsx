@@ -3,20 +3,19 @@
 
 import type * as React from 'react';
 import Link from 'next/link'; // Import Link
-import { format, parseISO, isSameDay } from 'date-fns';
-import { ChevronDown, ChevronUp, CalendarClock, Target } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { CalendarClock, Target, Briefcase } from 'lucide-react'; // Added Briefcase
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress'; // Import Progress
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator'; // Import Separator
 import type { UpcomingItem } from '@/lib/types';
 import { cn, truncateText, calculateTimeLeft, type TimeLeft } from '@/lib/utils';
 
 interface TopTaskBarProps {
   items: UpcomingItem[];
-  isExpanded: boolean;
-  onToggle: () => void;
 }
 
 function formatTimeLeftForDisplay(timeLeft: TimeLeft | null): string {
@@ -29,41 +28,35 @@ function formatTimeLeftForDisplay(timeLeft: TimeLeft | null): string {
   if (timeLeft.years > 0) {
     return `${timeLeft.years}y ${timeLeft.monthsInYear}m left`;
   }
-  if (timeLeft.totalMonths > 0) { // Use totalMonths here for the badge
+  if (timeLeft.totalMonths > 0) {
     return `${timeLeft.totalMonths}m ${timeLeft.daysInMonth}d left`;
   }
   if (timeLeft.totalDays > 0) {
      return `${timeLeft.totalDays}d ${timeLeft.hoursInDay}h left`;
   }
-  if (timeLeft.totalHours >= 0) { // Changed from totalHours > 0 to >= 0 for "Due Today" case handled above
+  if (timeLeft.totalHours >= 0) {
       return `${timeLeft.hoursInDay}h left`;
   }
   return "Upcoming"; // Fallback
 }
 
-export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
+export function TopTaskBar({ items }: TopTaskBarProps) {
+  const goalItems = items.filter(item => item.type === 'goal');
+  const numberOfGoals = goalItems.length;
+
   return (
     <Card className="w-full shadow-md bg-card border-border mb-4 overflow-hidden">
       <CardHeader
-        className="flex flex-row items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors"
-        onClick={onToggle}
+        className="flex flex-row items-center justify-between p-3"
       >
         <div className="flex items-center">
           <CalendarClock className="h-5 w-5 mr-2 text-primary" />
           <CardTitle className="text-lg text-primary">Upcoming Deadlines</CardTitle>
         </div>
-        <Button variant="ghost" size="icon" aria-label={isExpanded ? "Collapse deadlines" : "Expand deadlines"}>
-          {isExpanded ? <ChevronUp className="h-5 w-5 text-primary" /> : <ChevronDown className="h-5 w-5 text-primary" />}
-        </Button>
+        {/* Toggle button removed as per previous request */}
       </CardHeader>
 
-      <div
-        className={cn(
-          "transition-all duration-300 ease-in-out",
-          isExpanded ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
-        )}
-      >
-        {isExpanded && (
+      <div className="opacity-100 max-h-[600px]"> {/* Always expanded */}
           <CardContent className="p-0">
             {items.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
@@ -74,31 +67,32 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
                 <div className="flex flex-wrap gap-4 p-4 justify-center">
                   {items.map(item => {
                     const timeLeftDetails = calculateTimeLeft(item.dueDate);
-                    const formattedTimeLeftBadge = formatTimeLeftForDisplay(timeLeftDetails); // For the badge
+                    const formattedTimeLeftBadge = formatTimeLeftForDisplay(timeLeftDetails);
 
                     let timeBadgeVariant: "default" | "secondary" | "destructive" = "secondary";
                     if (timeLeftDetails?.isPastDue) {
                         timeBadgeVariant = "destructive";
                     } else if (timeLeftDetails?.totalDays === 0 && !timeLeftDetails.isPastDue) {
-                        timeBadgeVariant = "default"; // "Due Today"
+                        timeBadgeVariant = "default";
                     } else if (timeLeftDetails && !timeLeftDetails.isPastDue && timeLeftDetails.totalDays > 0 && timeLeftDetails.totalDays <= 2) {
-                        timeBadgeVariant = "default"; // "Due Soon" (within 2 days)
+                        timeBadgeVariant = "default";
                     }
-
 
                     const cardBaseClass = "shadow-sm border-border flex flex-col";
                     const taskCardClass = "w-full sm:w-[calc(33.333%-1rem)] md:w-[calc(25%-1rem)] lg:w-[calc(20%-1rem)] min-w-[200px] max-w-[280px] min-h-[100px] bg-secondary/30";
-                    const goalCardClass = "w-full md:w-[calc(50%-0.5rem)] min-w-[300px] max-w-[480px] min-h-[160px] bg-secondary/50 hover:shadow-md transition-shadow";
-
-
+                    
                     if (item.type === 'goal') {
+                      const isSingleGoalCard = numberOfGoals === 1 && item.id === goalItems[0].id;
+                      const goalCardDynamicWidthClass = isSingleGoalCard ? "w-full" : "md:w-[calc(50%-0.5rem)]";
+                      const goalCardMinHeightClass = isSingleGoalCard ? "min-h-[100px]" : "min-h-[160px]";
+
                       return (
-                        <Link href="/goals" key={item.id} className={cn(cardBaseClass, goalCardClass, "cursor-pointer")}>
+                        <Link href="/goals" key={item.id} className={cn(cardBaseClass, goalCardDynamicWidthClass, "min-w-[300px] max-w-[480px]", goalCardMinHeightClass, "bg-secondary/50 hover:shadow-md transition-shadow cursor-pointer")}>
                             <CardHeader className="p-3 pb-1.5">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-base font-semibold truncate text-secondary-foreground flex items-center" title={item.name}>
                                         <Target className="h-4 w-4 mr-1.5 shrink-0 text-primary/80" />
-                                        {truncateText(item.name, 35)}
+                                        {truncateText(item.name, isSingleGoalCard ? 40 : 35)}
                                     </CardTitle>
                                     {formattedTimeLeftBadge && (
                                         <Badge variant={timeBadgeVariant} className="text-xs shrink-0 ml-2">{formattedTimeLeftBadge}</Badge>
@@ -109,20 +103,48 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="p-3 pt-1.5 flex flex-col flex-grow justify-between">
-                                <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground mb-2 text-center">
-                                    <div>
-                                        <p className="font-medium text-sm text-foreground">{timeLeftDetails?.totalDays ?? 'N/A'}</p>
-                                        <p>Days Left</p>
+                                {timeLeftDetails && !timeLeftDetails.isPastDue && (
+                                   <div className={cn(
+                                       "flex text-xs text-muted-foreground mb-2 text-center",
+                                       isSingleGoalCard ? "items-center justify-around mt-2 mb-1" : "grid grid-cols-3 gap-2"
+                                   )}>
+                                        {/* Months Left */}
+                                        {timeLeftDetails.totalMonths > 0 && (
+                                            <>
+                                                <div>
+                                                    <p className="font-semibold text-lg text-foreground">{timeLeftDetails.totalMonths}</p>
+                                                    <p>Months Left</p>
+                                                </div>
+                                                {isSingleGoalCard && <Separator orientation="vertical" className="h-8" />}
+                                            </>
+                                        )}
+                                        {/* Days Left */}
+                                        {( (timeLeftDetails.totalMonths > 0 && timeLeftDetails.daysInMonth > 0) || (timeLeftDetails.totalMonths === 0 && timeLeftDetails.totalDays > 0) ) && (
+                                            <>
+                                                <div>
+                                                    <p className="font-semibold text-lg text-foreground">
+                                                        {timeLeftDetails.totalMonths > 0 ? timeLeftDetails.daysInMonth : timeLeftDetails.totalDays}
+                                                    </p>
+                                                    <p>Days Left</p>
+                                                </div>
+                                                 {isSingleGoalCard && timeLeftDetails.hoursInDay > 0 && timeLeftDetails.totalDays === 0 && <Separator orientation="vertical" className="h-8" />}
+                                            </>
+                                        )}
+                                        {/* Hours Left */}
+                                        {timeLeftDetails.totalDays === 0 && timeLeftDetails.hoursInDay >= 0 && !timeLeftDetails.isPastDue && (
+                                            <div>
+                                                <p className="font-semibold text-lg text-foreground">{timeLeftDetails.hoursInDay}</p>
+                                                <p>Hours Left</p>
+                                            </div>
+                                        )}
+                                   </div>
+                                )}
+                                {timeLeftDetails && timeLeftDetails.isPastDue && (
+                                    <div className="text-center text-destructive font-medium my-4 text-sm">
+                                        This goal is past due.
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-sm text-foreground">{timeLeftDetails?.totalMonths ?? 'N/A'}</p>
-                                        <p>Months Left</p>
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-sm text-foreground">{timeLeftDetails?.totalHours ?? 'N/A'}</p>
-                                        <p>Hours Left</p>
-                                    </div>
-                                </div>
+                                )}
+
                                 {typeof item.progress === 'number' && (
                                 <div className="mt-auto">
                                     <div className="flex justify-between text-xs text-muted-foreground mb-0.5">
@@ -137,7 +159,7 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
                       );
                     }
 
-                    // Task Card (remains mostly the same, will wrap)
+                    // Task Card
                     return (
                       <Card key={item.id} className={cn(cardBaseClass, taskCardClass)}>
                         <CardHeader className="p-2 pb-1">
@@ -164,7 +186,6 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
               </ScrollArea>
             )}
           </CardContent>
-        )}
       </div>
     </Card>
   );
