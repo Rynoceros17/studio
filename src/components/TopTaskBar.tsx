@@ -4,14 +4,12 @@
 import type * as React from 'react';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { CalendarClock, Target, Briefcase } from 'lucide-react'; // Briefcase seems unused here, consider removing if not needed elsewhere
+import { CalendarClock, Target } from 'lucide-react'; // Removed Briefcase
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-// Separator might not be needed if we are not using vertical lines between time units
-// import { Separator } from '@/components/ui/separator'; 
 import type { UpcomingItem } from '@/lib/types';
 import { cn, truncateText, calculateTimeLeft, type TimeLeft } from '@/lib/utils';
 
@@ -19,46 +17,40 @@ interface TopTaskBarProps {
   items: UpcomingItem[];
 }
 
-// Updated formatTimeLeftForDisplay for the badge
+// Badge display logic
 function formatTimeLeftForBadge(timeLeft: TimeLeft | null): string {
   if (!timeLeft) return "";
   if (timeLeft.isPastDue) return "Past Due";
   if (timeLeft.isDueToday) return "Due Today";
 
   if (timeLeft.totalYears > 0) {
-    return `${timeLeft.totalYears}y ${timeLeft.monthsInYear}mo left`;
+    return `${timeLeft.totalYears}y ${timeLeft.totalMonths % 12}mo left`;
   }
   if (timeLeft.totalMonths > 0) {
-    return `${timeLeft.totalMonths}mo ${timeLeft.weeksInMonth}w left`;
+    return `${timeLeft.totalMonths}mo ${timeLeft.totalWeeks % 4}w left`;
   }
   if (timeLeft.totalWeeks > 0) {
-    return `${timeLeft.totalWeeks}w ${timeLeft.daysInWeek}d left`;
+     // Show remaining days in the current week for the badge if weeks are primary
+    const daysInWeekForBadge = timeLeft.fullDaysRemaining % 7;
+    return `${timeLeft.totalWeeks}w ${daysInWeekForBadge}d left`;
   }
-  // Use fullDaysRemaining for days part of the badge to represent days after today.
-  // hoursComponent is hours left in the current day.
+  // If less than a week, show days and hours left in current day
   if (timeLeft.fullDaysRemaining > 0) { 
-    return `${timeLeft.fullDaysRemaining}d ${timeLeft.hoursComponent}h left`;
+    return `${timeLeft.fullDaysRemaining}d ${timeLeft.hoursInCurrentDay}h left`;
   }
-  // If no full days remaining, it's due tomorrow or within today (but not "Due Today" if current time has passed midnight for due date)
-  if (timeLeft.hoursComponent >= 0) { // Show hours if non-negative
-    return `${timeLeft.hoursComponent}h ${timeLeft.minutesComponent}m left`;
+  // If due tomorrow (fullDaysRemaining = 0, but not isDueToday), show hours left in current day
+  if (timeLeft.hoursInCurrentDay >= 0) { 
+    return `${timeLeft.hoursInCurrentDay}h ${timeLeft.minutesInCurrentHour}m left`;
   }
   return "Upcoming";
 }
 
-// New function for Y:M:W:D:H string format
+// Y : M : W : D : H string format using new detailed components
 function formatDetailedTimeLeft(timeLeft: TimeLeft | null): string {
   if (!timeLeft) return "N/A";
   if (timeLeft.isPastDue) return "Past Due";
 
-  // Construct the string using component values from TimeLeft
-  const yearsDisplay = timeLeft.totalYears;
-  const monthsDisplay = timeLeft.monthsInYear;
-  const weeksDisplay = timeLeft.weeksInMonth;
-  const daysDisplay = timeLeft.daysInWeek; 
-  const hoursDisplay = timeLeft.hoursComponent;
-
-  return `${yearsDisplay}y : ${monthsDisplay}mo : ${weeksDisplay}w : ${daysDisplay}d : ${hoursDisplay}h`;
+  return `${timeLeft.yearsDetailed}y : ${timeLeft.monthsDetailed}mo : ${timeLeft.weeksDetailed}w : ${timeLeft.daysDetailed}d : ${timeLeft.hoursDetailed}h`;
 }
 
 
@@ -67,7 +59,7 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
   const numberOfGoals = goalItems.length;
 
   return (
-    <div className="w-full mt-4">
+    <div className="w-full">
       <Card className="w-full shadow-md bg-card border-border mb-4 overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between p-3">
           <div className="flex items-center">
@@ -81,7 +73,7 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
               No upcoming deadlines for tasks or goals.
             </div>
           ) : (
-            <ScrollArea>
+            <ScrollArea> {/* Removed whitespace-nowrap */}
               <div className="flex flex-wrap gap-4 p-4 justify-center">
                 {items.map(item => {
                   const timeLeftDetails = calculateTimeLeft(item.dueDate);
@@ -91,7 +83,7 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
                   if (timeLeftDetails) {
                     if (timeLeftDetails.isPastDue) {
                         timeBadgeVariant = "destructive";
-                    } else if (timeLeftDetails.isDueToday || (timeLeftDetails.fullDaysRemaining === 0 && timeLeftDetails.hoursComponent >= 0 && timeLeftDetails.hoursComponent <= 24) ) { // Updated condition for "default" urgency
+                    } else if (timeLeftDetails.isDueToday || (timeLeftDetails.fullDaysRemaining === 0 && timeLeftDetails.hoursInCurrentDay >= 0 && timeLeftDetails.hoursInCurrentDay <= 24) ) {
                         timeBadgeVariant = "default"; 
                     } else if (timeLeftDetails.fullDaysRemaining > 0 && timeLeftDetails.fullDaysRemaining <= 2) {
                         timeBadgeVariant = "default"; 
@@ -108,7 +100,7 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
 
                     if (isSingleGoalCard) {
                       cardWrapperClass = "w-full";
-                      cardInternalClass = cn(cardInternalClass, "min-h-[100px]"); // Adjusted min-height for single card
+                      cardInternalClass = cn(cardInternalClass, "min-h-[100px]");
                     } else {
                       cardWrapperClass = "w-full md:w-[calc(50%-0.5rem)]"; 
                       cardInternalClass = cn(cardInternalClass, "min-w-[300px] min-h-[160px]");
@@ -132,31 +124,36 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="p-3 pt-1.5 flex flex-col flex-grow justify-between">
-                            {timeLeftDetails && !timeLeftDetails.isPastDue && isSingleGoalCard && (
-                               <p className="text-md font-semibold text-foreground text-center mt-2 mb-3 font-mono tracking-tight">
+                            {isSingleGoalCard && timeLeftDetails && !timeLeftDetails.isPastDue && (
+                               <p className="text-md font-semibold text-foreground text-center my-2 font-mono tracking-tight">
                                 {formatDetailedTimeLeft(timeLeftDetails)}
                               </p>
                             )}
-                             {timeLeftDetails && !timeLeftDetails.isPastDue && !isSingleGoalCard && (
+                            {isSingleGoalCard && timeLeftDetails && timeLeftDetails.isPastDue && (
+                               <p className="text-destructive font-medium text-center my-2 text-sm">
+                                This goal is past due.
+                               </p>
+                            )}
+                            {!isSingleGoalCard && timeLeftDetails && !timeLeftDetails.isPastDue && (
                                <div className="flex flex-row flex-wrap items-baseline gap-x-2 gap-y-1 justify-center mt-2 mb-1 text-center">
-                                {timeLeftDetails.totalYears > 0 && (
-                                   <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.totalYears}</p> <p className="text-xs">Years</p> </div>
+                                {timeLeftDetails.yearsDetailed > 0 && (
+                                   <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.yearsDetailed}</p> <p className="text-xs">Years</p> </div>
                                 )}
-                                {timeLeftDetails.totalMonths > 0 && (
-                                  <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.monthsInYear > 0 ? timeLeftDetails.monthsInYear : timeLeftDetails.totalMonths}</p> <p className="text-xs">Months</p> </div>
+                                {timeLeftDetails.monthsDetailed > 0 && (
+                                  <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.monthsDetailed}</p> <p className="text-xs">Months</p> </div>
                                 )}
-                                {timeLeftDetails.totalWeeks > 0 && (
-                                  <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.weeksInMonth > 0 ? timeLeftDetails.weeksInMonth : timeLeftDetails.totalWeeks}</p> <p className="text-xs">Weeks</p> </div>
+                                {timeLeftDetails.weeksDetailed > 0 && (
+                                  <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.weeksDetailed}</p> <p className="text-xs">Weeks</p> </div>
                                 )}
-                                {timeLeftDetails.fullDaysRemaining >= 0 && !timeLeftDetails.isDueToday && (
-                                  <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.daysInWeek > 0 ? timeLeftDetails.daysInWeek : timeLeftDetails.fullDaysRemaining}</p> <p className="text-xs">Days</p> </div>
+                                {timeLeftDetails.daysDetailed >= 0 && ( // Show days if >= 0 for this detailed view
+                                  <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.daysDetailed}</p> <p className="text-xs">Days</p> </div>
                                 )}
-                                {((timeLeftDetails.isDueToday && timeLeftDetails.hoursComponent >= 0) || (timeLeftDetails.fullDaysRemaining === 0 && !timeLeftDetails.isPastDue && timeLeftDetails.hoursComponent >= 0)) && (
-                                  <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.hoursComponent}</p> <p className="text-xs">Hours</p> </div>
+                                {timeLeftDetails.hoursDetailed >= 0 && ( // Show hours if >=0 for this detailed view
+                                  <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.hoursDetailed}</p> <p className="text-xs">Hours</p> </div>
                                 )}
                                </div>
                             )}
-                            {timeLeftDetails && timeLeftDetails.isPastDue && (
+                            {!isSingleGoalCard && timeLeftDetails && timeLeftDetails.isPastDue && (
                               <div className="text-center text-destructive font-medium my-4 text-sm">
                                 This goal is past due.
                               </div>
@@ -208,5 +205,3 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
     </div>
   );
 }
-
-    
