@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, PlusCircle, ArrowLeft, Save, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon } from 'lucide-react'; // Removed Sparkles
+import { Plus, Trash2, PlusCircle, ArrowLeft, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn, truncateText } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
@@ -28,7 +28,6 @@ import {
 import { format, parseISO, isValid } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-// Removed: import { suggestSubtasksForGoal } from '@/ai/flows/suggest-subtasks-flow';
 
 
 import {
@@ -140,15 +139,19 @@ function SortableListItem({
         textColorClass = 'text-muted-foreground';
         expandChevronColorClass = 'text-muted-foreground';
     } else if (depth === 0) {
-        bgClass = 'bg-secondary/70'; // Parent
+        bgClass = 'bg-secondary/70'; // Parent (Very Light Purple @ 70%)
+        textColorClass = 'text-card-foreground'; // Black/Dark Grey for contrast
+        expandChevronColorClass = 'text-card-foreground';
     } else if (depth === 1) {
-        bgClass = 'bg-muted/70';    // Child
+        bgClass = 'bg-muted/50';    // Child (Lighter version of Secondary @ 50% - very pale purple)
+        textColorClass = 'text-card-foreground'; // Black/Dark Grey for contrast
+        expandChevronColorClass = 'text-card-foreground';
     }
-    // Deeper levels (depth >= 2) use default bg-card
+    // Deeper levels (depth >= 2) use default bg-card (White) and text-card-foreground
 
 
     return (
-        <div ref={setNodeRef} style={style} className="mb-0.5">
+        <div ref={setNodeRef} style={style} className="mb-0.5"> {/* Removed paddingLeft for indentation */}
             <div
                 className={cn(
                     `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm`,
@@ -173,7 +176,7 @@ function SortableListItem({
                             {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
                     ) : (
-                        <div className="w-6 shrink-0"></div>
+                        <div className="w-6 shrink-0"></div> // Placeholder for alignment if no children
                     )}
                     <Checkbox
                         id={`subtask-${subtask.id}`}
@@ -240,7 +243,7 @@ function SortableListItem({
                 </div>
             </div>
 
-            <div className="my-1">
+            <div className="my-1"> {/* Removed paddingLeft for indentation */}
                 {showAddChildInputFor === subtask.id && (
                     <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
                         <Input
@@ -262,7 +265,7 @@ function SortableListItem({
             </div>
 
             {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                <div className="pl-0">
+                <div className="pl-0"> {/* Removed paddingLeft for indentation */}
                    {renderSubtasksFunction(subtask.subtasks, goalId, depth + 1)}
                 </div>
             )}
@@ -297,10 +300,6 @@ export default function GoalsPage() {
     const [isClient, setIsClient] = useState(false);
     const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null);
     
-    // Removed states for subtask suggestions
-    // const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
-    // const [isSuggestingSubtasks, setIsSuggestingSubtasks] = useState(false);
-
 
     useEffect(() => {
         setIsClient(true);
@@ -309,7 +308,7 @@ export default function GoalsPage() {
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5,
+                distance: 5, // User must drag 5px before initiating drag
             },
         }),
         useSensor(KeyboardSensor, {
@@ -350,32 +349,35 @@ export default function GoalsPage() {
         const overId = over.id as string;
 
         setGoals((currentGoals) => {
-            const newGoals = JSON.parse(JSON.stringify(currentGoals)) as Goal[];
+            const newGoals = JSON.parse(JSON.stringify(currentGoals)) as Goal[]; // Deep copy
             const reorderInList = (list: Subtask[]): boolean => {
                 const activeItemIndex = list.findIndex(item => item.id === activeId);
                 const overItemIndex = list.findIndex(item => item.id === overId);
 
                 if (activeItemIndex !== -1 && overItemIndex !== -1) {
+                    // Items are in the same list, reorder them
                     const reorderedList = arrayMove(list, activeItemIndex, overItemIndex);
-                    list.length = 0; 
-                    list.push(...reorderedList); 
-                    return true; 
+                    list.length = 0; // Clear the original list in place (if it's part of the newGoals structure)
+                    list.push(...reorderedList); // Push reordered items back
+                    return true; // Indicate reorder happened
                 }
+                // Recursively search in subtasks
                 for (const item of list) {
                     if (item.subtasks && item.subtasks.length > 0) {
                         if (reorderInList(item.subtasks)) {
-                            return true; 
+                            return true; // Reorder happened in a nested list
                         }
                     }
                 }
-                return false; 
+                return false; // Reorder did not happen in this list or its children
             };
+            // Try to reorder in each goal's top-level subtasks
             for (const goal of newGoals) {
                 if (reorderInList(goal.subtasks)) {
-                    break; 
+                    break; // Stop if reorder was successful
                 }
             }
-            return newGoals; 
+            return newGoals; // Return the modified goals array
         });
     };
 
@@ -411,7 +413,6 @@ export default function GoalsPage() {
        setIsTaskFormOpen(false); setPrefilledTaskData(null);
     };
 
-    // Removed handleSuggestSubtasks function
 
     const addGoal = () => {
         if (!newGoalName.trim()) {
@@ -421,12 +422,11 @@ export default function GoalsPage() {
             id: crypto.randomUUID(), 
             name: newGoalName.trim(), 
             dueDate: newGoalDueDate ? format(newGoalDueDate, 'yyyy-MM-dd') : undefined,
-            subtasks: [] // Subtasks are no longer pre-filled by suggestions
+            subtasks: [] 
         };
         setGoals(prev => [...prev, newGoal]);
         setNewGoalName('');
         setNewGoalDueDate(undefined);
-        // Removed: setSuggestedSubtasks([]);
         toast({ title: "Goal Added", description: `"${newGoal.name}" ${newGoal.dueDate ? `(Due: ${format(parseISO(newGoal.dueDate), 'PPP')})` : ''} added successfully.` });
     };
 
@@ -441,29 +441,34 @@ export default function GoalsPage() {
     };
 
     const addSubtask = (goalId: string, parentSubtaskId?: string) => {
-        const parentId = parentSubtaskId || goalId;
+        const parentId = parentSubtaskId || goalId; // If parentSubtaskId is undefined, it's a top-level subtask for the goal
         const subtaskName = newSubtaskInputs[parentId]?.trim();
+
         if (!subtaskName) {
             toast({ title: "Missing Subtask Name", description: "Please provide a name for the subtask.", variant: "destructive" }); return;
         }
+
         const newSubtask: Subtask = { id: crypto.randomUUID(), name: subtaskName, completed: false, subtasks: [] };
 
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
                 if (!parentSubtaskId) {
+                    // Adding a top-level subtask to the goal
                     return { ...goal, subtasks: [...goal.subtasks, newSubtask] };
                 } else {
+                    // Adding a nested subtask to a parent subtask
                     const updatedSubtasks = addSubtaskToParentRecursive(goal.subtasks, parentSubtaskId, newSubtask);
                     return { ...goal, subtasks: updatedSubtasks };
                 }
             }
             return goal;
         }));
-        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' }));
+
+        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' })); // Clear input for the parent
         toast({ title: "Subtask Added", description: `Subtask "${newSubtask.name}" added.` });
-        setShowAddChildInputFor(null);
+        setShowAddChildInputFor(null); // Hide input form after adding
         if (parentSubtaskId) {
-            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true }));
+            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true })); // Expand parent
         }
     };
 
@@ -474,7 +479,7 @@ export default function GoalsPage() {
             if (st.id === subtaskIdToDelete) {
                 foundAndDeleted = true;
                 deletedName = st.name;
-                return false;
+                return false; // Exclude this subtask
             }
             return true;
         });
@@ -483,13 +488,14 @@ export default function GoalsPage() {
             return { updatedSubtasks: filteredSubtasks, foundAndDeleted: true, deletedSubtaskName: deletedName };
         }
 
+        // If not found at current level, recurse into children
         const result = { updatedSubtasks: [] as Subtask[], foundAndDeleted: false, deletedSubtaskName: undefined as string | undefined };
         result.updatedSubtasks = subtasks.map(st => {
             if (st.subtasks) {
                 const childResult = deleteSubtaskRecursive(st.subtasks, subtaskIdToDelete);
                 if (childResult.foundAndDeleted) {
-                    foundAndDeleted = true;
-                    deletedName = childResult.deletedSubtaskName;
+                    foundAndDeleted = true; // Propagate found status
+                    deletedName = childResult.deletedSubtaskName; // Propagate name
                     return { ...st, subtasks: childResult.updatedSubtasks };
                 }
             }
@@ -559,10 +565,11 @@ export default function GoalsPage() {
         setIsTaskFormOpen(true);
     };
 
+    // Recursive function to render subtasks
     const renderSubtasks = (subtasksToRender: Subtask[], goalId: string, currentDepth: number): JSX.Element => {
         return (
           <SortableContext items={subtasksToRender.map(st => st.id)} strategy={verticalListSortingStrategy}>
-            <div className={cn(currentDepth > 0 && "pl-0")}>
+            <div className={cn(currentDepth > 0 && "pl-0")}> {/* Base div for sortable context, pl-0 ensures no double indent */}
               {subtasksToRender.map(subtask => (
                 <SortableListItem
                   key={subtask.id}
@@ -580,7 +587,7 @@ export default function GoalsPage() {
                   setShowAddChildInputFor={setShowAddChildInputFor}
                   handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
                   deleteSubtask={deleteSubtask}
-                  renderSubtasksFunction={renderSubtasks}
+                  renderSubtasksFunction={renderSubtasks} // Pass the render function itself for recursion
                 />
               ))}
             </div>
@@ -616,10 +623,8 @@ export default function GoalsPage() {
                                 <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
                                 <div className="flex space-x-2">
                                     <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
-                                     {/* Removed Suggest Subtasks Button */}
                                 </div>
                             </div>
-                             {/* Removed suggested subtasks display */}
                             <div>
                                 <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
                                 <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
@@ -654,7 +659,7 @@ export default function GoalsPage() {
                         ) : goals.length === 0 ? (
                             <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one above to get started!</p>
                         ) : (
-                            <ScrollArea className="max-h-[calc(100vh-450px)]"> {/* Adjusted height */}
+                            <ScrollArea className="max-h-[60vh]"> 
                                  <div className="space-y-4 pr-2">
                                     <Accordion type="multiple" className="w-full">
                                         {goals.map((goal) => {
@@ -730,3 +735,4 @@ export default function GoalsPage() {
         </DndContext>
     );
 }
+
