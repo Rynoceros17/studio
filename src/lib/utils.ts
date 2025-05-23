@@ -12,13 +12,13 @@ import {
     differenceInMinutes,
     addYears,
     addMonths,
-    addWeeks, // Ensured addWeeks is imported
+    addWeeks,
     addDays,
-    addHours,
     isSameDay,
     endOfDay,
     differenceInCalendarDays,
     differenceInWeeks,
+    intervalToDuration, // Keep for general total calculations if needed elsewhere
 } from 'date-fns';
 import type { Goal, Subtask, TimeLeft } from "./types";
 
@@ -90,11 +90,9 @@ export const formatDuration = (totalSeconds: number): string => {
 
 export const parseISOStrict = (dateString: string | undefined): Date | null => {
   if (!dateString) return null;
-  // Ensure we only use the date part, append T00:00:00 to parse as local time midnight
   const datePart = dateString.split('T')[0];
   const date = parseISO(datePart + 'T00:00:00');
   if (!isValid(date)) {
-    // console.error("Invalid date string for parseISOStrict:", dateString); // Optional: for debugging
     return null;
   }
   return date;
@@ -104,74 +102,67 @@ export const parseISOStrict = (dateString: string | undefined): Date | null => {
 export function calculateTimeLeft(dueDateStr: string | undefined): TimeLeft | null {
   if (!dueDateStr) return null;
 
-  const due = parseISOStrict(dueDateStr); // Use the consistent local time parsing
+  const due = parseISOStrict(dueDateStr);
   if (!due || !isValid(due)) {
-    // console.warn("calculateTimeLeft: Invalid due date string provided:", dueDateStr);
+    console.warn("calculateTimeLeft: Invalid due date string provided:", dueDateStr);
     return null;
   }
 
   const now = new Date();
   const startOfToday = startOfDay(now);
-  const startOfDueDate = startOfDay(due); // Ensure comparison is start-of-day to start-of-day
+  const startOfDueDate = startOfDay(due);
 
   const isPastDue = startOfDueDate < startOfToday;
   const isDueToday = isSameDay(startOfDueDate, startOfToday);
 
-  let yearsDetailed = 0, monthsDetailed = 0, weeksDetailed = 0, daysDetailed = 0, hoursDetailed = 0;
-  let totalYears = 0, totalMonths = 0, totalWeeks = 0, totalDays = 0;
-  let monthsInYear = 0, weeksInMonth = 0, daysInWeek = 0;
-  let fullDaysRemaining = 0, hoursComponent = 0, minutesComponent = 0;
-
+  let yearsDetailed = 0;
+  let monthsDetailed = 0;
+  let weeksDetailed = 0;
+  let daysDetailed = 0;
+  let hoursDetailed = 0; // This will be 0 if comparing startOfDueDate to startOfToday for YMDW breakdown
 
   if (!isPastDue) {
-    let currentDateForDetailedCalc = new Date(now);
+    let currentDateForCalc = new Date(startOfToday); // Use startOfToday for hierarchical breakdown
+
+    yearsDetailed = differenceInYears(startOfDueDate, currentDateForCalc);
+    currentDateForCalc = addYears(currentDateForCalc, yearsDetailed);
+
+    monthsDetailed = differenceInMonths(startOfDueDate, currentDateForCalc);
+    currentDateForCalc = addMonths(currentDateForCalc, monthsDetailed);
+
+    weeksDetailed = differenceInWeeks(startOfDueDate, currentDateForCalc, { weekStartsOn: 1 });
+    currentDateForCalc = addWeeks(currentDateForCalc, weeksDetailed);
     
-    yearsDetailed = differenceInYears(startOfDueDate, currentDateForDetailedCalc);
-    currentDateForDetailedCalc = addYears(currentDateForDetailedCalc, yearsDetailed);
-
-    monthsDetailed = differenceInMonths(startOfDueDate, currentDateForDetailedCalc);
-    currentDateForDetailedCalc = addMonths(currentDateForDetailedCalc, monthsDetailed);
-    
-    weeksDetailed = differenceInWeeks(startOfDueDate, currentDateForDetailedCalc);
-    currentDateForDetailedCalc = addWeeks(currentDateForDetailedCalc, weeksDetailed);
-    
-    daysDetailed = differenceInCalendarDays(startOfDueDate, currentDateForDetailedCalc);
-    currentDateForDetailedCalc = addDays(currentDateForDetailedCalc, daysDetailed);
-
-    hoursDetailed = differenceInHours(startOfDueDate, currentDateForDetailedCalc);
-    if (hoursDetailed < 0) hoursDetailed = 0; // Ensure it's not negative if on the same day but later
-
-    // For badge logic
-    totalYears = differenceInYears(startOfDueDate, startOfToday);
-    monthsInYear = differenceInMonths(startOfDueDate, addYears(startOfToday, totalYears));
-
-    totalMonths = differenceInMonths(startOfDueDate, startOfToday);
-    weeksInMonth = differenceInWeeks(startOfDueDate, addMonths(startOfToday, totalMonths));
-    
-    totalWeeks = differenceInWeeks(startOfDueDate, startOfToday, { weekStartsOn: 1 });
-    daysInWeek = differenceInCalendarDays(startOfDueDate, addWeeks(startOfToday, totalWeeks, { weekStartsOn: 1 }));
-
-
-    fullDaysRemaining = differenceInCalendarDays(startOfDueDate, startOfToday);
-    
-    if (isDueToday) {
-        hoursComponent = differenceInHours(endOfDay(now), now);
-        minutesComponent = differenceInMinutes(endOfDay(now), addHours(now, hoursComponent));
-    } else if (fullDaysRemaining > 0) { // Due in the future (not today)
-        hoursComponent = differenceInHours(endOfDay(now), now); // Hours left in *today*
-        minutesComponent = differenceInMinutes(endOfDay(now), addHours(now, hoursComponent));
-    } else { // Due tomorrow, but less than 24 hours left in today
-        hoursComponent = differenceInHours(startOfDueDate, now);
-        minutesComponent = differenceInMinutes(startOfDueDate, addHours(now, hoursComponent)) % 60;
-    }
-     // Ensure non-negative for components
-     hoursComponent = Math.max(0, hoursComponent);
-     minutesComponent = Math.max(0, minutesComponent);
-
-
+    daysDetailed = differenceInCalendarDays(startOfDueDate, currentDateForCalc);
+    // hoursDetailed will be 0 because we are comparing startOfDueDate with currentDateForCalc (which is also at start of a day)
+    // If we wanted hours relative to 'now' for the last day, it's a different calculation.
   }
-   // Ensure totalDays is calculated for general use
-   totalDays = differenceInCalendarDays(startOfDueDate, startOfToday);
+  
+  // For badge and other general displays:
+  const totalYears = differenceInYears(startOfDueDate, startOfToday);
+  const totalMonths = differenceInMonths(startOfDueDate, startOfToday);
+  const totalWeeks = differenceInWeeks(startOfDueDate, startOfToday, { weekStartsOn: 1 });
+  const totalDays = differenceInCalendarDays(startOfDueDate, startOfToday);
+
+  let fullDaysRemaining = 0;
+  let hoursInCurrentDay = 0;
+  let minutesInCurrentHour = 0;
+
+  if (!isPastDue) {
+      fullDaysRemaining = differenceInCalendarDays(startOfDueDate, startOfToday); // Total calendar days until due date
+
+      if (isDueToday) {
+          const endOfToday = endOfDay(now);
+          hoursInCurrentDay = differenceInHours(endOfToday, now);
+          minutesInCurrentHour = differenceInMinutes(endOfToday, addHours(now, hoursInCurrentDay)) % 60;
+      } else if (fullDaysRemaining > 0) { // Due in the future (not today)
+          const endOfToday = endOfDay(now);
+          hoursInCurrentDay = differenceInHours(endOfToday, now); // Hours left in *today*
+          minutesInCurrentHour = differenceInMinutes(endOfToday, addHours(now, hoursInCurrentDay)) % 60;
+      }
+       hoursInCurrentDay = Math.max(0, hoursInCurrentDay);
+       minutesInCurrentHour = Math.max(0, minutesInCurrentHour);
+  }
 
 
   return {
@@ -179,21 +170,21 @@ export function calculateTimeLeft(dueDateStr: string | undefined): TimeLeft | nu
     monthsDetailed: Math.max(0, monthsDetailed),
     weeksDetailed: Math.max(0, weeksDetailed),
     daysDetailed: Math.max(0, daysDetailed),
-    hoursDetailed: Math.max(0, hoursDetailed),
+    hoursDetailed: Math.max(0, hoursDetailed), // This is the hour component of the day-boundary diff
     
     isPastDue,
     isDueToday,
 
     totalYears: Math.max(0, totalYears),
-    monthsInYear: Math.max(0, monthsInYear),
+    monthsInYear: monthsDetailed, // after full years
     totalMonths: Math.max(0, totalMonths),
-    weeksInMonth: Math.max(0, weeksInMonth),
+    weeksInMonth: weeksDetailed, // after full months
     totalWeeks: Math.max(0, totalWeeks),
-    daysInWeek: Math.max(0, daysInWeek),
+    daysInWeek: daysDetailed, // after full weeks
     
-    fullDaysRemaining: Math.max(0, fullDaysRemaining), // Number of full days after today
-    hoursComponent: Math.max(0, hoursComponent),     // Hours part of the countdown (either in current day or due day)
-    minutesComponent: Math.max(0, minutesComponent), // Minutes part
+    fullDaysRemaining: Math.max(0, fullDaysRemaining), 
+    hoursComponent: Math.max(0, hoursInCurrentDay), // Renamed for clarity for badge
+    minutesComponent: Math.max(0, minutesInCurrentHour), // Renamed for clarity for badge
   };
 }
 
