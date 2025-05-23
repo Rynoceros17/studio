@@ -4,80 +4,66 @@
 import type * as React from 'react';
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Trash2, Paperclip, Star } from 'lucide-react';
+import { Calendar as CalendarIcon, Star } from 'lucide-react'; // Removed Paperclip, Trash2
 
-import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Input } from '@/components/ui/input';
+// Removed: import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge"; // Import Badge
+import { Badge } from "@/components/ui/badge";
 import {
-  Dialog as ShadDialog, // Renamed to avoid conflict
+  Dialog as ShadDialog,
   DialogContent as ShadDialogContent,
   DialogHeader as ShadDialogHeader,
   DialogTitle as ShadDialogTitle,
-  DialogDescription as ShadDialogDesc, // Renamed to avoid conflict
-  DialogFooter as ShadDialogFooter, // Added Footer
+  DialogDescription as ShadDialogDesc,
+  DialogFooter as ShadDialogFooter,
 } from "@/components/ui/dialog";
-import type { Task, FileMetaData } from '@/lib/types';
-import { cn, truncateText, getMaxLength } from '@/lib/utils'; // Import truncateText and getMaxLength
+import type { Task } from '@/lib/types'; // FileMetaData no longer imported
+import { cn, truncateText, getMaxLength } from '@/lib/utils';
 
 interface TaskDetailsDisplayDialogProps {
   task: Task | null;
   onClose: () => void;
-  updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
+  updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => void; // Removed 'files'
 }
 
 export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: TaskDetailsDisplayDialogProps) {
   const [taskDetails, setTaskDetails] = useState(task?.details || '');
   const [dueDate, setDueDate] = useState<Date | undefined>(
-      task?.dueDate ? parseISO(task.dueDate + 'T00:00:00') : undefined // Ensure time part for parsing
+      task?.dueDate ? parseISO(task.dueDate + 'T00:00:00') : undefined
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<FileMetaData[]>(task?.files || []); // State for file metadata
+  // Removed: const [uploadedFiles, setUploadedFiles] = useState<FileMetaData[]>(task?.files || []);
 
-  // Effect to update internal state when the task prop changes
   useEffect(() => {
       if (task) {
           setTaskDetails(task.details || '');
           setDueDate(task.dueDate ? parseISO(task.dueDate + 'T00:00:00') : undefined);
-          setUploadedFiles(task.files || []);
+          // Removed: setUploadedFiles(task.files || []);
       } else {
-          // Reset state when dialog closes (task is null)
           setTaskDetails('');
           setDueDate(undefined);
-          setUploadedFiles([]);
+          // Removed: setUploadedFiles([]);
       }
-  }, [task]); // Depend only on task
+  }, [task]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      if (event.target.files) {
-          const newFiles: FileMetaData[] = Array.from(event.target.files).map(file => ({
-              name: file.name,
-              type: file.type,
-              size: file.size,
-          }));
-          setUploadedFiles(prevFiles => [...prevFiles, ...newFiles]);
-          event.target.value = '';
-      }
-  };
-
-  const removeFile = (fileName: string) => {
-      setUploadedFiles(prevFiles => prevFiles.filter(file => file.name !== fileName));
-  };
+  // Removed: handleFileChange
+  // Removed: removeFile
 
   const handleSave = () => {
     if (task) {
-      const updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>> = {
+      const updates: Partial<Pick<Task, 'details' | 'dueDate'>> = { // Removed 'files'
           details: taskDetails,
           dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
-          files: uploadedFiles,
+          // Removed: files: uploadedFiles,
       };
       if (updates.details !== task.details ||
-          updates.dueDate !== task.dueDate ||
-          JSON.stringify(updates.files) !== JSON.stringify(task.files))
+          updates.dueDate !== task.dueDate
+          // Removed: JSON.stringify(updates.files) !== JSON.stringify(task.files)
+        )
         {
         updateTaskDetails(task.id, updates);
       }
@@ -85,9 +71,8 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
     }
   };
 
-  // Get truncated title and description for display
-  const dialogTitleLimit = getMaxLength('title', 'dialog'); // Uses 60 from getMaxLength
-  const dialogDescLimit = 40; // Set specific limit for description display in dialog to 40
+  const dialogTitleLimit = getMaxLength('title', 'dialog');
+  const dialogDescLimit = 40;
   const truncatedTitle = truncateText(task?.name, dialogTitleLimit);
   const truncatedDescription = truncateText(task?.description, dialogDescLimit);
 
@@ -97,18 +82,21 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
         <ShadDialogHeader>
            <div className="flex justify-between items-start">
                 <div>
-                    <ShadDialogTitle className="text-primary truncate" title={task?.name}> {/* Add full title as tooltip and truncate */}
+                    <ShadDialogTitle className="text-primary truncate" title={task?.name}>
                         {truncatedTitle}
                     </ShadDialogTitle>
                      {task?.description && (
-                        <ShadDialogDesc className="pt-1 truncate" title={task.description}> {/* Add full description as tooltip and truncate */}
-                            {truncatedDescription}
+                        <ShadDialogDesc className="pt-1 truncate" title={task.description}>
+                            {/* Apply line-clamp-2 to the description */}
+                            <span className="line-clamp-2 break-all whitespace-normal">
+                                {truncatedDescription}
+                            </span>
                         </ShadDialogDesc>
                      )}
                 </div>
            </div>
            {task?.date && (
-                <div className="text-xs text-muted-foreground pt-1 flex items-center flex-wrap gap-x-2 gap-y-1"> {/* Use flex-wrap and gap */}
+                <div className="text-xs text-muted-foreground pt-1 flex items-center flex-wrap gap-x-2 gap-y-1">
                     <span>Scheduled for: {format(parseISO(task.date + 'T00:00:00'), 'PPP')}</span>
                     {task.recurring && <Badge variant="secondary" className="text-xs">Weekly</Badge>}
                     {task.highPriority && <Badge variant="outline" className="text-xs border-accent text-accent"><Star className="h-3 w-3 mr-1 fill-accent"/>Priority</Badge>}
@@ -117,9 +105,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
         </ShadDialogHeader>
         {task ? (
           <div className="grid gap-4 py-4">
-
-              {/* Due Date Selector - Using grid for alignment */}
-               <div className="grid grid-cols-4 items-center gap-4"> {/* Use items-center */}
+               <div className="grid grid-cols-4 items-center gap-4">
                    <Label htmlFor="dueDateDisplay" className="text-right text-sm font-medium text-primary">
                        Due Date:
                    </Label>
@@ -130,7 +116,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                                    id="dueDateDisplay"
                                    variant={"outline"}
                                    className={cn(
-                                       "w-full justify-start text-left font-normal h-9 truncate", // Keep h-9, w-full controlled by grid, added truncate
+                                       "w-full justify-start text-left font-normal h-9 truncate",
                                        !dueDate && "text-muted-foreground"
                                    )}
                                    >
@@ -153,7 +139,6 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                    </div>
                </div>
 
-            {/* Additional Details Textarea */}
             <div className="grid grid-cols-4 items-start gap-4">
               <Label
                 htmlFor="detailsDisplay"
@@ -167,41 +152,12 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                   value={taskDetails}
                   onChange={(e) => setTaskDetails(e.target.value)}
                   placeholder="Add links, notes, etc."
-                  className="min-h-[100px] max-h-[200px] overflow-y-auto" // Added max-height and overflow
+                  className="min-h-[100px] max-h-[200px] overflow-y-auto"
                 />
               </div>
             </div>
 
-             {/* Files Upload */}
-             <div className="grid grid-cols-4 items-start gap-4">
-                 <Label htmlFor="filesDisplay" className="text-right text-sm font-medium text-primary pt-2">
-                    Files:
-                 </Label>
-                 <div className="col-span-3">
-                      <Label htmlFor="file-upload-input" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "cursor-pointer h-9 text-xs w-full flex items-center justify-center")}>
-                         <Paperclip className="mr-2 h-3 w-3" /> Attach Files
-                       </Label>
-                      <Input
-                        id="file-upload-input"
-                        type="file"
-                        multiple
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                       {uploadedFiles.length > 0 && (
-                           <div className="mt-2 space-y-1 max-h-24 overflow-y-auto border rounded p-1">
-                               {uploadedFiles.map(file => (
-                                   <div key={file.name} className="flex items-center justify-between text-xs bg-muted/50 p-1 rounded">
-                                       <span className="truncate mr-1 whitespace-nowrap overflow-hidden text-ellipsis" title={file.name}>{truncateText(file.name, 25)}</span>
-                                       <Button variant="ghost" size="icon" className="h-4 w-4 text-destructive shrink-0" onClick={() => removeFile(file.name)} aria-label={`Remove file ${file.name}`}>
-                                            <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                   </div>
-                               ))}
-                           </div>
-                        )}
-                  </div>
-             </div>
+             {/* Removed Files Upload Section */}
           </div>
         ) : (
           <p>No task selected.</p>

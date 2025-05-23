@@ -7,19 +7,13 @@ export interface Task { // Changed 'type' to 'interface' for better clarity and 
   recurring?: boolean;
   details?: string;
   dueDate?: string; // Optional due date (yyyy-MM-dd format)
-  files?: FileMetaData[]; // Optional array for file metadata
+  // Removed: files?: FileMetaData[];
   highPriority?: boolean; // Optional: Flag for high priority tasks
   exceptions?: string[]; // Optional array of 'yyyy-MM-dd' dates to skip for recurring tasks
   color?: string; // Optional: Background color for the task card (e.g., HSL string)
 };
 
-// Simple interface for file metadata (as we aren't handling uploads yet)
-export interface FileMetaData {
-    name: string;
-    type: string;
-    size: number;
-    // In a real app, you might store a URL or an identifier here
-}
+// Removed: FileMetaData interface
 
 // Goal and Subtask types (Ensure these are exported)
 export interface Subtask {
@@ -46,4 +40,6 @@ export interface UpcomingItem {
   description?: string; // For tasks
   highPriority?: boolean; // For tasks
   color?: string; // For tasks
+  progress?: number; // For goals
 }
+
