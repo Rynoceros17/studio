@@ -129,8 +129,8 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
         descColorClass = 'text-primary-foreground/80';
     } else if (taskBackgroundColor) {
         cardBgClass = 'border-transparent';
-        textColorClass = 'text-card-foreground';
-        descColorClass = 'text-card-foreground/80';
+        textColorClass = 'text-card-foreground'; // Keep text color consistent
+        descColorClass = 'text-card-foreground/80'; // Keep text color consistent
     } else {
         cardBgClass = 'bg-secondary border-secondary';
         textColorClass = 'text-secondary-foreground';
@@ -286,11 +286,11 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
       iconButtonClass = 'text-primary-foreground hover:text-primary-foreground/80';
       completeIconClass = 'text-primary-foreground';
   } else if (taskBackgroundColor) {
-      cardBgClass = 'border-transparent';
-      textColorClass = 'text-card-foreground';
-      descColorClass = 'text-card-foreground/80';
-      iconButtonClass = 'text-card-foreground hover:text-card-foreground/80';
-      completeIconClass = 'text-card-foreground';
+      cardBgClass = 'border-transparent'; // Custom color means no additional border for this state
+      textColorClass = 'text-card-foreground'; // Keep text color consistent
+      descColorClass = 'text-card-foreground/80'; // Keep text color consistent
+      iconButtonClass = 'text-card-foreground hover:text-card-foreground/80'; // Keep text color consistent
+      completeIconClass = 'text-card-foreground'; // Keep text color consistent
   } else {
       cardBgClass = 'bg-secondary border-secondary';
       textColorClass = 'text-secondary-foreground';
@@ -438,8 +438,8 @@ export function CalendarView({
     updateTask,
     completedCount,
 }: CalendarViewProps) {
-  const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date())); // Renamed and initialized to today
-  const [viewMode, setViewMode] = useState<'week' | 'today'>('week'); // Default to week view
+  const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date()));
+  const [viewMode, setViewMode] = useState<'week' | 'today'>('week');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
@@ -458,11 +458,9 @@ export function CalendarView({
       const newViewMode = window.innerWidth >= 768 ? 'week' : 'today';
       setViewMode(currentInternalViewMode => {
         if (currentInternalViewMode !== newViewMode) {
-          // When switching modes, adjust currentDisplayDate
           if (newViewMode === 'today') {
-            setCurrentDisplayDate(startOfDay(new Date())); // Switch to actual current day
-          } else { // Switching to 'week'
-            // Start week view from the week containing the currentDisplayDate (which was the single day)
+            setCurrentDisplayDate(startOfDay(new Date()));
+          } else {
             setCurrentDisplayDate(prevDate => startOfWeek(prevDate, { weekStartsOn: 1 }));
           }
         }
@@ -478,7 +476,7 @@ export function CalendarView({
 
    const days = useMemo(() => {
     if (viewMode === 'week') {
-      const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 }); // Use currentDisplayDate to derive week
+      const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
       const daysArray = [];
       let day = weekStart;
@@ -487,8 +485,8 @@ export function CalendarView({
         day = addDays(day, 1);
       }
       return daysArray;
-    } else { // viewMode === 'today'
-      return [currentDisplayDate]; // Show the currentDisplayDate as the single day
+    } else {
+      return [currentDisplayDate];
     }
   }, [currentDisplayDate, viewMode]);
 
@@ -630,26 +628,15 @@ export function CalendarView({
                  const updatedExceptions = [...(taskToMove.exceptions || []), activeDateStr];
                  updateTask(activeTaskId, { exceptions: updatedExceptions });
 
-                 const newTaskInstance: Omit<Task, 'id'> = {
-                    ...taskToMove, // spread original task properties
-                    date: overDateStr, // new date
-                    recurring: false,    // moved instance is not recurring
-                    exceptions: [],      // new instance has no exceptions yet
-                    // Retain other properties like name, description, color, highPriority, dueDate, files, details
-                 };
-                 // This conceptual 'addTask' needs to be available or integrated
-                 // For now, this implies you have a way to add this newTaskInstance to your main tasks list
-                 // For this example, I'll assume `updateTask` can be smart or you have another mechanism.
-                 // Let's just toast that a new non-recurring task would be created.
                   toast({
-                    title: "Recurring Task Moved (Instance)",
-                    description: `"${taskToMove.name}" will skip ${format(parseISOStrict(activeDateStr)!, 'PPP')}. A new, non-recurring instance created for ${format(parseISOStrict(overDateStr)!, 'PPP')}. You might need to re-add the original recurring task if you want it to continue.`,
+                    title: "Recurring Task Instance Moved",
+                    description: `Skipped "${taskToMove.name}" on ${format(parseISOStrict(activeDateStr)!, 'PPP')}. A new, non-recurring instance for ${format(parseISOStrict(overDateStr)!, 'PPP')} would be created. You may need to adjust the original.`,
                     duration: 7000,
                  });
 
                  const completionKey = `${activeTaskId}_${activeDateStr}`;
                  if (completedTasks.has(completionKey)) {
-                     toggleTaskCompletion(activeTaskId, activeDateStr);
+                     toggleTaskCompletion(activeTaskId, activeDateStr); // Mark old instance as incomplete
                  }
             } else {
                  updateTask(activeTaskId, { date: overDateStr });
@@ -667,7 +654,7 @@ export function CalendarView({
     setCurrentDisplayDate(prev => {
         if (viewMode === 'week') {
             return subDays(prev, 7);
-        } else { // 'today' mode (single day)
+        } else {
             return subDays(prev, 1);
         }
     });
@@ -677,7 +664,7 @@ export function CalendarView({
     setCurrentDisplayDate(prev => {
         if (viewMode === 'week') {
             return addDays(prev, 7);
-        } else { // 'today' mode (single day)
+        } else {
             return addDays(prev, 1);
         }
     });
@@ -711,11 +698,6 @@ export function CalendarView({
              const updatedExceptions = [...(taskToMove.exceptions || []), currentTaskDateStr];
              updateTask(taskId, { exceptions: updatedExceptions });
              
-             toast({
-                title: "Recurring Task Instance Moved (Concept)",
-                description: `Skipped "${taskToMove.name}" on ${format(currentInstanceDate, 'PPP')}. A new, non-recurring instance for ${format(targetDate, 'PPP')} would be created. You might need to re-add or adjust the original.`,
-                duration: 7000,
-             });
              title = "Recurring Task Exception Added";
              message = `Skipped "${taskToMove.name}" for ${format(currentInstanceDate, 'PPP')}. Consider creating a new task for ${format(targetDate, 'PPP')}.`;
 
@@ -738,7 +720,7 @@ export function CalendarView({
       const weekStartForTitle = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
       const weekEndForTitle = endOfWeek(weekStartForTitle, { weekStartsOn: 1 });
       return `${format(weekStartForTitle, 'MMM d')} - ${format(weekEndForTitle, 'MMM d, yyyy')}`;
-    } else { // viewMode === 'today'
+    } else {
       return format(currentDisplayDate, 'MMMM do, yyyy');
     }
   }, [currentDisplayDate, viewMode, isClient]);
@@ -781,24 +763,27 @@ export function CalendarView({
           {days.map((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayTasks = (isClient && tasksByDay && typeof tasksByDay === 'object' && Array.isArray(tasksByDay[dateStr])) ? tasksByDay[dateStr] : [];
-            const isCurrentDisplayDay = isSameDay(day, startOfDay(new Date()));
+            const isActualToday = isSameDay(day, startOfDay(new Date()));
 
 
             return (
               <Card key={dateStr} className={cn(
                   "flex flex-col h-[700px] md:h-[700px] overflow-hidden",
-                  isCurrentDisplayDay && viewMode === 'today' ? 'border-accent border-2 shadow-md' : // Highlight if it's the actual "today" in single day view
-                  isCurrentDisplayDay && viewMode === 'week' ? 'border-accent/50 border-2 shadow-sm' : // Subtle highlight if it's "today" in week view
+                  isActualToday ? 'border-accent border-2 shadow-md bg-card' : 
+                  viewMode === 'today' && !isActualToday ? 'bg-card border-border shadow-sm' : 
                   'bg-secondary/30 border-transparent'
                   )}>
                 <CardHeader className="p-1 text-center shrink-0">
                   <CardTitle className="text-xs font-medium">
                     {format(day, 'EEE')}
                   </CardTitle>
-                  <CardDescription className={cn("text-sm font-bold", isCurrentDisplayDay ? 'text-accent' : 'text-foreground')}>
+                  <CardDescription className={cn(
+                      "text-sm font-bold", 
+                      isActualToday ? 'text-accent' : 'text-foreground'
+                      )}>
                     {format(day, 'd')}
                   </CardDescription>
-                  {isCurrentDisplayDay && <Badge variant="outline" className="border-accent text-accent mt-0.5 px-1 py-0 text-[9px]">Today</Badge>}
+                  {isActualToday && <Badge variant="outline" className="border-accent text-accent mt-0.5 px-1 py-0 text-[9px]">Today</Badge>}
                 </CardHeader>
                 <Separator className="shrink-0 my-0.5"/>
                 <ScrollArea className="flex-grow">
