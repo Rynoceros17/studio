@@ -1,7 +1,7 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { parseISO, isValid, differenceInDays, differenceInWeeks, startOfDay, differenceInMonths, differenceInYears, differenceInHours, differenceInMinutes, addYears, addMonths, addWeeks, addDays } from 'date-fns';
+import { parseISO, isValid, differenceInDays, differenceInWeeks, startOfDay, differenceInMonths, differenceInYears, differenceInHours, differenceInMinutes, addYears, addMonths, addWeeks, addDays, isSameDay } from 'date-fns';
 import type { Goal, Subtask } from "./types";
 
 
@@ -77,6 +77,8 @@ export interface TimeLeft {
     hoursInDay: number; // Remaining hours after accounting for full days
     totalDays: number;
     totalHours: number;
+    totalMinutes: number;
+    totalMonths: number; // Total number of months remaining
     isPastDue: boolean;
 }
 
@@ -86,35 +88,34 @@ export function calculateTimeLeft(dueDateStr: string | undefined): TimeLeft | nu
   if (!isValid(due)) return null;
 
   const now = new Date();
-  const today = startOfDay(now); // Compare with the start of today for "days left"
+  const today = startOfDay(now);
 
-  if (due < today) { // If due date is before the start of today, it's past due
+  if (due < today) {
     const totalDaysPast = differenceInDays(today, due);
     return {
         years: 0, monthsInYear: 0, daysInMonth: 0, hoursInDay: 0,
         totalDays: -totalDaysPast,
         totalHours: -totalDaysPast * 24,
+        totalMinutes: -totalDaysPast * 24 * 60,
+        totalMonths: 0, // Or calculate past months if needed
         isPastDue: true
     };
   }
 
-  const totalDays = differenceInDays(due, today); // Days from start of today to due date
-  const totalHours = differenceInHours(due, now); // Hours from right now to due date
+  const totalDays = differenceInDays(due, today);
+  const totalHours = differenceInHours(due, now);
+  const totalMinutes = differenceInMinutes(due, now);
+  const totalMonths = differenceInMonths(due, now); // Calculate total months directly
 
   let tempDate = new Date(now);
   const years = differenceInYears(due, tempDate);
   tempDate = addYears(tempDate, years);
 
-  const monthsInYear = differenceInMonths(due, tempDate);
+  const monthsInYear = differenceInMonths(due, tempDate); // This is months part of the year count
   tempDate = addMonths(tempDate, monthsInYear);
 
-  // Days remaining in the current month of the countdown
   const daysInMonth = differenceInDays(due, tempDate);
-
-  // Hours remaining in the current day of the countdown
-  // For this, we consider the difference from 'now' to the end of the 'due' date day for more precision
   const hoursInDay = totalHours >= 0 ? totalHours % 24 : 0;
-
 
   return {
     years,
@@ -123,7 +124,9 @@ export function calculateTimeLeft(dueDateStr: string | undefined): TimeLeft | nu
     hoursInDay,
     totalDays,
     totalHours,
-    isPastDue: totalHours < 0 && !isSameDay(due, today) // Past due if totalHours is negative and not due today
+    totalMinutes,
+    totalMonths, // Use the directly calculated totalMonths
+    isPastDue: totalMinutes < 0 && !isSameDay(due, today)
   };
 }
 

@@ -23,19 +23,19 @@ function formatTimeLeftForDisplay(timeLeft: TimeLeft | null): string {
   if (!timeLeft) return "";
 
   if (timeLeft.isPastDue) return "Past Due";
-  if (timeLeft.totalDays === 0 && timeLeft.totalHours >=0 && timeLeft.totalHours < 24) return "Due Today";
+  if (timeLeft.totalDays === 0 && timeLeft.totalHours >=0 && timeLeft.totalHours < 24 && !timeLeft.isPastDue) return "Due Today";
 
 
   if (timeLeft.years > 0) {
     return `${timeLeft.years}y ${timeLeft.monthsInYear}m left`;
   }
-  if (timeLeft.monthsInYear > 0) {
-    return `${timeLeft.monthsInYear}m ${timeLeft.daysInMonth}d left`;
+  if (timeLeft.totalMonths > 0) { // Use totalMonths here for the badge
+    return `${timeLeft.totalMonths}m ${timeLeft.daysInMonth}d left`;
   }
-  if (timeLeft.daysInMonth > 0) {
-     return `${timeLeft.daysInMonth}d ${timeLeft.hoursInDay}h left`;
+  if (timeLeft.totalDays > 0) {
+     return `${timeLeft.totalDays}d ${timeLeft.hoursInDay}h left`;
   }
-  if (timeLeft.totalHours >= 0) {
+  if (timeLeft.totalHours >= 0) { // Changed from totalHours > 0 to >= 0 for "Due Today" case handled above
       return `${timeLeft.hoursInDay}h left`;
   }
   return "Upcoming"; // Fallback
@@ -60,7 +60,7 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
       <div
         className={cn(
           "transition-all duration-300 ease-in-out",
-          isExpanded ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0" // Increased max-height
+          isExpanded ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
         )}
       >
         {isExpanded && (
@@ -74,34 +74,34 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
                 <div className="flex flex-wrap gap-4 p-4 justify-center">
                   {items.map(item => {
                     const timeLeftDetails = calculateTimeLeft(item.dueDate);
-                    const formattedTimeLeft = formatTimeLeftForDisplay(timeLeftDetails);
+                    const formattedTimeLeftBadge = formatTimeLeftForDisplay(timeLeftDetails); // For the badge
 
                     let timeBadgeVariant: "default" | "secondary" | "destructive" = "secondary";
                     if (timeLeftDetails?.isPastDue) {
                         timeBadgeVariant = "destructive";
-                    } else if (timeLeftDetails?.totalDays === 0) {
-                        timeBadgeVariant = "default";
-                    } else if (timeLeftDetails && timeLeftDetails.totalDays > 0 && timeLeftDetails.totalDays <= 2) {
-                        timeBadgeVariant = "default";
+                    } else if (timeLeftDetails?.totalDays === 0 && !timeLeftDetails.isPastDue) {
+                        timeBadgeVariant = "default"; // "Due Today"
+                    } else if (timeLeftDetails && !timeLeftDetails.isPastDue && timeLeftDetails.totalDays > 0 && timeLeftDetails.totalDays <= 2) {
+                        timeBadgeVariant = "default"; // "Due Soon" (within 2 days)
                     }
 
 
                     const cardBaseClass = "shadow-sm border-border flex flex-col";
                     const taskCardClass = "w-full sm:w-[calc(33.333%-1rem)] md:w-[calc(25%-1rem)] lg:w-[calc(20%-1rem)] min-w-[200px] max-w-[280px] min-h-[100px] bg-secondary/30";
-                    const goalCardClass = "w-full md:w-[calc(50%-0.5rem)] min-w-[300px] min-h-[160px] bg-secondary/50";
+                    const goalCardClass = "w-full md:w-[calc(50%-0.5rem)] min-w-[300px] max-w-[480px] min-h-[160px] bg-secondary/50 hover:shadow-md transition-shadow";
 
 
                     if (item.type === 'goal') {
                       return (
-                        <Link href="/goals" key={item.id} className={cn(cardBaseClass, goalCardClass, "cursor-pointer hover:shadow-md transition-shadow")}>
+                        <Link href="/goals" key={item.id} className={cn(cardBaseClass, goalCardClass, "cursor-pointer")}>
                             <CardHeader className="p-3 pb-1.5">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-base font-semibold truncate text-secondary-foreground flex items-center" title={item.name}>
                                         <Target className="h-4 w-4 mr-1.5 shrink-0 text-primary/80" />
                                         {truncateText(item.name, 35)}
                                     </CardTitle>
-                                    {formattedTimeLeft && (
-                                        <Badge variant={timeBadgeVariant} className="text-xs shrink-0 ml-2">{formattedTimeLeft}</Badge>
+                                    {formattedTimeLeftBadge && (
+                                        <Badge variant={timeBadgeVariant} className="text-xs shrink-0 ml-2">{formattedTimeLeftBadge}</Badge>
                                     )}
                                 </div>
                                 <CardDescription className="text-xs text-muted-foreground">
@@ -115,7 +115,7 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
                                         <p>Days Left</p>
                                     </div>
                                     <div>
-                                        <p className="font-medium text-sm text-foreground">{timeLeftDetails?.monthsInYear ?? 'N/A'}</p>
+                                        <p className="font-medium text-sm text-foreground">{timeLeftDetails?.totalMonths ?? 'N/A'}</p>
                                         <p>Months Left</p>
                                     </div>
                                     <div>
@@ -129,7 +129,7 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
                                         <span>Progress</span>
                                         <span>{item.progress}%</span>
                                     </div>
-                                    <Progress value={item.progress} className="h-2" />
+                                    <Progress value={item.progress} className="h-1.5" />
                                 </div>
                                 )}
                             </CardContent>
@@ -150,8 +150,8 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="p-2 pt-1 space-y-1">
-                          {formattedTimeLeft && (
-                            <Badge variant={timeBadgeVariant} className="text-xs mr-1 mb-1">{formattedTimeLeft}</Badge>
+                          {formattedTimeLeftBadge && (
+                            <Badge variant={timeBadgeVariant} className="text-xs mr-1 mb-1">{formattedTimeLeftBadge}</Badge>
                           )}
                           {item.highPriority && timeLeftDetails && !timeLeftDetails.isPastDue && (
                             <Badge variant="outline" className="text-xs border-accent text-accent">High Priority</Badge>
@@ -169,3 +169,4 @@ export function TopTaskBar({ items, isExpanded, onToggle }: TopTaskBarProps) {
     </Card>
   );
 }
+
