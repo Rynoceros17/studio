@@ -4,13 +4,14 @@
 import type * as React from 'react';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { CalendarClock, Target, Settings, AlertCircle, CheckCircle, Star } from 'lucide-react';
+import { CalendarClock, Target, Settings, AlertCircle, CheckCircle, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import type { UpcomingItem, TimeLeft } from '@/lib/types';
 import { cn, truncateText, calculateTimeLeft } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 interface TopTaskBarProps {
@@ -19,43 +20,28 @@ interface TopTaskBarProps {
 }
 
 function formatTimeLeftForBadge(timeLeft: TimeLeft | null): string {
-  if (!timeLeft) return "";
+  if (!timeLeft) return "N/A";
   if (timeLeft.isPastDue) return "Past Due";
   if (timeLeft.isDueToday) return "Due Today";
 
   const parts: string[] = [];
-  if (timeLeft.totalYears > 0) {
-    parts.push(`${timeLeft.totalYears}y`);
-    if (timeLeft.monthsInYear > 0 && timeLeft.totalYears === 1) {
-      parts.push(`${timeLeft.monthsInYear}mo`);
-    }
-  } else if (timeLeft.totalMonths > 0) {
-    parts.push(`${timeLeft.totalMonths}mo`);
-    if (timeLeft.weeksInMonth > 0 && timeLeft.totalMonths === 1) {
-      parts.push(`${timeLeft.weeksInMonth}w`);
-    }
-  } else if (timeLeft.totalWeeks > 0) {
-    parts.push(`${timeLeft.totalWeeks}w`);
-    if (timeLeft.daysInWeek > 0 && timeLeft.totalWeeks === 1) {
-       parts.push(`${timeLeft.daysInWeek}d`);
-    }
-  } else if (timeLeft.fullDaysRemaining > 0) {
-    parts.push(`${timeLeft.fullDaysRemaining}d`);
-    if (timeLeft.hoursComponent > 0 && timeLeft.fullDaysRemaining <= 2) {
-      parts.push(`${timeLeft.hoursComponent}h`);
-    }
-  } else if (timeLeft.hoursComponent >= 0) {
-    parts.push(`${timeLeft.hoursComponent}h`);
-    if (timeLeft.minutesComponent > 0 && timeLeft.hoursComponent <= 2) {
-        parts.push(`${timeLeft.minutesComponent}m`);
-    }
+  if (timeLeft.yearsDetailed > 0) parts.push(`${timeLeft.yearsDetailed}y`);
+  if (timeLeft.monthsDetailed > 0) parts.push(`${timeLeft.monthsDetailed}mo`);
+  if (timeLeft.weeksDetailed > 0) parts.push(`${timeLeft.weeksDetailed}w`);
+  if (timeLeft.daysDetailed > 0) parts.push(`${timeLeft.daysDetailed}d`);
+  if (timeLeft.hoursDetailed > 0) parts.push(`${timeLeft.hoursDetailed}h`);
+
+  if (parts.length === 0) {
+    // If all detailed components are 0, but it's not due today or past due,
+    // it implies less than an hour left (if hours is our smallest unit).
+    return "< 1h left";
   }
 
-
-  if (parts.length === 0) return "Upcoming";
-  return parts.join(' ') + ' left';
+  return parts.join(' : ') + ' left';
 }
 
+
+// For the single wide goal card's detailed display
 function formatDetailedTimeLeft(timeLeft: TimeLeft | null): string {
   if (!timeLeft) return "N/A";
   if (timeLeft.isPastDue) return "Past Due";
@@ -65,10 +51,7 @@ function formatDetailedTimeLeft(timeLeft: TimeLeft | null): string {
   if (timeLeft.monthsDetailed > 0) parts.push(`${timeLeft.monthsDetailed}mo`);
   if (timeLeft.weeksDetailed > 0) parts.push(`${timeLeft.weeksDetailed}w`);
   if (timeLeft.daysDetailed > 0) parts.push(`${timeLeft.daysDetailed}d`);
-  // Show hours if it's the most granular unit or if there are no larger units and it's due today
-  if (timeLeft.hoursDetailed > 0 || (parts.length === 0 && timeLeft.isDueToday && timeLeft.hoursDetailed >= 0)) {
-      parts.push(`${timeLeft.hoursDetailed}h`);
-  }
+  if (timeLeft.hoursDetailed > 0) parts.push(`${timeLeft.hoursDetailed}h`);
   
   if (parts.length === 0) return timeLeft.isDueToday ? "Due Today" : "Upcoming";
   return parts.join(' : ') + ' left';
@@ -79,6 +62,9 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
   const goalItems = items.filter(item => item.type === 'goal');
   const numberOfGoals = goalItems.length;
 
+  const scrollAreaMaxHeight = numberOfGoals > 6 ? "max-h-[50vh]" : "";
+
+
   return (
     <div className="w-full">
       <Card className="w-full shadow-md bg-card border-border mb-4 overflow-hidden">
@@ -87,6 +73,7 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
             <Target className="h-5 w-5 mr-2 text-primary" />
             <CardTitle className="text-lg text-primary">Upcoming Deadlines</CardTitle>
           </div>
+          {/* Toggle button removed as per request to keep it always open */}
         </CardHeader>
         <CardContent className="p-0">
           {items.length === 0 ? (
@@ -94,58 +81,62 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
               No upcoming deadlines for tasks or goals.
             </div>
           ) : (
-            <div className="flex flex-wrap gap-4 p-4 justify-center">
+            // Removed ScrollArea to allow content to determine height
+            <div className={cn("flex flex-wrap gap-4 p-4 justify-center", scrollAreaMaxHeight)}>
               {items.map(item => {
                 const timeLeftDetails = calculateTimeLeft(item.dueDate);
+                const isHighPriorityGoal = item.type === 'goal' && item.goalHighPriority === true;
+                const isHighPriorityTask = item.type === 'task' && item.taskHighPriority === true;
+
+                const cardBaseClasses = "shadow-sm rounded-lg hover:shadow-md transition-shadow flex flex-col";
                 
                 if (item.type === 'goal') {
                   const isSingleGoalCard = numberOfGoals === 1 && item.id === goalItems[0]?.id;
-                  const isHighPriority = item.goalHighPriority === true;
-
+                  
                   let cardWrapperClass = "";
                   let cardInternalClass = cn(
-                      "shadow-sm rounded-lg hover:shadow-md transition-shadow", // Base styling elements from default Card, excluding border & bg
-                      "flex flex-col h-full", // Common layout styles
-                      isHighPriority 
-                          ? "bg-card border-accent border-2" // High priority: white bg, 2px gold border
-                          : "bg-secondary/30 border-border" // Normal goal: light purple bg, default border
+                      cardBaseClasses,
+                      "h-full", // Ensure card takes full height of its wrapper
+                      isHighPriorityGoal 
+                          ? "bg-card border-accent border-2" 
+                          : "bg-secondary/30 border-border" 
                   );
 
                   if (isSingleGoalCard) {
                     cardWrapperClass = "w-full"; 
                     cardInternalClass = cn(cardInternalClass, "min-h-[100px]");
                   } else {
-                    cardWrapperClass = "w-full md:w-[calc(50%-0.5rem)] min-w-[300px]";
+                    cardWrapperClass = "w-full md:w-[calc(50%-0.5rem)] min-w-[300px]"; // Removed max-w to allow better filling
                     cardInternalClass = cn(cardInternalClass, "min-h-[160px]");
                   }
 
                   return (
                     <div key={item.id} className={cardWrapperClass}>
                       <Link href="/goals" passHref legacyBehavior>
-                        <a className="block h-full"> {/* Anchor tag for clickable area */}
+                        <a className="block h-full">
                           <Card className={cardInternalClass}>
                             <CardHeader className="p-3 pb-1.5">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center min-w-0 flex-grow">
                                   <Target className="h-4 w-4 mr-1.5 shrink-0 text-primary/80" />
-                                  <CardTitle className={cn("text-base font-semibold truncate", isHighPriority ? "text-accent-foreground" : "text-secondary-foreground")} title={item.name}>
+                                  <CardTitle className={cn("text-base font-semibold truncate", isHighPriorityGoal ? "text-accent-foreground" : "text-secondary-foreground")} title={item.name}>
                                     {truncateText(item.name, isSingleGoalCard ? 40 : 28)}
                                   </CardTitle>
                                 </div>
                                 <div className="flex items-center shrink-0">
-                                  <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0", isHighPriority ? "text-accent-foreground hover:text-accent-foreground/80" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleGoalPriority(item.id); }}>
-                                      <Star className={cn("h-4 w-4", isHighPriority && "fill-accent text-accent")} />
+                                  <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0", isHighPriorityGoal ? "text-accent hover:text-accent/80" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleGoalPriority(item.id); }}>
+                                      <Star className={cn("h-4 w-4", isHighPriorityGoal && "fill-accent text-accent")} />
                                       <span className="sr-only">Toggle Priority</span>
                                   </Button>
                                   <Link href="/goals" passHref legacyBehavior>
-                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0", isHighPriority ? "text-accent-foreground hover:text-accent-foreground/80" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.stopPropagation(); /* Link handles navigation */ }}>
+                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0", isHighPriorityGoal ? "text-accent-foreground hover:text-accent-foreground/80" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.stopPropagation(); }}>
                                         <Settings className="h-4 w-4" />
                                         <span className="sr-only">Edit Goals</span>
                                     </Button>
                                   </Link>
                                 </div>
                               </div>
-                              <CardDescription className={cn("text-xs pl-[22px]", isHighPriority ? "text-accent-foreground/80" : "text-muted-foreground")}>
+                              <CardDescription className={cn("text-xs pl-[22px]", isHighPriorityGoal ? "text-accent-foreground/80" : "text-muted-foreground")}>
                                 Due: {format(parseISO(item.dueDate), 'MMM d, yyyy')}
                               </CardDescription>
                             </CardHeader>
@@ -153,7 +144,7 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                               <div className={cn(
                                   "text-sm font-semibold text-center my-2 font-mono tracking-tight",
                                    isSingleGoalCard ? "md:text-base" : "text-sm",
-                                   isHighPriority ? "text-accent-foreground" : "text-foreground"
+                                   isHighPriorityGoal ? "text-accent-foreground" : "text-foreground"
                                   )}>
                                 {isSingleGoalCard ? formatDetailedTimeLeft(timeLeftDetails) : formatTimeLeftForBadge(timeLeftDetails)}
                               </div>
@@ -165,14 +156,14 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                               )}
                               {typeof item.progress === 'number' && (
                                 <div className="mt-auto">
-                                  <div className={cn("flex justify-between text-xs mb-0.5", isHighPriority ? "text-accent-foreground/80" : "text-muted-foreground")}>
+                                  <div className={cn("flex justify-between text-xs mb-0.5", isHighPriorityGoal ? "text-accent-foreground/80" : "text-muted-foreground")}>
                                     <span>Progress</span>
                                     <span>
                                       {item.progress === 100 && <CheckCircle className="inline h-3.5 w-3.5 text-green-600 mr-1" />}
                                       {item.progress}%
                                     </span>
                                   </div>
-                                  <Progress value={item.progress} className={cn("h-1.5", isHighPriority && "bg-accent/30 [&>div]:bg-accent")} />
+                                  <Progress value={item.progress} className={cn("h-1.5", isHighPriorityGoal && "bg-accent/30 [&>div]:bg-accent")} />
                                 </div>
                               )}
                             </CardContent>
@@ -193,15 +184,15 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                 const taskCardClass = "w-full sm:w-[calc(50%-0.5rem)] md:w-[calc(33.333%-0.66rem)] lg:w-[calc(25%-0.75rem)] xl:w-[calc(20%-0.8rem)] min-w-[200px] min-h-[90px] bg-card hover:shadow-md transition-shadow";
                 return (
                   <Card key={item.id} className={cn(
-                      "shadow-sm border rounded-lg hover:shadow-md transition-shadow", // Base Card component applies its own border
+                      cardBaseClasses,
                       taskCardClass, 
-                      item.taskHighPriority && timeLeftDetails && !timeLeftDetails.isPastDue ? "border-accent border-2": "border-border" // Explicitly control border color and width
+                      isHighPriorityTask && timeLeftDetails && !timeLeftDetails.isPastDue ? "border-accent border-2": "border-border" 
                       )}>
                     <CardHeader className="p-2 pb-1">
                       <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center min-w-0">
                               <CalendarClock className="h-3.5 w-3.5 mr-1.5 shrink-0 text-primary/80" />
-                              <CardTitle className={cn("text-sm font-semibold truncate", item.taskHighPriority ? "text-accent-foreground" : "text-foreground")} title={item.name}>
+                              <CardTitle className={cn("text-sm font-semibold truncate", isHighPriorityTask ? "text-accent-foreground" : "text-foreground")} title={item.name}>
                                 {truncateText(item.name, 20)}
                               </CardTitle>
                           </div>
@@ -211,7 +202,7 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                               </Badge>
                           )}
                       </div>
-                      <CardDescription className={cn("text-xs pl-[18px]", item.taskHighPriority ? "text-accent-foreground/80" : "text-muted-foreground")}>
+                      <CardDescription className={cn("text-xs pl-[18px]", isHighPriorityTask ? "text-accent-foreground/80" : "text-muted-foreground")}>
                         Scheduled: {item.originalDate ? format(parseISO(item.originalDate), 'MMM d') : 'N/A'}
                          <span className="mx-1">|</span> Due: {item.dueDate ? format(parseISO(item.dueDate), 'MMM d') : 'N/A'}
                       </CardDescription>
@@ -222,6 +213,11 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                               <AlertCircle className="h-3 w-3 mr-1"/> High Priority
                           </Badge>
                       )}
+                       {!item.taskHighPriority && item.description && (
+                        <p className="text-[10px] text-muted-foreground line-clamp-1" title={item.description}>
+                            {truncateText(item.description, 30)}
+                        </p>
+                       )}
                     </CardContent>
                   </Card>
                 );
@@ -233,3 +229,4 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
     </div>
   );
 }
+
