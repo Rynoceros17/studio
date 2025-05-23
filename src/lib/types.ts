@@ -1,5 +1,5 @@
 
-export interface Task { // Changed 'type' to 'interface' for better clarity and extensibility
+export interface Task {
   id: string;
   name: string;
   description?: string;
@@ -7,20 +7,17 @@ export interface Task { // Changed 'type' to 'interface' for better clarity and 
   recurring?: boolean;
   details?: string;
   dueDate?: string; // Optional due date (yyyy-MM-dd format)
-  // Removed: files?: FileMetaData[];
   highPriority?: boolean; // Optional: Flag for high priority tasks
   exceptions?: string[]; // Optional array of 'yyyy-MM-dd' dates to skip for recurring tasks
-  color?: string; // Optional: Background color for the task card (e.g., HSL string)
+  color?: string; // Optional: Background color for the task card
 };
 
-// Removed: FileMetaData interface
-
-// Goal and Subtask types (Ensure these are exported)
+// Goal and Subtask types
 export interface Subtask {
     id: string;
     name: string;
     completed: boolean;
-    subtasks?: Subtask[]; // Optional: for nested subtasks
+    subtasks?: Subtask[];
 }
 
 export interface Goal {
@@ -28,6 +25,7 @@ export interface Goal {
     name: string;
     subtasks: Subtask[];
     dueDate?: string; // Optional due date for the goal
+    highPriority?: boolean; // Added for goal priority
 }
 
 // Item type for the "Upcoming Deadlines" bar
@@ -38,8 +36,32 @@ export interface UpcomingItem {
   type: 'task' | 'goal';
   originalDate?: string; // For tasks, the date it's scheduled on
   description?: string; // For tasks
-  highPriority?: boolean; // For tasks
+  taskHighPriority?: boolean; // For tasks (renamed to avoid conflict)
+  goalHighPriority?: boolean; // For goals
   color?: string; // For tasks
   progress?: number; // For goals
 }
 
+export interface TimeLeft {
+  yearsDetailed: number;
+  monthsDetailed: number;
+  weeksDetailed: number;
+  daysDetailed: number;
+  hoursDetailed: number;
+
+  totalYears: number;
+  totalMonths: number;
+  totalWeeks: number;
+  totalDays: number; // Total calendar days difference
+  fullDaysRemaining: number; // Days after today until due date
+  
+  monthsInYear: number; // Month part after years
+  weeksInMonth: number; // Week part after months
+  daysInWeek: number;   // Day part after weeks
+  
+  hoursComponent: number;    // Hours part for current day or due day
+  minutesComponent: number;  // Minutes part for current day or due day
+
+  isPastDue: boolean;
+  isDueToday: boolean;
+}
