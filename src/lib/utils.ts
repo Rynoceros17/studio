@@ -1,7 +1,8 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { parseISO, isValid, differenceInDays, differenceInWeeks, startOfDay } from 'date-fns';
+import { parseISO, isValid, differenceInDays, differenceInWeeks, startOfDay, differenceInMonths, differenceInYears, differenceInHours, differenceInMinutes, addYears, addMonths, addWeeks, addDays } from 'date-fns';
+import type { Goal, Subtask } from "./types";
 
 
 export function cn(...inputs: ClassValue[]) {
@@ -69,20 +70,87 @@ export const formatDuration = (totalSeconds: number): string => {
   }
 };
 
-export function calculateTimeLeft(dueDateStr: string | undefined): { days: number; weeks: number } | null {
+export interface TimeLeft {
+    years: number;
+    monthsInYear: number; // Remaining months after accounting for full years
+    daysInMonth: number; // Remaining days after accounting for full years and months
+    hoursInDay: number; // Remaining hours after accounting for full days
+    totalDays: number;
+    totalHours: number;
+    isPastDue: boolean;
+}
+
+export function calculateTimeLeft(dueDateStr: string | undefined): TimeLeft | null {
   if (!dueDateStr) return null;
-  const due = parseISO(dueDateStr); // parseISO handles yyyy-MM-dd correctly
+  const due = parseISO(dueDateStr);
   if (!isValid(due)) return null;
 
-  const today = startOfDay(new Date());
+  const now = new Date();
+  const today = startOfDay(now); // Compare with the start of today for "days left"
 
-  // If due date is in the past relative to the start of today
-  if (due < today) {
-    const daysPast = differenceInDays(today, due); // How many days ago it was due
-    return { days: -daysPast, weeks: -Math.floor(daysPast / 7) }; // Negative values indicate past due
+  if (due < today) { // If due date is before the start of today, it's past due
+    const totalDaysPast = differenceInDays(today, due);
+    return {
+        years: 0, monthsInYear: 0, daysInMonth: 0, hoursInDay: 0,
+        totalDays: -totalDaysPast,
+        totalHours: -totalDaysPast * 24,
+        isPastDue: true
+    };
   }
 
-  const days = differenceInDays(due, today);
-  const weeks = differenceInWeeks(due, today, { roundingMethod: 'floor' }); // Ensure weeks are floored
-  return { days, weeks };
+  const totalDays = differenceInDays(due, today); // Days from start of today to due date
+  const totalHours = differenceInHours(due, now); // Hours from right now to due date
+
+  let tempDate = new Date(now);
+  const years = differenceInYears(due, tempDate);
+  tempDate = addYears(tempDate, years);
+
+  const monthsInYear = differenceInMonths(due, tempDate);
+  tempDate = addMonths(tempDate, monthsInYear);
+
+  // Days remaining in the current month of the countdown
+  const daysInMonth = differenceInDays(due, tempDate);
+
+  // Hours remaining in the current day of the countdown
+  // For this, we consider the difference from 'now' to the end of the 'due' date day for more precision
+  const hoursInDay = totalHours >= 0 ? totalHours % 24 : 0;
+
+
+  return {
+    years,
+    monthsInYear,
+    daysInMonth,
+    hoursInDay,
+    totalDays,
+    totalHours,
+    isPastDue: totalHours < 0 && !isSameDay(due, today) // Past due if totalHours is negative and not due today
+  };
 }
+
+
+// Moved from goals/page.tsx to be reusable
+const countSubtasksRecursive = (subtasks: Subtask[]): { total: number, completed: number } => {
+    let total = 0;
+    let completed = 0;
+    subtasks.forEach(subtask => {
+        total++;
+        if (subtask.completed) {
+            completed++;
+        }
+        if (subtask.subtasks && subtask.subtasks.length > 0) {
+            const childCounts = countSubtasksRecursive(subtask.subtasks);
+            total += childCounts.total;
+            completed += childCounts.completed;
+        }
+    });
+    return { total, completed };
+};
+
+export const calculateGoalProgress = (goal: Goal): number => {
+    if (!goal || !goal.subtasks || goal.subtasks.length === 0) {
+        return 0;
+    }
+    const { total, completed } = countSubtasksRecursive(goal.subtasks);
+    if (total === 0) return 0;
+    return Math.round((completed / total) * 100);
+};
