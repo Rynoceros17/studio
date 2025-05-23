@@ -24,22 +24,25 @@ function formatTimeLeftForBadge(timeLeft: TimeLeft | null): string {
   if (timeLeft.isPastDue) return "Past Due";
   if (timeLeft.isDueToday) return "Due Today";
 
-  // Due in the future
+  if (timeLeft.totalYears > 0) {
+    return `${timeLeft.totalYears}y ${timeLeft.monthsComponent}mo left`;
+  }
+  if (timeLeft.totalMonths > 0) {
+    return `${timeLeft.totalMonths}mo ${timeLeft.weeksComponent}w left`;
+  }
+  if (timeLeft.totalWeeks > 0) {
+    return `${timeLeft.totalWeeks}w ${timeLeft.daysComponent}d left`;
+  }
   if (timeLeft.fullDaysRemaining > 0) {
-    let daysStr = `${timeLeft.fullDaysRemaining}d`;
-    if (timeLeft.hoursInCurrentDay > 0 && timeLeft.fullDaysRemaining <= 2) { // Add hours if 1 or 2 days left
-        daysStr += ` ${timeLeft.hoursInCurrentDay}h`;
-    }
-    return `${daysStr} left`;
+    return `${timeLeft.fullDaysRemaining}d ${timeLeft.hoursComponent}h left`;
   }
-  // Due tomorrow (fullDaysRemaining is 0)
-  if (timeLeft.hoursInCurrentDay > 0) {
-    return `${timeLeft.hoursInCurrentDay}h ${timeLeft.minutesInCurrentHour}m left`;
+  if (timeLeft.hoursComponent > 0) {
+    return `${timeLeft.hoursComponent}h ${timeLeft.minutesComponent}m left`;
   }
-  if (timeLeft.minutesInCurrentHour > 0) {
-    return `${timeLeft.minutesInCurrentHour}m left`;
+  if (timeLeft.minutesComponent > 0) {
+    return `${timeLeft.minutesComponent}m left`;
   }
-  return "Upcoming"; // Fallback if exactly at midnight of tomorrow
+  return "Upcoming";
 }
 
 
@@ -48,7 +51,7 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
   const numberOfGoals = goalItems.length;
 
   return (
-    <div className="w-full mt-4"> {/* Wrapper for TopTaskBar to apply full width */}
+    <div className="w-full mt-4">
       <Card className="w-full shadow-md bg-card border-border mb-4 overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between p-3">
           <div className="flex items-center">
@@ -62,7 +65,7 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
               No upcoming deadlines for tasks or goals.
             </div>
           ) : (
-            <ScrollArea className="max-h-[550px] whitespace-nowrap">
+            <ScrollArea className="max-h-[550px]"> {/* Removed whitespace-nowrap */}
               <div className="flex flex-wrap gap-4 p-4 justify-center">
                 {items.map(item => {
                   const timeLeftDetails = calculateTimeLeft(item.dueDate);
@@ -72,24 +75,32 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
                   if (timeLeftDetails) {
                     if (timeLeftDetails.isPastDue) {
                         timeBadgeVariant = "destructive";
-                    } else if (timeLeftDetails.isDueToday || (timeLeftDetails.fullDaysRemaining === 0 && timeLeftDetails.hoursInCurrentDay <= 24 && timeLeftDetails.hoursInCurrentDay >= 0) ) {
-                        timeBadgeVariant = "default"; // Urgent or due today
+                    } else if (timeLeftDetails.isDueToday || (timeLeftDetails.fullDaysRemaining === 0 && timeLeftDetails.hoursComponent <= 24 && timeLeftDetails.hoursComponent >= 0) ) {
+                        timeBadgeVariant = "default"; 
                     } else if (timeLeftDetails.fullDaysRemaining > 0 && timeLeftDetails.fullDaysRemaining <= 2) {
-                        timeBadgeVariant = "default"; // Due in next 2 full days
+                        timeBadgeVariant = "default"; 
                     }
                   }
 
-
-                  const cardBaseClass = "shadow-sm border-border flex flex-col";
+                  const cardBaseClass = "shadow-sm border-border";
                   
                   if (item.type === 'goal') {
-                    const isSingleGoalCard = numberOfGoals === 1 && item.id === goalItems[0].id;
-                    const goalCardWrapperClass = isSingleGoalCard ? "w-full" : "w-full md:w-[calc(50%-0.5rem)]";
-                    const goalCardInternalClass = cn(cardBaseClass, "min-w-[300px]", isSingleGoalCard ? "max-w-full" : "max-w-[480px]", isSingleGoalCard ? "min-h-[100px]" : "min-h-[160px]", "bg-secondary/50 hover:shadow-md transition-shadow cursor-pointer");
+                    const isSingleGoalCard = numberOfGoals === 1 && item.id === goalItems[0]?.id;
+                    
+                    let cardWrapperClass = "";
+                    let cardInternalClass = cn(cardBaseClass, "flex flex-col");
+
+                    if (isSingleGoalCard) {
+                      cardWrapperClass = "w-full";
+                      cardInternalClass = cn(cardInternalClass, "min-h-[100px]");
+                    } else {
+                      cardWrapperClass = "w-full md:w-[calc(50%-0.5rem)]"; 
+                      cardInternalClass = cn(cardInternalClass, "min-w-[300px] min-h-[160px]"); // Removed max-w-[480px]
+                    }
 
                     return (
-                      <Link href="/goals" key={item.id} className={goalCardWrapperClass}>
-                        <Card className={goalCardInternalClass}>
+                      <Link href="/goals" key={item.id} className={cardWrapperClass}>
+                        <Card className={cn(cardInternalClass, "bg-secondary/50 hover:shadow-md transition-shadow")}>
                           <CardHeader className="p-3 pb-1.5">
                             <div className="flex items-center justify-between">
                               <CardTitle className="text-base font-semibold truncate text-secondary-foreground flex items-center" title={item.name}>
@@ -108,43 +119,32 @@ export function TopTaskBar({ items }: TopTaskBarProps) {
                             {timeLeftDetails && !timeLeftDetails.isPastDue && (
                               <div className={cn(
                                 "flex text-xs text-muted-foreground mb-2 text-center",
-                                isSingleGoalCard ? "items-center justify-around mt-2 mb-1" : "grid grid-cols-3 gap-2"
+                                isSingleGoalCard ? "flex-row flex-wrap items-baseline gap-x-2 gap-y-1 justify-around mt-2 mb-1" : "grid grid-cols-3 gap-2"
                               )}>
-                                {timeLeftDetails.totalYears > 0 && (
+                                {isSingleGoalCard ? (
                                   <>
-                                    <div>
-                                      <p className="font-semibold text-lg text-foreground">{timeLeftDetails.totalYears}</p>
-                                      <p>Years Left</p>
-                                    </div>
-                                    {isSingleGoalCard && <Separator orientation="vertical" className="h-8" />}
+                                    {timeLeftDetails.totalYears > 0 && (
+                                      <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.totalYears}</p> <p>Years Left</p> </div>
+                                    )}
+                                    {timeLeftDetails.totalMonths > 0 && (
+                                      <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.totalMonths}</p> <p>Months Left</p> </div>
+                                    )}
+                                    {timeLeftDetails.totalWeeks > 0 && (
+                                      <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.totalWeeks}</p> <p>Weeks Left</p> </div>
+                                    )}
+                                    {timeLeftDetails.fullDaysRemaining >= 0 && (
+                                      <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.fullDaysRemaining}</p> <p>Days Left</p> </div>
+                                    )}
+                                    {timeLeftDetails.hoursComponent >= 0 && (
+                                      <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.hoursComponent}</p> <p>Hours Left</p> </div>
+                                    )}
                                   </>
-                                )}
-                                {timeLeftDetails.totalMonths > 0 && (
+                                ) : (
                                   <>
-                                    <div>
-                                      <p className="font-semibold text-lg text-foreground">{timeLeftDetails.totalMonths}</p>
-                                      <p>Months Left</p>
-                                    </div>
-                                    {isSingleGoalCard && <Separator orientation="vertical" className="h-8" />}
+                                    <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.fullDaysRemaining}</p> <p>Days</p> </div>
+                                    <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.totalMonths}</p> <p>Months</p> </div>
+                                    <div> <p className="font-semibold text-lg text-foreground">{timeLeftDetails.hoursComponent}</p> <p>Hours</p> </div>
                                   </>
-                                )}
-                                 {/* Always show fullDaysRemaining if not past due and not due today */}
-                                {!timeLeftDetails.isDueToday && timeLeftDetails.fullDaysRemaining >= 0 && (
-                                  <>
-                                    <div>
-                                        <p className="font-semibold text-lg text-foreground">{timeLeftDetails.fullDaysRemaining}</p>
-                                        <p>Full Days Left</p>
-                                    </div>
-                                    {isSingleGoalCard && <Separator orientation="vertical" className="h-8" />}
-                                  </>
-                                )}
-                                {timeLeftDetails.hoursInCurrentDay >= 0 && (
-                                    <>
-                                      <div>
-                                        <p className="font-semibold text-lg text-foreground">{timeLeftDetails.hoursInCurrentDay}</p>
-                                        <p>Hours Left Today</p>
-                                      </div>
-                                    </>
                                 )}
                               </div>
                             )}
