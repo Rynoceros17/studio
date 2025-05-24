@@ -104,7 +104,8 @@ export default function Home() {
          recurring: newTaskData.recurring ?? false,
          highPriority: newTaskData.highPriority ?? false,
          exceptions: [],
-         // No color property
+         details: newTaskData.details || '',
+         dueDate: newTaskData.dueDate || undefined,
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -185,7 +186,7 @@ export default function Home() {
   }, [deleteAllOccurrences]);
 
 
-  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => { // Removed color
+  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => { 
       setTasks(prevTasks => {
           let needsResort = false;
           const updatedTasks = prevTasks.map(task => {
@@ -315,7 +316,7 @@ export default function Home() {
   }, [tasks, completedTaskIds, setCompletedTaskIds, toast]);
 
 
-  const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => { // Files removed
+  const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => { 
    setTasks(prevTasks => {
       let needsResort = false;
      const updatedTasks = prevTasks.map(task => {
@@ -393,7 +394,6 @@ export default function Home() {
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
-        // No color property
       }));
 
     const mappedGoals: UpcomingItem[] = goals
@@ -433,77 +433,84 @@ export default function Home() {
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header className={cn(
         "bg-background border-b shadow-sm w-full", 
-        "flex h-16 items-center justify-between px-4" 
+        "flex flex-col items-center p-4", // Default: title top, icons below
+        "md:flex-row md:h-16 md:items-center md:px-4 md:py-0" // Medium screens and up: horizontal layout
       )}>
+        {/* Left Icons Group for md+ screens */}
         <nav className={cn(
-          "flex items-center space-x-1" 
+            "order-2 flex space-x-1", // Below title on small screens
+            "md:order-1 md:mr-auto" // Left side on medium+ screens
         )}>
-          <Link href="/dashboard" passHref legacyBehavior>
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
-              <LayoutDashboard className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Link href="/study-tracker" passHref legacyBehavior>
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to study tracker">
-              <BookOpen className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Link href="/goals" passHref legacyBehavior>
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View goals">
-              <Target className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View bookmarks">
-                <BookmarkIcon className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-              <SheetHeader className="p-4 border-b shrink-0">
-                <SheetTitle className="text-primary">Bookmarks</SheetTitle>
-              </SheetHeader>
-              <BookmarkListSheet />
-            </SheetContent>
-          </Sheet>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 text-primary hover:bg-primary/10"
-            aria-label="Toggle Pomodoro Timer"
-            onClick={() => setIsTimerVisible(!isTimerVisible)}
-          >
-            <TimerIcon className="h-5 w-5" />
-          </Button>
-          <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="View scratchpad">
-                <List className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-              <SheetHeader className="p-4 border-b shrink-0">
-                <SheetTitle className="text-primary">Scratchpad</SheetTitle>
-              </SheetHeader>
-              <TaskListSheet />
-            </SheetContent>
-          </Sheet>
+            <Link href="/dashboard" passHref legacyBehavior>
+                <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
+                    <LayoutDashboard className="h-5 w-5" />
+                    <span className="hidden md:inline ml-2">Dashboard</span>
+                </Button>
+            </Link>
+            <Link href="/study-tracker" passHref legacyBehavior>
+                <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to study tracker">
+                    <BookOpen className="h-5 w-5" />
+                    <span className="hidden md:inline ml-2">Study</span>
+                </Button>
+            </Link>
+            <Link href="/goals" passHref legacyBehavior>
+                <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View goals">
+                    <Target className="h-5 w-5" />
+                    <span className="hidden md:inline ml-2">Goals</span>
+                </Button>
+            </Link>
         </nav>
 
+        {/* Title - Centered */}
         <h1 className={cn(
-          "text-xl md:text-2xl font-bold text-primary tracking-tight flex-grow text-center"
+          "text-xl md:text-2xl font-bold text-primary tracking-tight text-center",
+          "order-1 mb-3", // Title on top on small screens
+          "md:order-2 md:mb-0 md:flex-grow" // Center on medium+
         )}>WeekWise</h1>
         
-        <div className={cn(
-          "flex items-center space-x-1 invisible" 
-        )} aria-hidden="true">
-            <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9"><BookOpen className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9"><Target className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9"><BookmarkIcon className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9"><TimerIcon className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9"><List className="h-5 w-5" /></Button>
-        </div>
+        {/* Right Icons Group for md+ screens */}
+        <nav className={cn(
+            "order-3 flex space-x-1", // Also below title on small, appears after spacer on md+
+            "md:order-3 md:ml-auto" // Right side on medium+
+        )}>
+            <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View bookmarks">
+                        <BookmarkIcon className="h-5 w-5" />
+                        <span className="hidden md:inline ml-2">Bookmarks</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                    <SheetHeader className="p-4 border-b shrink-0">
+                        <SheetTitle className="text-primary">Bookmarks</SheetTitle>
+                    </SheetHeader>
+                    <BookmarkListSheet />
+                </SheetContent>
+            </Sheet>
+            <Button
+                variant="ghost"
+                className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10"
+                aria-label="Toggle Pomodoro Timer"
+                onClick={() => setIsTimerVisible(!isTimerVisible)}
+            >
+                <TimerIcon className="h-5 w-5" />
+                <span className="hidden md:inline ml-2">Timer</span>
+            </Button>
+            <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View scratchpad">
+                        <List className="h-5 w-5" />
+                        <span className="hidden md:inline ml-2">Scratchpad</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                    <SheetHeader className="p-4 border-b shrink-0">
+                        <SheetTitle className="text-primary">Scratchpad</SheetTitle>
+                    </SheetHeader>
+                    <TaskListSheet />
+                </SheetContent>
+            </Sheet>
+        </nav>
       </header>
 
       <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden">
@@ -522,7 +529,7 @@ export default function Home() {
               />
           )}
         </div>
-        <div className="w-full">
+        <div className="w-full mt-4">
           <TopTaskBar
             items={upcomingItemsForBar}
             toggleGoalPriority={toggleGoalPriority}
@@ -549,6 +556,7 @@ export default function Home() {
                     <TaskForm
                        addTask={addTask}
                        onTaskAdded={() => setIsFormOpen(false)}
+                       initialData={null}
                     />
                   </DialogContent>
                 </Dialog>
@@ -591,3 +599,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
