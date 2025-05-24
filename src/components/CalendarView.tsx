@@ -13,7 +13,7 @@ import {
   parseISO,
   startOfDay,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, Palette, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react'; // Palette removed
 import {
   DndContext,
   closestCenter,
@@ -50,7 +50,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Task } from '@/lib/types';
 import { cn, truncateText, getMaxLength } from '@/lib/utils';
 import {
-  Dialog as ShadDialog,
+  Dialog as ShadDialog, // Renamed to avoid conflict
   DialogContent as ShadDialogContent,
   DialogHeader as ShadDialogHeader,
   DialogTitle as ShadDialogTitle,
@@ -65,8 +65,8 @@ interface CalendarViewProps {
     updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
     toggleTaskCompletion: (taskId: string, dateStr: string) => void;
     completedTasks: Set<string>;
-    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => void;
-    updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions' | 'color'>>) => void;
+    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => void; // Files removed
+    updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => void; // Color removed
     completedCount: number;
 }
 
@@ -117,21 +117,16 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     let cardBgClass = '';
     let textColorClass = '';
     let descColorClass = '';
-    const isGoldColorSelected = task.color && task.color !== 'hsl(var(--card))';
 
     if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60 border-transparent';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
-    } else if (isGoldColorSelected) {
-        cardBgClass = 'border-transparent'; // Background set by inline style
-        textColorClass = 'text-card-foreground';
-        descColorClass = 'text-card-foreground/80';
     } else if (task.highPriority) {
-        cardBgClass = 'bg-card border-primary ring-1 ring-primary'; // White background, primary border for high priority
+        cardBgClass = 'bg-card border-primary ring-1 ring-primary';
         textColorClass = 'text-card-foreground';
         descColorClass = 'text-muted-foreground';
-    } else { // Default white background
+    } else { 
         cardBgClass = 'bg-card border-border';
         textColorClass = 'text-card-foreground';
         descColorClass = 'text-muted-foreground';
@@ -146,7 +141,6 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
             isDragging && 'shadow-lg scale-105 border-2 border-ring animate-pulse',
             'transition-all duration-300 ease-in-out'
           )}
-           style={{ backgroundColor: !isCompleted && isGoldColorSelected ? task.color : undefined }}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <div className={cn("pt-0.5 cursor-grab shrink-0", textColorClass)}>
@@ -270,28 +264,21 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
   let descColorClass = '';
   let iconButtonClass = '';
   let completeIconClass = '';
-  const isGoldColorSelected = task.color && task.color !== 'hsl(var(--card))';
 
 
   if (isCompleted) {
       cardBgClass = 'bg-muted opacity-60 border-transparent';
       textColorClass = 'text-muted-foreground';
       descColorClass = 'text-muted-foreground';
-      iconButtonClass = 'text-muted-foreground'; // Buttons on completed tasks
-      completeIconClass = 'text-green-600'; // Completion checkmark
-  } else if (isGoldColorSelected) {
-      cardBgClass = 'border-transparent'; // Background set by inline style
-      textColorClass = 'text-card-foreground';
-      descColorClass = 'text-card-foreground/80';
-      iconButtonClass = 'text-card-foreground hover:text-card-foreground/80';
-      completeIconClass = 'text-card-foreground';
+      iconButtonClass = 'text-muted-foreground';
+      completeIconClass = 'text-green-600';
   } else if (task.highPriority) {
-      cardBgClass = 'bg-card border-primary ring-1 ring-primary'; // White bg, primary border
+      cardBgClass = 'bg-card border-primary ring-1 ring-primary'; 
       textColorClass = 'text-card-foreground';
       descColorClass = 'text-muted-foreground';
       iconButtonClass = 'text-muted-foreground hover:text-foreground';
       completeIconClass = 'text-muted-foreground';
-  } else { // Default white background
+  } else { 
       cardBgClass = 'bg-card border-border';
       textColorClass = 'text-card-foreground';
       descColorClass = 'text-muted-foreground';
@@ -339,7 +326,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 cardBgClass,
                 isCompletedAnim && 'animate-task-complete'
             )}
-            style={{ backgroundColor: !isCompleted && isGoldColorSelected ? task.color : undefined }}
+            // No inline style for color
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <button
@@ -462,8 +449,6 @@ export function CalendarView({
           if (newViewMode === 'today') {
             setCurrentDisplayDate(startOfDay(new Date()));
           } else {
-            // If currentDisplayDate is already in 'today' mode and being switched to 'week',
-            // ensure it starts from the beginning of the week containing that day.
             setCurrentDisplayDate(prevDate => startOfWeek(prevDate, { weekStartsOn: 1 }));
           }
         }
@@ -489,7 +474,6 @@ export function CalendarView({
       }
       return daysArray;
     } else {
-      // In 'today' mode, currentDisplayDate directly represents the single day to show
       return [currentDisplayDate];
     }
   }, [currentDisplayDate, viewMode]);
@@ -640,7 +624,7 @@ export function CalendarView({
 
                  const completionKey = `${activeTaskId}_${activeDateStr}`;
                  if (completedTasks.has(completionKey)) {
-                     toggleTaskCompletion(activeTaskId, activeDateStr); // Mark old instance as incomplete
+                     toggleTaskCompletion(activeTaskId, activeDateStr); 
                  }
             } else {
                  updateTask(activeTaskId, { date: overDateStr });
@@ -863,4 +847,3 @@ export function CalendarView({
     </DndContext>
   );
 }
-

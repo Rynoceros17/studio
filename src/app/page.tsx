@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core';
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
-import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
+import { PomodoroTimer } from '@/components/PomodoroTimer';
 import type { Task, Goal, UpcomingItem } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +44,6 @@ import {
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
-// GoalsSheet is no longer used here, direct link to /goals
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react';
 import { format, parseISO, startOfDay } from 'date-fns';
@@ -65,7 +64,6 @@ export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false);
-  // const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // Removed, linking directly
   const [isTimerVisible, setIsTimerVisible] = useState(false);
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
@@ -75,8 +73,8 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-        const initialX = window.innerWidth - 300 - 24; // 300 for timer width, 24 for padding
-        const initialY = 24; // Padding from top
+        const initialX = window.innerWidth - 300 - 24; 
+        const initialY = 24; 
         setTimerPosition({ x: initialX, y: initialY });
     }
   }, []);
@@ -84,7 +82,7 @@ export default function Home() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10, // Drag 10px before initiating drag
+        distance: 10, 
       },
     })
   );
@@ -103,12 +101,10 @@ export default function Home() {
      const newTask: Task = {
          ...newTaskData,
          id: crypto.randomUUID(),
-         // details: newTaskData.details ?? '', // Removed, handled by TaskDetailsDisplayDialog
-         // dueDate: newTaskData.dueDate, // Removed, handled by TaskDetailsDisplayDialog
          recurring: newTaskData.recurring ?? false,
          highPriority: newTaskData.highPriority ?? false,
          exceptions: [],
-         color: newTaskData.color, // Keep color from form
+         // No color property
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -189,7 +185,7 @@ export default function Home() {
   }, [deleteAllOccurrences]);
 
 
-  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => {
+  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => { // Removed color
       setTasks(prevTasks => {
           let needsResort = false;
           const updatedTasks = prevTasks.map(task => {
@@ -319,7 +315,7 @@ export default function Home() {
   }, [tasks, completedTaskIds, setCompletedTaskIds, toast]);
 
 
-  const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => {
+  const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => { // Files removed
    setTasks(prevTasks => {
       let needsResort = false;
      const updatedTasks = prevTasks.map(task => {
@@ -382,14 +378,12 @@ export default function Home() {
 
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
     if (!isClient) return [];
-    const today = startOfDay(new Date());
 
     const mappedTasks: UpcomingItem[] = tasks
       .filter(task => {
         if (!task.dueDate) return false;
-        const dueDateObj = parseISOStrict(task.dueDate);
         const timeLeftDetails = calculateTimeLeft(task.dueDate);
-        return dueDateObj && timeLeftDetails && !timeLeftDetails.isPastDue;
+        return timeLeftDetails && !timeLeftDetails.isPastDue;
       })
       .map(task => ({
         id: task.id,
@@ -399,15 +393,12 @@ export default function Home() {
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
-        color: task.color,
+        // No color property
       }));
 
     const mappedGoals: UpcomingItem[] = goals
       .filter(goal => {
         if (!goal.dueDate) return false;
-        const dueDateObj = parseISOStrict(goal.dueDate);
-        if (!dueDateObj) return false;
-
         const timeLeftDetails = calculateTimeLeft(goal.dueDate);
         if (!timeLeftDetails || timeLeftDetails.isPastDue) return false;
         if (calculateGoalProgress(goal) >= 100) return false;
@@ -441,11 +432,11 @@ export default function Home() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header className={cn(
-        "bg-background shadow-sm w-full", // Removed border-b
-        "flex h-16 items-center px-4"
+        "bg-background border-b shadow-sm w-full", 
+        "flex h-16 items-center justify-between px-4" 
       )}>
         <nav className={cn(
-          "flex items-center space-x-1"
+          "flex items-center space-x-1" 
         )}>
           <Link href="/dashboard" passHref legacyBehavior>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
@@ -504,7 +495,7 @@ export default function Home() {
         )}>WeekWise</h1>
         
         <div className={cn(
-          "flex items-center space-x-1 invisible" // Spacer
+          "flex items-center space-x-1 invisible" 
         )} aria-hidden="true">
             <Button variant="ghost" size="icon" className="h-9 w-9"><LayoutDashboard className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" className="h-9 w-9"><BookOpen className="h-5 w-5" /></Button>

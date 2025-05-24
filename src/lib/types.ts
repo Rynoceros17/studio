@@ -9,7 +9,7 @@ export interface Task {
   dueDate?: string; // Optional due date (yyyy-MM-dd format)
   highPriority?: boolean; // Optional: Flag for high priority tasks
   exceptions?: string[]; // Optional array of 'yyyy-MM-dd' dates to skip for recurring tasks
-  color?: string; // Optional: Background color for the task card
+  // color?: string; // Removed color property
 };
 
 // Goal and Subtask types
@@ -38,7 +38,7 @@ export interface UpcomingItem {
   description?: string; // For tasks
   taskHighPriority?: boolean; // For tasks (renamed to avoid conflict)
   goalHighPriority?: boolean; // For goals
-  color?: string; // For tasks
+  // color?: string; // For tasks - Removed
   progress?: number; // For goals
 }
 
@@ -52,16 +52,16 @@ export interface TimeLeft {
   totalYears: number;
   totalMonths: number;
   totalWeeks: number;
-  totalDays: number; // Total calendar days difference
-  fullDaysRemaining: number; // Days after today until due date
+  fullDaysRemaining: number;
   
-  monthsInYear: number; // Month part after years
-  weeksInMonth: number; // Week part after months
-  daysInWeek: number;   // Day part after weeks
+  monthsInYear: number;
+  weeksInMonth: number;
+  daysInWeek: number;
   
-  hoursComponent: number;    // Hours part for current day or due day
-  minutesComponent: number;  // Minutes part for current day or due day
+  hoursComponent: number;
+  minutesComponent: number;
 
   isPastDue: boolean;
   isDueToday: boolean;
 }
+
