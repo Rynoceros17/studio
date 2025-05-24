@@ -17,7 +17,7 @@ import { PomodoroTimer } from '@/components/PomodoroTimer';
 import type { Task, Goal, UpcomingItem } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +46,7 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react';
-import { format, parseISO, startOfDay } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { cn, calculateGoalProgress, parseISOStrict, calculateTimeLeft } from '@/lib/utils';
 
 
@@ -73,8 +73,8 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-        const initialX = window.innerWidth - 300 - 24; 
-        const initialY = 24; 
+        const initialX = window.innerWidth - 300 - 24;
+        const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
     }
   }, []);
@@ -82,7 +82,7 @@ export default function Home() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10, 
+        distance: 10,
       },
     })
   );
@@ -186,7 +186,7 @@ export default function Home() {
   }, [deleteAllOccurrences]);
 
 
-  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => { 
+  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => {
       setTasks(prevTasks => {
           let needsResort = false;
           const updatedTasks = prevTasks.map(task => {
@@ -316,7 +316,7 @@ export default function Home() {
   }, [tasks, completedTaskIds, setCompletedTaskIds, toast]);
 
 
-  const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => { 
+  const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => {
    setTasks(prevTasks => {
       let needsResort = false;
      const updatedTasks = prevTasks.map(task => {
@@ -432,19 +432,19 @@ export default function Home() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header className={cn(
-        "bg-background border-b shadow-sm w-full", 
-        "flex flex-col items-center p-4", // Default: title top, icons below
-        "md:flex-row md:h-16 md:items-center md:px-4 md:py-0" // Medium screens and up: horizontal layout
+        "bg-background shadow-sm w-full",
+        "flex flex-col items-center p-4",
+        "md:flex-row md:h-16 md:items-center md:px-4 md:py-0"
       )}>
-        {/* Left Icons Group for md+ screens */}
+        {/* Left Icons Group (3 icons) */}
         <nav className={cn(
-            "order-2 flex space-x-1", // Below title on small screens
-            "md:order-1 md:mr-auto" // Left side on medium+ screens
+            "order-2 flex space-x-1",
+            "md:order-1 md:mr-auto"
         )}>
-            <Link href="/dashboard" passHref legacyBehavior>
-                <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to dashboard">
+            <Link href="/timetable" passHref legacyBehavior>
+                <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to timetable">
                     <LayoutDashboard className="h-5 w-5" />
-                    <span className="hidden md:inline ml-2">Dashboard</span>
+                    <span className="hidden md:inline ml-2">Timetable</span>
                 </Button>
             </Link>
             <Link href="/study-tracker" passHref legacyBehavior>
@@ -464,14 +464,14 @@ export default function Home() {
         {/* Title - Centered */}
         <h1 className={cn(
           "text-xl md:text-2xl font-bold text-primary tracking-tight text-center",
-          "order-1 mb-3", // Title on top on small screens
-          "md:order-2 md:mb-0 md:flex-grow" // Center on medium+
+          "order-1 mb-3",
+          "md:order-2 md:mb-0 md:flex-grow"
         )}>WeekWise</h1>
-        
-        {/* Right Icons Group for md+ screens */}
+
+        {/* Right Icons Group (3 icons) */}
         <nav className={cn(
-            "order-3 flex space-x-1", // Also below title on small, appears after spacer on md+
-            "md:order-3 md:ml-auto" // Right side on medium+
+            "order-3 flex space-x-1",
+            "md:order-3 md:ml-auto"
         )}>
             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                 <SheetTrigger asChild>
@@ -514,7 +514,7 @@ export default function Home() {
       </header>
 
       <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden">
-        
+
         <div className="w-full max-w-7xl space-y-4">
           {isClient && (
               <CalendarView
@@ -529,7 +529,7 @@ export default function Home() {
               />
           )}
         </div>
-        <div className="w-full mt-4">
+        <div className="w-full">
           <TopTaskBar
             items={upcomingItemsForBar}
             toggleGoalPriority={toggleGoalPriority}
@@ -561,7 +561,7 @@ export default function Home() {
                   </DialogContent>
                 </Dialog>
            </div>
-        
+
 
         {isClient && isTimerVisible && (
           <PomodoroTimer
@@ -582,13 +582,13 @@ export default function Home() {
                     <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
-                         className={cn(buttonVariants({ variant: "outline" }), "text-foreground")}
+                         className={cn("text-foreground")}
                     >
                         Delete This Occurrence Only
                     </AlertDialogAction>
                     <AlertDialogAction
                         onClick={() => deleteAllOccurrences(deleteConfirmation!.task.id)}
-                        className={cn(buttonVariants({ variant: "destructive" }))}
+                        className={cn("bg-destructive text-destructive-foreground hover:bg-destructive/90")}
                     >
                         Delete All Occurrences
                     </AlertDialogAction>
@@ -599,4 +599,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
