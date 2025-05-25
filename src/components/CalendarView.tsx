@@ -31,8 +31,8 @@ import {
 } from '@dnd-kit/core';
 import {
   restrictToFirstScrollableAncestor,
-  restrictToVerticalAxis, // Ensure this is from @dnd-kit/modifiers if used
-} from '@dnd-kit/modifiers'; // Ensure this import is correct based on where modifiers live
+  restrictToVerticalAxis,
+} from '@dnd-kit/modifiers';
 import {
   arrayMove,
   SortableContext,
@@ -42,21 +42,22 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch"; // Import Switch
 import type { Task } from '@/lib/types';
 import { cn, truncateText, getMaxLength, parseISOStrict } from '@/lib/utils';
 import {
-  Dialog as ShadDialog, 
+  Dialog as ShadDialog,
   DialogContent as ShadDialogContent,
   DialogHeader as ShadDialogHeader,
   DialogTitle as ShadDialogTitle,
 } from "@/components/ui/dialog";
-import { EditTaskDialog } from './EditTaskDialog'; 
-import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog'; 
+import { EditTaskDialog } from './EditTaskDialog';
+import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog';
 import { useToast } from "@/hooks/use-toast";
 
 interface CalendarViewProps {
@@ -112,37 +113,39 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
 
     const nameDisplay = truncateText(task.name, titleLimit);
     const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : '';
-    
-    let cardClasses = "bg-card border-border"; // Default: white background, standard border
+
+    let cardBgClass = 'bg-card';
     let textColorClass = 'text-card-foreground';
     let descColorClass = 'text-muted-foreground';
-    let cardStyle = {};
+    let cardBorderStyle = 'border-border';
+
 
     if (isCompleted) {
-        cardClasses = 'bg-muted opacity-60 border-transparent';
+        cardBgClass = 'bg-muted opacity-60';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
+        cardBorderStyle = 'border-transparent';
     } else {
-        // Apply custom background color if set and not the default white
-        if (task.color && task.color !== 'hsl(var(--card))') {
-            cardStyle = { backgroundColor: task.color };
-            cardClasses = 'border-border'; // Keep standard border or choose one that fits custom color
-        }
-        // High priority tasks always get a gold border
+        // Default to white background unless a custom color is set
+        cardBgClass = 'bg-card';
+        textColorClass = 'text-card-foreground';
+        descColorClass = 'text-muted-foreground';
+        cardBorderStyle = 'border-border'; // Default border for white background
+
         if (task.highPriority) {
-            cardClasses = cn(cardClasses.replace(/border-\w+/g, ''), 'border-accent border-2'); // Remove other border classes and add gold
+            cardBorderStyle = 'border-accent border-2'; // Gold border for high priority, overrides other border styles
         }
     }
-    
+
     return (
         <Card
           className={cn(
             "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
-            cardClasses,
-            isDragging && 'shadow-lg scale-105 animate-pulse', // Removed specific border for dragging
+            cardBgClass,
+            cardBorderStyle,
+            isDragging && 'shadow-lg scale-105 animate-pulse',
             'transition-all duration-300 ease-in-out'
           )}
-          style={cardStyle}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <div className={cn("pt-0.5 cursor-grab shrink-0", textColorClass)}>
@@ -259,32 +262,35 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 
   const nameDisplay = truncateText(task.name, titleLimit);
   const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : '';
-  
-  let cardClasses = "bg-card border-border"; // Default: white background, standard border
-  let textColorClass = 'text-card-foreground';
-  let descColorClass = 'text-muted-foreground';
-  let iconButtonClass = 'text-muted-foreground hover:text-foreground';
-  let completeIconClass = 'text-muted-foreground';
-  let cardStyle = {};
 
-  if (isCompleted) {
-      cardClasses = 'bg-muted opacity-60 border-transparent';
-      textColorClass = 'text-muted-foreground';
-      descColorClass = 'text-muted-foreground';
-      iconButtonClass = 'text-muted-foreground'; // Maintain for completed, maybe less interactive
-      completeIconClass = 'text-green-600';
-  } else {
-      // Apply custom background color if set and not the default white
-      if (task.color && task.color !== 'hsl(var(--card))') {
-          cardStyle = { backgroundColor: task.color };
-          // Default border for custom color can be standard, or transparent if color implies border
-          cardClasses = 'border-border'; // Or 'border-transparent' or match task.color
-      }
-      // High priority tasks always get a gold border, overriding other border styles
-      if (task.highPriority) {
-          cardClasses = cn(cardClasses.replace(/border-\w+/g, ''), 'border-accent border-2'); // Remove other border classes, add gold
-      }
-  }
+    let cardBgClass = 'bg-card';
+    let textColorClass = 'text-card-foreground';
+    let descColorClass = 'text-muted-foreground';
+    let iconButtonClass = 'text-muted-foreground hover:text-foreground';
+    let completeIconClass = 'text-muted-foreground';
+    let cardBorderStyle = 'border-border';
+
+
+    if (isCompleted) {
+        cardBgClass = 'bg-muted opacity-60';
+        textColorClass = 'text-muted-foreground';
+        descColorClass = 'text-muted-foreground';
+        iconButtonClass = 'text-muted-foreground';
+        completeIconClass = 'text-green-600';
+        cardBorderStyle = 'border-transparent';
+    } else {
+        // Default to white background
+        cardBgClass = 'bg-card';
+        textColorClass = 'text-card-foreground';
+        descColorClass = 'text-muted-foreground';
+        iconButtonClass = 'text-muted-foreground hover:text-foreground';
+        completeIconClass = 'text-muted-foreground';
+        cardBorderStyle = 'border-border'; // Default border for white background
+
+        if (task.highPriority) {
+            cardBorderStyle = 'border-accent border-2'; // Gold border for high priority, overrides other border styles
+        }
+    }
 
   const handleClick = (e: React.MouseEvent) => {
     if (!isDragging) {
@@ -322,10 +328,10 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         <Card
             className={cn(
                 "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer",
-                cardClasses,
+                cardBgClass,
+                cardBorderStyle,
                 isCompletedAnim && 'animate-task-complete'
             )}
-            style={cardStyle}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <button
@@ -426,12 +432,13 @@ export function CalendarView({
     completedCount,
 }: CalendarViewProps) {
   const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date()));
-  const [viewMode, setViewMode] = useState<'week' | 'today'>('week'); // Default to week
+  const [viewMode, setViewMode] = useState<'week' | 'today'>('week');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isGenericSwitchOn, setIsGenericSwitchOn] = useState(false); // State for the new switch
   const { toast } = useToast();
 
   useEffect(() => {
@@ -441,23 +448,25 @@ export function CalendarView({
   useEffect(() => {
     if (!isClient) return;
 
-    const updateViewMode = () => {
-      const newViewMode = window.innerWidth >= 768 ? 'week' : 'today';
-      setViewMode(currentInternalViewMode => {
-        if (currentInternalViewMode !== newViewMode) {
-          if (newViewMode === 'today') {
-            setCurrentDisplayDate(startOfDay(new Date()));
-          } else { 
-            setCurrentDisplayDate(prevDate => startOfWeek(prevDate, { weekStartsOn: 1 }));
-          }
-        }
-        return newViewMode;
-      });
+    const handleResize = () => {
+        const newViewMode = window.innerWidth >= 768 ? 'week' : 'today';
+        setViewMode(currentInternalViewMode => {
+            if (currentInternalViewMode !== newViewMode) {
+                if (newViewMode === 'today') {
+                    setCurrentDisplayDate(startOfDay(new Date()));
+                } else {
+                    // When switching to week view, set currentDisplayDate to the start of the week
+                    // that contains the date currently being shown (or the actual current date if it was today view)
+                    setCurrentDisplayDate(prevDate => startOfWeek(prevDate, { weekStartsOn: 1 }));
+                }
+            }
+            return newViewMode;
+        });
     };
 
-    updateViewMode(); 
-    window.addEventListener('resize', updateViewMode);
-    return () => window.removeEventListener('resize', updateViewMode);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [isClient]);
 
 
@@ -472,8 +481,8 @@ export function CalendarView({
         day = addDays(day, 1);
       }
       return daysArray;
-    } else { 
-      return [currentDisplayDate]; 
+    } else {
+      return [currentDisplayDate];
     }
   }, [currentDisplayDate, viewMode]);
 
@@ -520,6 +529,7 @@ export function CalendarView({
                 if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
                 if (!aCompleted && !bCompleted && a.highPriority !== b.highPriority) return a.highPriority ? -1 : 1;
 
+                // Fallback to original order if no other criteria differ
                 const originalAIndex = tasks.findIndex(t => t && t.id === a.id);
                 const originalBIndex = tasks.findIndex(t => t && t.id === b.id);
                 if (originalAIndex === -1 || originalBIndex === -1) return 0;
@@ -556,7 +566,7 @@ export function CalendarView({
       ], []);
 
 
-  const handleDragStart = (event: any) => {
+  const handleDragStart = (event: DragEndEvent) => { // Type correctly as DragEndEvent for active
     setActiveId(event.active.id as string);
   };
 
@@ -611,7 +621,7 @@ export function CalendarView({
 
                  const completionKey = `${activeTaskId}_${activeDateStr}`;
                  if (completedTasks.has(completionKey)) {
-                     toggleTaskCompletion(activeTaskId, activeDateStr); 
+                     toggleTaskCompletion(activeTaskId, activeDateStr);
                  }
             } else {
                  updateTask(activeTaskId, { date: overDateStr });
@@ -629,7 +639,7 @@ export function CalendarView({
     setCurrentDisplayDate(prev => {
         if (viewMode === 'week') {
             return subDays(prev, 7);
-        } else { 
+        } else {
             return subDays(prev, 1);
         }
     });
@@ -639,7 +649,7 @@ export function CalendarView({
     setCurrentDisplayDate(prev => {
         if (viewMode === 'week') {
             return addDays(prev, 7);
-        } else { 
+        } else {
             return addDays(prev, 1);
         }
     });
@@ -672,7 +682,7 @@ export function CalendarView({
         if (taskToMove.recurring) {
              const updatedExceptions = [...(taskToMove.exceptions || []), currentTaskDateStr];
              updateTask(taskId, { exceptions: updatedExceptions });
-             
+
              title = "Recurring Task Exception Added";
              message = `Skipped "${taskToMove.name}" for ${format(currentInstanceDate, 'PPP')}. Consider creating a new task for ${format(targetDate, 'PPP')}.`;
 
@@ -695,7 +705,7 @@ export function CalendarView({
       const weekStartForTitle = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
       const weekEndForTitle = endOfWeek(weekStartForTitle, { weekStartsOn: 1 });
       return `${format(weekStartForTitle, 'MMM d')} - ${format(weekEndForTitle, 'MMM d, yyyy')}`;
-    } else { 
+    } else {
       return format(currentDisplayDate, 'MMMM do, yyyy');
     }
   }, [currentDisplayDate, viewMode, isClient]);
@@ -727,6 +737,13 @@ export function CalendarView({
                   {completedCount} Completed
                 </Badge>
               )}
+              <Switch
+                id="calendar-view-switch"
+                checked={isGenericSwitchOn}
+                onCheckedChange={setIsGenericSwitchOn}
+                aria-label="Toggle feature"
+                className="ml-2"
+              />
           </div>
 
             <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next period" className="h-8 w-8">
@@ -744,8 +761,8 @@ export function CalendarView({
             return (
               <Card key={dateStr} className={cn(
                   "flex flex-col h-[700px] md:h-[700px] overflow-hidden",
-                  isActualToday ? 'border-accent border-2 shadow-md bg-card' : 
-                  viewMode === 'today' && !isActualToday ? 'bg-card border-border shadow-sm' : 
+                  isActualToday ? 'border-accent border-2 shadow-md bg-card' :
+                  viewMode === 'today' && !isActualToday ? 'bg-card border-border shadow-sm' :
                   'bg-secondary/30 border-transparent'
                   )}>
                 <CardHeader className="p-1 text-center shrink-0">
@@ -753,7 +770,7 @@ export function CalendarView({
                     {format(day, 'EEE')}
                   </CardTitle>
                   <CardDescription className={cn(
-                      "text-sm font-bold", 
+                      "text-sm font-bold",
                       isActualToday ? 'text-accent' : 'text-foreground'
                       )}>
                     {format(day, 'd')}
