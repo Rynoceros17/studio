@@ -13,7 +13,9 @@ import {
   parseISO,
   startOfDay,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, ArrowLeftCircle, ArrowRightCircle, Edit } from 'lucide-react';
+import { useTheme } from 'next-themes'; // Import useTheme
+
 import {
   DndContext,
   closestCenter,
@@ -47,15 +49,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch"; // Import Switch
+import { Switch } from "@/components/ui/switch";
 import type { Task } from '@/lib/types';
 import { cn, truncateText, getMaxLength, parseISOStrict } from '@/lib/utils';
-import {
-  Dialog as ShadDialog,
-  DialogContent as ShadDialogContent,
-  DialogHeader as ShadDialogHeader,
-  DialogTitle as ShadDialogTitle,
-} from "@/components/ui/dialog";
+
 import { EditTaskDialog } from './EditTaskDialog';
 import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog';
 import { useToast } from "@/hooks/use-toast";
@@ -105,7 +102,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
         };
         if (typeof window !== 'undefined') {
             window.addEventListener('resize', handleResize);
-            handleResize(); // Initial call
+            handleResize();
             return () => window.removeEventListener('resize', handleResize);
         }
     }, []);
@@ -126,14 +123,13 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
         descColorClass = 'text-muted-foreground';
         cardBorderStyle = 'border-transparent';
     } else {
-        // Default to white background unless a custom color is set
-        cardBgClass = 'bg-card';
+        cardBgClass = 'bg-card'; // Default to white
         textColorClass = 'text-card-foreground';
         descColorClass = 'text-muted-foreground';
-        cardBorderStyle = 'border-border'; // Default border for white background
+        cardBorderStyle = 'border-border';
 
         if (task.highPriority) {
-            cardBorderStyle = 'border-accent border-2'; // Gold border for high priority, overrides other border styles
+             cardBorderStyle = 'border-accent border-2'; // Gold border for high priority
         }
     }
 
@@ -279,16 +275,16 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         completeIconClass = 'text-green-600';
         cardBorderStyle = 'border-transparent';
     } else {
-        // Default to white background
-        cardBgClass = 'bg-card';
+        cardBgClass = 'bg-card'; // Default to white
         textColorClass = 'text-card-foreground';
         descColorClass = 'text-muted-foreground';
         iconButtonClass = 'text-muted-foreground hover:text-foreground';
         completeIconClass = 'text-muted-foreground';
-        cardBorderStyle = 'border-border'; // Default border for white background
 
         if (task.highPriority) {
-            cardBorderStyle = 'border-accent border-2'; // Gold border for high priority, overrides other border styles
+             cardBorderStyle = 'border-accent border-2'; // Gold border for high priority
+        } else {
+            cardBorderStyle = 'border-border';
         }
     }
 
@@ -387,7 +383,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 onClick={handleEditClickInternal}
                 aria-label="Edit task details"
                >
-                 <Pencil className="h-3 w-3" />
+                 <Edit className="h-3 w-3" /> {/* Updated from Pencil to Edit */}
                </Button>
               <Button
                 variant="ghost"
@@ -438,8 +434,8 @@ export function CalendarView({
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isGenericSwitchOn, setIsGenericSwitchOn] = useState(false); // State for the new switch
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme(); // For dark/light mode toggle
 
   useEffect(() => {
       setIsClient(true);
@@ -455,8 +451,7 @@ export function CalendarView({
                 if (newViewMode === 'today') {
                     setCurrentDisplayDate(startOfDay(new Date()));
                 } else {
-                    // When switching to week view, set currentDisplayDate to the start of the week
-                    // that contains the date currently being shown (or the actual current date if it was today view)
+                    // When switching to week view, ensure currentDisplayDate is start of its week
                     setCurrentDisplayDate(prevDate => startOfWeek(prevDate, { weekStartsOn: 1 }));
                 }
             }
@@ -528,8 +523,7 @@ export function CalendarView({
 
                 if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
                 if (!aCompleted && !bCompleted && a.highPriority !== b.highPriority) return a.highPriority ? -1 : 1;
-
-                // Fallback to original order if no other criteria differ
+                
                 const originalAIndex = tasks.findIndex(t => t && t.id === a.id);
                 const originalBIndex = tasks.findIndex(t => t && t.id === b.id);
                 if (originalAIndex === -1 || originalBIndex === -1) return 0;
@@ -566,7 +560,7 @@ export function CalendarView({
       ], []);
 
 
-  const handleDragStart = (event: DragEndEvent) => { // Type correctly as DragEndEvent for active
+  const handleDragStart = (event: DragEndEvent) => {
     setActiveId(event.active.id as string);
   };
 
@@ -738,10 +732,10 @@ export function CalendarView({
                 </Badge>
               )}
               <Switch
-                id="calendar-view-switch"
-                checked={isGenericSwitchOn}
-                onCheckedChange={setIsGenericSwitchOn}
-                aria-label="Toggle feature"
+                id="theme-toggle-switch"
+                checked={theme === 'dark'}
+                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                aria-label="Toggle dark mode"
                 className="ml-2"
               />
           </div>
@@ -851,4 +845,3 @@ export function CalendarView({
     </DndContext>
   );
 }
-
