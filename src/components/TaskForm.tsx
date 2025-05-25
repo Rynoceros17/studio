@@ -21,9 +21,12 @@ import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const colorOptions = [
-  { name: 'White', value: 'hsl(var(--card))' }, // Default white
-  { name: 'Light Purple', value: 'hsl(var(--secondary))' }, // Goal Parent color
-  { name: 'Lighter Purple', value: 'hsl(var(--muted))' }, // Goal Child color
+  { name: 'White', value: 'hsl(var(--card))' },
+  { name: 'Light Purple', value: 'hsl(var(--secondary))' },
+  { name: 'Lighter Purple', value: 'hsl(var(--muted))' },
+  { name: 'Pale Gold', value: 'hsl(50, 100%, 90%)' },
+  { name: 'Soft Gold', value: 'hsl(45, 90%, 85%)' },
+  { name: 'Light Goldenrod', value: 'hsl(55, 80%, 80%)' },
 ];
 
 // Form schema with color
@@ -100,6 +103,8 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
     };
     addTask(newTask);
     onTaskAdded?.();
+    form.reset(); // Reset form after submission
+    setSelectedColor(colorOptions[0].value); // Reset selected color to default
   };
 
 
@@ -234,27 +239,27 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
               <FormItem>
                 <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
                 <FormControl>
-                  <div className="flex space-x-2 pt-1">
-                    {colorOptions.map((color) => (
+                  <div className="flex space-x-2 pt-1 flex-wrap gap-y-2">
+                    {colorOptions.map((colorOpt) => (
                       <Button
-                        key={color.value}
+                        key={colorOpt.value}
                         type="button"
                         variant="outline"
                         size="icon"
                         className={cn(
                           "h-8 w-8 rounded-full",
-                          field.value === color.value && "ring-2 ring-ring ring-offset-2"
+                          field.value === colorOpt.value && "ring-2 ring-ring ring-offset-2"
                         )}
                         onClick={() => {
-                          field.onChange(color.value);
-                          setSelectedColor(color.value);
+                          field.onChange(colorOpt.value);
+                          setSelectedColor(colorOpt.value);
                         }}
-                        aria-label={`Set task color to ${color.name}`}
-                        title={color.name}
+                        aria-label={`Set task color to ${colorOpt.name}`}
+                        title={colorOpt.name}
                       >
                         <div
                           className="h-5 w-5 rounded-full border"
-                          style={{ backgroundColor: color.value }}
+                          style={{ backgroundColor: colorOpt.value }}
                         />
                       </Button>
                     ))}

@@ -31,6 +31,9 @@ const colorOptions = [
   { name: 'White', value: 'hsl(var(--card))' },
   { name: 'Light Purple', value: 'hsl(var(--secondary))' },
   { name: 'Lighter Purple', value: 'hsl(var(--muted))' },
+  { name: 'Pale Gold', value: 'hsl(50, 100%, 90%)' },
+  { name: 'Soft Gold', value: 'hsl(45, 90%, 85%)' },
+  { name: 'Light Goldenrod', value: 'hsl(55, 80%, 80%)' },
 ];
 
 const editFormSchema = z.object({
@@ -238,7 +241,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                   <FormItem>
                     <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
                     <FormControl>
-                      <div className="flex space-x-2 pt-1">
+                      <div className="flex space-x-2 pt-1 flex-wrap gap-y-2">
                         {colorOptions.map((colorOpt) => (
                           <Button
                             key={colorOpt.value}
