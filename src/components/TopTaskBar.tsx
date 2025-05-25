@@ -4,15 +4,13 @@
 import type * as React from 'react';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { CalendarClock, Target, Settings, AlertCircle, CheckCircle, Star } from 'lucide-react'; // Added Settings, Star
+import { CalendarClock, Target, Settings, AlertCircle, CheckCircle, Star, Plus, SeparatorHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import type { UpcomingItem, TimeLeft, Goal } from '@/lib/types';
+import type { UpcomingItem, TimeLeft } from '@/lib/types';
 import { cn, truncateText, calculateTimeLeft } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-// Removed ScrollArea as TopTaskBar is no longer scrollable internally
-// import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
 
@@ -25,90 +23,31 @@ interface TopTaskBarProps {
 function formatTimeLeftForBadge(timeLeft: TimeLeft | null): string {
   if (!timeLeft) return "N/A";
   if (timeLeft.isPastDue) return "Past Due";
-  // Check for "Due Now" specifically if all components down to seconds are zero for today
-  if (timeLeft.isDueToday && timeLeft.totalHours === 0 && timeLeft.totalMinutes === 0 && timeLeft.totalSeconds === 0) {
-      return "Due Now";
-  }
+  if (timeLeft.isDueToday && timeLeft.hoursComponent === 0 && timeLeft.minutesComponent === 0) return "Due Now";
   if (timeLeft.isDueToday) return "Due Today";
 
-  const { yearsDetailed, monthsDetailed, weeksDetailed, daysDetailed, hoursDetailed, totalMinutes, totalHours } = timeLeft;
-  
-  const timeParts: string[] = [];
-  let hasLargerUnitBeenAdded = false; // Flag to track if we need to show subsequent zero units
-
-  if (yearsDetailed > 0) {
-    timeParts.push(`${yearsDetailed}y`);
-    hasLargerUnitBeenAdded = true;
-  }
-
-  if (monthsDetailed > 0 || hasLargerUnitBeenAdded) {
-    timeParts.push(`${monthsDetailed}mo`);
-    hasLargerUnitBeenAdded = true;
-  }
-
-  if (weeksDetailed > 0 || hasLargerUnitBeenAdded) {
-    timeParts.push(`${weeksDetailed}w`);
-    hasLargerUnitBeenAdded = true;
-  }
-
-  if (daysDetailed > 0 || hasLargerUnitBeenAdded) {
-    timeParts.push(`${daysDetailed}d`);
-    hasLargerUnitBeenAdded = true;
-  }
-
-  // Always show hours if it's the most granular part we're displaying,
-  // or if larger units are present (even if hours is 0).
-  if (hoursDetailed > 0 || hasLargerUnitBeenAdded) {
-    timeParts.push(`${hoursDetailed}h`);
-  }
-  
-  if (timeParts.length === 0) {
-    // This case means less than an hour remaining, and not "Due Today" or "Due Now"
-    if (totalMinutes > 0 && totalHours === 0) { // Check totalMinutes directly
-        return `${totalMinutes}m left`;
-    }
-    return "Upcoming"; // Fallback if all detailed components are 0
-  }
-
-  return timeParts.join(' : ') + ' left';
-}
-
-
-// This function is for the detailed display on the single wide goal card
-function formatDetailedTimeLeftForCard(timeLeft: TimeLeft | null): string {
-  if (!timeLeft) return "N/A";
-  if (timeLeft.isPastDue) return "Past Due";
-
-  const { yearsDetailed, monthsDetailed, weeksDetailed, daysDetailed, hoursDetailed } = timeLeft;
-  
   const parts: string[] = [];
-  let hasLargerUnit = false;
-
-  if (yearsDetailed > 0) {
-    parts.push(`${yearsDetailed}y`);
-    hasLargerUnit = true;
+  if (timeLeft.yearsDetailed > 0) parts.push(`${timeLeft.yearsDetailed}y`);
+  if (timeLeft.monthsDetailed > 0) parts.push(`${timeLeft.monthsDetailed}mo`);
+  if (timeLeft.weeksDetailed > 0) parts.push(`${timeLeft.weeksDetailed}w`);
+  // Show days if it's the largest unit or if weeks are shown (even if daysDetailed is 0)
+  if (timeLeft.daysDetailed > 0 || (parts.length > 0 && timeLeft.weeksDetailed >= 0 && timeLeft.daysDetailed === 0) || (parts.length === 0 && timeLeft.daysDetailed === 0 && timeLeft.hoursComponent === 0 && timeLeft.minutesComponent === 0)) {
+      parts.push(`${timeLeft.daysDetailed}d`);
   }
-  if (monthsDetailed > 0 || hasLargerUnit) {
-    parts.push(`${monthsDetailed}mo`);
-    hasLargerUnit = true;
+  // Show hours if it's the largest unit or if days are shown (even if hoursDetailed is 0)
+  if (timeLeft.hoursComponent > 0 || (parts.length > 0 && timeLeft.daysDetailed >= 0 && timeLeft.hoursComponent === 0) || (parts.length === 0 && timeLeft.hoursComponent === 0 && timeLeft.minutesComponent > 0) ) {
+      if (timeLeft.daysDetailed > 0 || timeLeft.weeksDetailed > 0 || timeLeft.monthsDetailed > 0 || timeLeft.yearsDetailed > 0) { // Only add if a larger unit is present
+        parts.push(`${timeLeft.hoursComponent}h`);
+      } else if (timeLeft.hoursComponent > 0) { // Or if hours is the largest unit itself
+        parts.push(`${timeLeft.hoursComponent}h`);
+      }
   }
-  if (weeksDetailed > 0 || hasLargerUnit) {
-    parts.push(`${weeksDetailed}w`);
-    hasLargerUnit = true;
-  }
-  if (daysDetailed > 0 || hasLargerUnit) {
-    parts.push(`${daysDetailed}d`);
-    hasLargerUnit = true;
-  }
-  if (hoursDetailed > 0 || hasLargerUnit) {
-    parts.push(`${hoursDetailed}h`);
-  }
-
+  
   if (parts.length === 0) {
-     if (timeLeft.isDueToday) return "Due Today";
-     if (timeLeft.totalMinutes > 0 && timeLeft.totalHours === 0) return `${timeLeft.totalMinutes}m left`;
-     return "Upcoming"; // Fallback if all units are zero but not due today
+      if (timeLeft.minutesComponent > 0) return `${timeLeft.minutesComponent}m left`;
+      return "Upcoming";
   }
+
   return parts.join(' : ') + ' left';
 }
 
@@ -116,9 +55,6 @@ function formatDetailedTimeLeftForCard(timeLeft: TimeLeft | null): string {
 export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
   const goalItems = items.filter(item => item.type === 'goal');
   const numberOfGoals = goalItems.length;
-
-  // No longer conditionally applying max-h for scroll, container will expand
-  // const scrollAreaMaxHeight = numberOfGoals > 6 ? "max-h-[50vh]" : "";
 
   return (
     <div className="w-full">
@@ -128,9 +64,14 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
             <Target className="h-5 w-5 mr-2 text-primary" />
             <CardTitle className="text-lg text-primary">Upcoming Deadlines</CardTitle>
           </div>
-          {/* Toggle button removed as per request to keep it always open */}
+          <Link href="/goals" passHref legacyBehavior>
+            <Button variant="outline" size="sm" className="ml-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Goal
+            </Button>
+          </Link>
         </CardHeader>
-        <CardContent className="p-0"> {/* Removed ScrollArea wrapper */}
+        <CardContent className="p-0">
           {items.length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
               No upcoming deadlines for tasks or goals.
@@ -138,7 +79,6 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
           ) : (
             <div className={cn(
                 "flex flex-wrap gap-4 p-4 justify-center"
-                // scrollAreaMaxHeight // Removed
                 )}>
               {items.map(item => {
                 const timeLeftDetails = calculateTimeLeft(item.dueDate);
@@ -151,7 +91,6 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                   if (timeLeftDetails.isPastDue) timeBadgeVariant = "destructive";
                   else if (timeLeftDetails.isDueToday || (timeLeftDetails.fullDaysRemaining >=0 && timeLeftDetails.fullDaysRemaining <=2 && timeLeftDetails.totalHours >=0 )) timeBadgeVariant = "default";
                 }
-
 
                 const cardBaseClasses = "shadow-sm rounded-lg hover:shadow-md transition-shadow flex flex-col";
                 
@@ -168,11 +107,10 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                     cardWrapperClass = "w-full"; 
                     cardInternalClass = cn(
                         cardInternalClass, 
-                        "min-h-[100px]", // Adjusted min-height for single wide card
+                        "min-h-[100px]", 
                         isHighPriorityGoal ? "bg-card border-accent border-2" : "bg-secondary/30 border-border"
                     );
                   } else {
-                    // For multiple goals, they try to fit two per row on md+ screens
                     cardWrapperClass = "w-full md:w-[calc(50%-0.5rem)] min-w-[300px]"; 
                     cardInternalClass = cn(
                         cardInternalClass, 
@@ -199,10 +137,12 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                                       <Star className={cn("h-4 w-4", isHighPriorityGoal && "fill-accent text-accent")} />
                                       <span className="sr-only">Toggle Priority</span>
                                   </Button>
-                                  <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0", isHighPriorityGoal ? "text-accent-foreground hover:text-accent-foreground/80" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.stopPropagation(); /* Link handles navigation */ }}>
-                                      <Settings className="h-4 w-4" />
-                                      <span className="sr-only">Edit Goals</span>
-                                  </Button>
+                                  <Link href="/goals" passHref legacyBehavior>
+                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0", isHighPriorityGoal ? "text-accent-foreground hover:text-accent-foreground/80" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.stopPropagation(); /* Link handles navigation */ }}>
+                                        <Settings className="h-4 w-4" />
+                                        <span className="sr-only">Edit Goals</span>
+                                    </Button>
+                                  </Link>
                                 </div>
                               </div>
                               <CardDescription className={cn("text-xs pl-[22px]", isHighPriorityGoal ? "text-accent-foreground/80" : "text-muted-foreground")}>
@@ -210,13 +150,48 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                               </CardDescription>
                             </CardHeader>
                             <CardContent className="p-3 pt-1.5 flex flex-col flex-grow justify-between">
-                              <div className={cn(
+                              {isSingleGoalCard && timeLeftDetails && !timeLeftDetails.isPastDue ? (
+                                <div className="flex flex-row flex-wrap items-baseline gap-x-2 gap-y-1 text-center justify-center my-2">
+                                  {timeLeftDetails.totalYears > 0 && (
+                                    <div className="flex flex-col items-center px-1">
+                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground" : "text-foreground")}>{timeLeftDetails.totalYears}</span>
+                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70" : "text-muted-foreground")}>Years</span>
+                                    </div>
+                                  )}
+                                  {timeLeftDetails.totalYears > 0 && timeLeftDetails.totalMonths > 0 && <Separator orientation="vertical" className="h-6 bg-border self-center mx-0.5" />}
+                                  
+                                  {timeLeftDetails.totalMonths > 0 && (
+                                    <div className="flex flex-col items-center px-1">
+                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground" : "text-foreground")}>{timeLeftDetails.monthsInYear > 0 && timeLeftDetails.totalYears > 0 ? timeLeftDetails.monthsInYear : timeLeftDetails.totalMonths}</span>
+                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70" : "text-muted-foreground")}>Months</span>
+                                    </div>
+                                  )}
+                                  {(timeLeftDetails.totalMonths > 0 && timeLeftDetails.totalWeeks > 0) && <Separator orientation="vertical" className="h-6 bg-border self-center mx-0.5" />}
+
+                                  {timeLeftDetails.totalWeeks > 0 && (
+                                    <div className="flex flex-col items-center px-1">
+                                        <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground" : "text-foreground")}>{timeLeftDetails.weeksInMonth > 0 && timeLeftDetails.totalMonths > 0 ? timeLeftDetails.weeksInMonth : timeLeftDetails.totalWeeks}</span>
+                                        <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70" : "text-muted-foreground")}>Weeks</span>
+                                    </div>
+                                  )}
+                                  {(timeLeftDetails.totalWeeks > 0 && timeLeftDetails.fullDaysRemaining > 0 ) && <Separator orientation="vertical" className="h-6 bg-border self-center mx-0.5" />}
+                                  
+                                  {timeLeftDetails.fullDaysRemaining > 0 && (
+                                    <div className="flex flex-col items-center px-1">
+                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground" : "text-foreground")}>{timeLeftDetails.daysInWeek > 0 && timeLeftDetails.totalWeeks > 0 ? timeLeftDetails.daysInWeek : timeLeftDetails.fullDaysRemaining}</span>
+                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70" : "text-muted-foreground")}>Days</span>
+                                    </div>
+                                  )}
+                                  {/* Hours Left Removed */}
+                                </div>
+                              ) : timeLeftDetails && !timeLeftDetails.isPastDue ? (
+                                 <p className={cn(
                                   "text-sm font-semibold text-center my-2 font-mono tracking-tight",
-                                   isSingleGoalCard ? "md:text-base" : "text-sm", // Slightly larger for single card
                                    isHighPriorityGoal ? "text-accent-foreground" : "text-foreground"
                                   )}>
-                                {isSingleGoalCard ? formatDetailedTimeLeftForCard(timeLeftDetails) : formattedTimeLeftBadge}
-                              </div>
+                                    {formatTimeLeftForBadge(timeLeftDetails)}
+                                  </p>
+                              ) : null}
                               
                               {timeLeftDetails && timeLeftDetails.isPastDue && (
                                 <p className="text-destructive font-medium text-center my-2 text-sm flex items-center justify-center gap-1">
@@ -281,7 +256,6 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                             {truncateText(item.description, 30)}
                         </p>
                        )}
-                       {/* Display files for tasks if needed */}
                     </CardContent>
                   </Card>
                 );
@@ -293,5 +267,3 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
     </div>
   );
 }
-
-    
