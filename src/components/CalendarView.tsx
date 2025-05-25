@@ -13,7 +13,7 @@ import {
   parseISO,
   startOfDay,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react'; // Palette removed
+import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -31,7 +31,6 @@ import {
 } from '@dnd-kit/core';
 import {
   restrictToFirstScrollableAncestor,
-  restrictToWindowEdges,
 } from '@dnd-kit/modifiers';
 import {
   arrayMove,
@@ -48,15 +47,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Task } from '@/lib/types';
-import { cn, truncateText, getMaxLength } from '@/lib/utils';
+import { cn, truncateText, getMaxLength, parseISOStrict } from '@/lib/utils';
 import {
-  Dialog as ShadDialog, // Renamed to avoid conflict
+  Dialog as ShadDialog, 
   DialogContent as ShadDialogContent,
   DialogHeader as ShadDialogHeader,
   DialogTitle as ShadDialogTitle,
 } from "@/components/ui/dialog";
-import { EditTaskDialog } from './EditTaskDialog';
-import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog';
+import { EditTaskDialog } from './EditTaskDialog'; 
+import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog'; 
 import { useToast } from "@/hooks/use-toast";
 
 interface CalendarViewProps {
@@ -65,11 +64,10 @@ interface CalendarViewProps {
     updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
     toggleTaskCompletion: (taskId: string, dateStr: string) => void;
     completedTasks: Set<string>;
-    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => void; // Files removed
-    updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => void; // Color removed
+    updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => void;
+    updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => void;
     completedCount: number;
 }
-
 
 const dropAnimation: DropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -115,23 +113,22 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : '';
     
     let cardBgClass = '';
-    let textColorClass = '';
-    let descColorClass = '';
+    let textColorClass = 'text-card-foreground'; // Default to dark text
+    let descColorClass = 'text-muted-foreground';
+    let cardStyle = {};
 
     if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60 border-transparent';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
+    } else if (task.color && task.color !== 'hsl(var(--card))') {
+        cardStyle = { backgroundColor: task.color };
+        cardBgClass = 'border-transparent'; // Or a subtle border matching the color
     } else if (task.highPriority) {
         cardBgClass = 'bg-card border-primary ring-1 ring-primary';
-        textColorClass = 'text-card-foreground';
-        descColorClass = 'text-muted-foreground';
     } else { 
         cardBgClass = 'bg-card border-border';
-        textColorClass = 'text-card-foreground';
-        descColorClass = 'text-muted-foreground';
     }
-
 
     return (
         <Card
@@ -141,6 +138,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
             isDragging && 'shadow-lg scale-105 border-2 border-ring animate-pulse',
             'transition-all duration-300 ease-in-out'
           )}
+          style={cardStyle}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <div className={cn("pt-0.5 cursor-grab shrink-0", textColorClass)}>
@@ -202,7 +200,6 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
     opacity: isDragging ? 0.7 : 1,
     zIndex: isDragging ? 100 : 'auto',
     position: 'relative' as const,
-    cursor: isDragging ? 'grabbing' : 'grab',
   };
 
   const [titleLimit, setTitleLimit] = useState(getMaxLength('title', 'calendar'));
@@ -260,10 +257,11 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
   const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : '';
   
   let cardBgClass = '';
-  let textColorClass = '';
-  let descColorClass = '';
-  let iconButtonClass = '';
-  let completeIconClass = '';
+  let textColorClass = 'text-card-foreground'; // Default to dark text
+  let descColorClass = 'text-muted-foreground';
+  let iconButtonClass = 'text-muted-foreground hover:text-foreground';
+  let completeIconClass = 'text-muted-foreground';
+  let cardStyle = {};
 
 
   if (isCompleted) {
@@ -272,18 +270,16 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
       descColorClass = 'text-muted-foreground';
       iconButtonClass = 'text-muted-foreground';
       completeIconClass = 'text-green-600';
+  } else if (task.color && task.color !== 'hsl(var(--card))') { // Check if a custom color is set and it's not white
+      cardStyle = { backgroundColor: task.color };
+      cardBgClass = 'border-transparent'; // Use transparent or a border that matches task.color if desired
+      // textColorClass remains text-card-foreground for contrast on light pastels
   } else if (task.highPriority) {
-      cardBgClass = 'bg-card border-primary ring-1 ring-primary'; 
-      textColorClass = 'text-card-foreground';
-      descColorClass = 'text-muted-foreground';
-      iconButtonClass = 'text-muted-foreground hover:text-foreground';
-      completeIconClass = 'text-muted-foreground';
+      cardBgClass = 'bg-card border-primary ring-1 ring-primary'; // White background with primary border for high priority
+      // textColorClass remains text-card-foreground
   } else { 
-      cardBgClass = 'bg-card border-border';
-      textColorClass = 'text-card-foreground';
-      descColorClass = 'text-muted-foreground';
-      iconButtonClass = 'text-muted-foreground hover:text-foreground';
-      completeIconClass = 'text-muted-foreground';
+      cardBgClass = 'bg-card border-border'; // Default white background
+      // textColorClass remains text-card-foreground
   }
 
 
@@ -326,7 +322,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 cardBgClass,
                 isCompletedAnim && 'animate-task-complete'
             )}
-            // No inline style for color
+            style={cardStyle}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <button
@@ -360,7 +356,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                    )}
                    title={task.description}
                  >
-                   {descriptionDisplay}
+                  {descriptionDisplay}
                  </p>
                )}
              </div>
@@ -427,7 +423,7 @@ export function CalendarView({
     completedCount,
 }: CalendarViewProps) {
   const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date()));
-  const [viewMode, setViewMode] = useState<'week' | 'today'>('week');
+  const [viewMode, setViewMode] = useState<'week' | 'today'>('week'); // Default to week
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
@@ -448,7 +444,9 @@ export function CalendarView({
         if (currentInternalViewMode !== newViewMode) {
           if (newViewMode === 'today') {
             setCurrentDisplayDate(startOfDay(new Date()));
-          } else {
+          } else { // Switching to 'week'
+             // Ensure currentDisplayDate for week view is the start of the week
+             // containing the date currently shown (or today if it's a fresh switch)
             setCurrentDisplayDate(prevDate => startOfWeek(prevDate, { weekStartsOn: 1 }));
           }
         }
@@ -456,7 +454,7 @@ export function CalendarView({
       });
     };
 
-    updateViewMode();
+    updateViewMode(); // Initial check
     window.addEventListener('resize', updateViewMode);
     return () => window.removeEventListener('resize', updateViewMode);
   }, [isClient]);
@@ -473,22 +471,10 @@ export function CalendarView({
         day = addDays(day, 1);
       }
       return daysArray;
-    } else {
-      return [currentDisplayDate];
+    } else { // 'today' view
+      return [currentDisplayDate]; // Show only the currentDisplayDate for single day view
     }
   }, [currentDisplayDate, viewMode]);
-
-
-   const parseISOStrict = useCallback((dateString: string | undefined): Date | null => {
-       if (!dateString) return null;
-       const datePart = dateString.split('T')[0];
-       const date = parseISO(datePart + 'T00:00:00');
-       if (isNaN(date.getTime())) {
-           console.error("Invalid date string received:", dateString);
-           return null;
-       }
-       return date;
-   }, []);
 
 
    const tasksByDay = useMemo(() => {
@@ -565,7 +551,6 @@ export function CalendarView({
 
     const modifiers = useMemo(() => [
        restrictToFirstScrollableAncestor,
-       restrictToWindowEdges,
       ], []);
 
 
@@ -642,7 +627,7 @@ export function CalendarView({
     setCurrentDisplayDate(prev => {
         if (viewMode === 'week') {
             return subDays(prev, 7);
-        } else {
+        } else { // 'today' mode, navigate by day
             return subDays(prev, 1);
         }
     });
@@ -652,7 +637,7 @@ export function CalendarView({
     setCurrentDisplayDate(prev => {
         if (viewMode === 'week') {
             return addDays(prev, 7);
-        } else {
+        } else { // 'today' mode, navigate by day
             return addDays(prev, 1);
         }
     });
@@ -708,7 +693,7 @@ export function CalendarView({
       const weekStartForTitle = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
       const weekEndForTitle = endOfWeek(weekStartForTitle, { weekStartsOn: 1 });
       return `${format(weekStartForTitle, 'MMM d')} - ${format(weekEndForTitle, 'MMM d, yyyy')}`;
-    } else {
+    } else { // 'today' mode
       return format(currentDisplayDate, 'MMMM do, yyyy');
     }
   }, [currentDisplayDate, viewMode, isClient]);

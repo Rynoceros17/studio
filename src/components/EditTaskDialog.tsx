@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Save, Star } from 'lucide-react'; // Removed Palette
+import { Calendar as CalendarIcon, Save, Star, Palette } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -27,13 +27,19 @@ import {
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Schema without color
+const colorOptions = [
+  { name: 'White', value: 'hsl(var(--card))' },
+  { name: 'Light Purple', value: 'hsl(var(--secondary))' },
+  { name: 'Lighter Purple', value: 'hsl(var(--muted))' },
+];
+
 const editFormSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
   recurring: z.boolean().optional(),
   highPriority: z.boolean().optional(),
+  color: z.string().optional().default(colorOptions[0].value),
 });
 
 type EditTaskFormValues = z.infer<typeof editFormSchema>;
@@ -47,6 +53,8 @@ interface EditTaskDialogProps {
 
 export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDialogProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string>(task?.color || colorOptions[0].value);
+
 
   const form = useForm<EditTaskFormValues>({
     resolver: zodResolver(editFormSchema),
@@ -56,20 +64,25 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
       date: undefined,
       recurring: false,
       highPriority: false,
+      color: colorOptions[0].value,
     },
   });
 
   useEffect(() => {
+    const defaultColorValue = colorOptions[0].value;
     if (isOpen && task) {
       form.reset({
         name: task.name,
         description: task.description || '',
-        date: task.date ? parseISO(task.date + 'T00:00:00') : undefined,
+        date: task.date ? parseISO(task.date + 'T00:00:00') : undefined, // Ensure time part for correct local date
         recurring: task.recurring || false,
         highPriority: task.highPriority || false,
+        color: task.color || defaultColorValue,
       });
+      setSelectedColor(task.color || defaultColorValue);
     } else if (!isOpen) {
-       form.reset({ name: '', description: '', date: undefined, recurring: false, highPriority: false });
+       form.reset({ name: '', description: '', date: undefined, recurring: false, highPriority: false, color: defaultColorValue });
+       setSelectedColor(defaultColorValue);
     }
   }, [task, isOpen, form]);
 
@@ -81,7 +94,7 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
         date: format(data.date, 'yyyy-MM-dd'),
         recurring: data.recurring,
         highPriority: data.highPriority,
-        // No color property
+        color: data.color,
       };
       updateTask(task.id, updates);
       onClose();
@@ -218,7 +231,44 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                   />
              </div>
 
-              {/* Color Selection UI Removed */}
+             <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
+                    <FormControl>
+                      <div className="flex space-x-2 pt-1">
+                        {colorOptions.map((colorOpt) => (
+                          <Button
+                            key={colorOpt.value}
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 rounded-full",
+                              field.value === colorOpt.value && "ring-2 ring-ring ring-offset-2"
+                            )}
+                            onClick={() => {
+                              field.onChange(colorOpt.value);
+                              setSelectedColor(colorOpt.value);
+                            }}
+                            aria-label={`Set task color to ${colorOpt.name}`}
+                            title={colorOpt.name}
+                          >
+                            <div
+                              className="h-5 w-5 rounded-full border"
+                              style={{ backgroundColor: colorOpt.value }}
+                            />
+                          </Button>
+                        ))}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
 
               <ShadDialogFooter className="pt-4">
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">

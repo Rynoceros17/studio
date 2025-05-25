@@ -17,7 +17,7 @@ import { PomodoroTimer } from '@/components/PomodoroTimer';
 import type { Task, Goal, UpcomingItem } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -46,8 +46,8 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { cn, calculateGoalProgress, parseISOStrict, calculateTimeLeft } from '@/lib/utils';
+import { format, parseISO, startOfDay } from 'date-fns';
+import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
 
 export default function Home() {
@@ -73,8 +73,8 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-        const initialX = window.innerWidth - 300 - 24; // 300 is timer width, 24 is padding
-        const initialY = 24; // Padding from top
+        const initialX = window.innerWidth - 300 - 24; 
+        const initialY = 24; 
         setTimerPosition({ x: initialX, y: initialY });
     }
   }, []);
@@ -82,7 +82,7 @@ export default function Home() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10, // User must drag 10px before initiating drag
+        distance: 10, 
       },
     })
   );
@@ -106,6 +106,7 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
+         color: newTaskData.color, // Ensure color is passed
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -123,13 +124,13 @@ export default function Home() {
              if (a.highPriority !== b.highPriority) {
                   return a.highPriority ? -1 : 1;
              }
-             // Maintain original order for tasks on the same day with same priority
+             
              const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
              const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
 
              if (originalAIndex === -1 && originalBIndex === -1) return 0;
-             if (originalAIndex === -1) return 1; // New tasks go to the end
-             if (originalBIndex === -1) return -1; // New tasks go to the end
+             if (originalAIndex === -1) return 1; 
+             if (originalBIndex === -1) return -1; 
              return originalAIndex - originalBIndex;
          });
          return updatedTasks;
@@ -146,7 +147,7 @@ export default function Home() {
   const deleteAllOccurrences = useCallback((id: string) => {
       const taskToDelete = tasks.find(task => task.id === id);
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
-      // Also clear any completions related to this recurring task's ID prefix
+      
       setCompletedTaskIds(prevIds => prevIds.filter(completionKey => !completionKey.startsWith(`${id}_`)));
       if (taskToDelete) {
           toast({
@@ -168,7 +169,7 @@ export default function Home() {
           }
           return task;
       }));
-      // Remove completion for just this instance
+      
       setCompletedTaskIds(prevIds => prevIds.filter(completionKey => completionKey !== `${taskId}_${dateStr}`));
       if (taskToModify) {
           toast({
@@ -195,7 +196,10 @@ export default function Home() {
           const updatedTasks = prevTasks.map(task => {
               if (task.id === id) {
                   const updatedTask = { ...task, ...updates };
-                  if ((updates.date && updates.date !== task.date) || (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)) {
+                  if ((updates.date && updates.date !== task.date) || 
+                      (updates.highPriority !== undefined && updates.highPriority !== task.highPriority) ||
+                      (updates.color !== undefined && updates.color !== task.color) // Consider color changes for sorting if needed
+                    ) {
                       needsResort = true;
                   }
                   return updatedTask;
@@ -215,8 +219,7 @@ export default function Home() {
                   if (a.highPriority !== b.highPriority) {
                       return a.highPriority ? -1 : 1;
                   }
-                  // Fallback to maintain existing order if dates and priority are the same
-                  // Find original indices if needed, though typically this level of sort stability isn't critical for this app
+                  
                   return 0;
               });
           }
@@ -231,33 +234,33 @@ export default function Home() {
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
     setTasks(prevTasks => {
-        // Separate tasks for the given date from other tasks
+        
         const tasksForDate = prevTasks.filter(task => {
             const taskDateObj = parseISOStrict(task.date);
-             const currentDay = parseISOStrict(date); // The date for which tasks are being reordered
+             const currentDay = parseISOStrict(date); 
              if (!taskDateObj || !currentDay) return false;
 
-             // Exclude if it's an exception for this specific date
+             
              if (task.exceptions?.includes(date)) return false;
 
-             // For recurring tasks, check if it falls on this day of the week and is on or after its start date
+             
              if (task.recurring) {
-                 const taskStartDayOfWeek = taskDateObj.getDay(); // Day of week (0-6)
+                 const taskStartDayOfWeek = taskDateObj.getDay(); 
                  const currentDayOfWeek = currentDay.getDay();
                  return taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj;
              } else {
-                  // For non-recurring tasks, check if it's the exact date
+                  
                   return format(taskDateObj, 'yyyy-MM-dd') === date;
              }
         });
 
         const otherTasks = prevTasks.filter(task => {
            const taskDateObj = parseISOStrict(task.date);
-           if (!taskDateObj) return true; // Keep tasks without valid dates (should ideally not happen)
+           if (!taskDateObj) return true; 
            const currentDay = parseISOStrict(date);
            if (!currentDay) return true;
 
-           if (task.exceptions?.includes(date)) return true; // Keep exceptions if they are not for this date
+           if (task.exceptions?.includes(date)) return true; 
 
            if (task.recurring) {
                const taskStartDayOfWeek = taskDateObj.getDay();
@@ -268,15 +271,15 @@ export default function Home() {
            }
         });
 
-        // Create a map for quick lookup of tasks for the target date
+        
         const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
-        // Reorder the tasksForDate based on orderedTaskIds
+        
         const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
 
-        // Combine other tasks with the reordered tasks for the date
+        
         const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
 
-        // Sort the entire list again to ensure overall order (date, then priority, then manual order for the specific day)
+        
          combinedTasks.sort((a, b) => {
              const dateA = parseISOStrict(a.date);
              const dateB = parseISOStrict(b.date);
@@ -287,7 +290,7 @@ export default function Home() {
              const dateComparison = dateA.getTime() - dateB.getTime();
              if (dateComparison !== 0) return dateComparison;
 
-             // If on the same date, check if these are the tasks we just reordered
+             
              const aIsForTargetDate = tasksForDate.some(t => t.id === a.id);
              const bIsForTargetDate = tasksForDate.some(t => t.id === b.id);
 
@@ -295,14 +298,14 @@ export default function Home() {
                  const aIndex = orderedTaskIds.indexOf(a.id);
                  const bIndex = orderedTaskIds.indexOf(b.id);
                  if (aIndex !== -1 && bIndex !== -1) {
-                     return aIndex - bIndex; // Use the new manual order
+                     return aIndex - bIndex; 
                  }
              }
-             // Fallback for tasks not on the target date or if something went wrong with indexing
+             
               if (a.highPriority !== b.highPriority) {
                   return a.highPriority ? -1 : 1;
               }
-             // Further fallback to original position in prevTasks if not otherwise sortable
+             
              const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
              const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
               if (originalAIndex === -1 && originalBIndex === -1) return 0;
@@ -339,11 +342,11 @@ export default function Home() {
 
   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => {
    setTasks(prevTasks => {
-      let needsResort = false; // Flag to check if sorting is needed after update
+      let needsResort = false; 
      const updatedTasks = prevTasks.map(task => {
        if (task.id === id) {
            const updatedTask = { ...task, ...updates };
-            // Check if dueDate change might affect overall sorting
+            
             if (updates.dueDate && updates.dueDate !== task.dueDate) {
                 needsResort = true;
             }
@@ -352,7 +355,7 @@ export default function Home() {
        return task;
      });
 
-      if (needsResort) { // Re-sort if a due date changed that affects the primary sort order
+      if (needsResort) { 
            updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
@@ -366,13 +369,13 @@ export default function Home() {
                    return a.highPriority ? -1 : 1;
                }
 
-               // Consider dueDate for tie-breaking if primary dates are the same
+               
                const dueDateA = parseISOStrict(a.dueDate);
                const dueDateB = parseISOStrict(b.dueDate);
                if (dueDateA && dueDateB) {
                    return dueDateA.getTime() - dueDateB.getTime();
                }
-               if (dueDateA) return -1; // Tasks with due dates come before those without
+               if (dueDateA) return -1; 
                if (dueDateB) return 1;
                return 0;
            });
@@ -412,11 +415,12 @@ export default function Home() {
       .map(task => ({
         id: task.id,
         name: task.name,
-        dueDate: task.dueDate!, // Assert non-null as we filtered
+        dueDate: task.dueDate!, 
         type: 'task' as 'task',
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
+        color: task.color,
       }));
 
     const mappedGoals: UpcomingItem[] = goals
@@ -424,13 +428,13 @@ export default function Home() {
         if (!goal.dueDate) return false;
         const timeLeftDetails = calculateTimeLeft(goal.dueDate);
         if (!timeLeftDetails || timeLeftDetails.isPastDue) return false;
-        if (calculateGoalProgress(goal) >= 100) return false; // Exclude completed goals
+        if (calculateGoalProgress(goal) >= 100) return false; 
         return true;
       })
       .map(goal => ({
         id: goal.id,
         name: goal.name,
-        dueDate: goal.dueDate!, // Assert non-null
+        dueDate: goal.dueDate!, 
         type: 'goal' as 'goal',
         progress: calculateGoalProgress(goal),
         goalHighPriority: goal.highPriority,
@@ -438,19 +442,19 @@ export default function Home() {
 
     const combinedItems = [...mappedTasks, ...mappedGoals];
 
-    // Sort: High priority first, then by due date (earliest first)
+    
     return combinedItems.sort((a, b) => {
-      // Determine if item a is high priority
+      
       const aIsHighPriority = a.type === 'goal' ? a.goalHighPriority : a.taskHighPriority;
-      // Determine if item b is high priority
+      
       const bIsHighPriority = b.type === 'goal' ? b.goalHighPriority : b.taskHighPriority;
 
-      if (aIsHighPriority && !bIsHighPriority) return -1; // a comes first
-      if (!aIsHighPriority && bIsHighPriority) return 1;  // b comes first
+      if (aIsHighPriority && !bIsHighPriority) return -1; 
+      if (!aIsHighPriority && bIsHighPriority) return 1;  
 
-      // If priorities are the same (or both not high), sort by due date
-      const dueDateA = parseISOStrict(a.dueDate)!; // Assert non-null as filtered
-      const dueDateB = parseISOStrict(b.dueDate)!; // Assert non-null as filtered
+      
+      const dueDateA = parseISOStrict(a.dueDate)!; 
+      const dueDateB = parseISOStrict(b.dueDate)!; 
       return dueDateA.getTime() - dueDateB.getTime();
     });
   }, [tasks, goals, isClient, calculateGoalProgress, calculateTimeLeft, parseISOStrict]);
@@ -460,9 +464,9 @@ export default function Home() {
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header className={cn(
         "bg-background border-b shadow-sm w-full",
-        "flex h-16 items-center px-4" // Always a single row
+        "flex h-16 items-center px-4" 
       )}>
-        {/* Left Icons Group */}
+        
         <nav className="flex space-x-1">
             <Link href="/timetable" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to timetable">
@@ -484,10 +488,10 @@ export default function Home() {
             </Link>
         </nav>
 
-        {/* Title - Centered */}
+        
         <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight flex-1 text-center">WeekWise</h1>
 
-        {/* Right Icons Group */}
+        
         <nav className="flex space-x-1">
             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                 <SheetTrigger asChild>
@@ -529,7 +533,7 @@ export default function Home() {
         </nav>
       </header>
 
-      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden pt-16"> {/* Ensure main content is pushed down */}
+      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden pt-16"> 
 
         <div className="w-full max-w-7xl space-y-4">
           {isClient && (
@@ -545,7 +549,7 @@ export default function Home() {
               />
           )}
         </div>
-        {/* TopTaskBar moved outside max-w-7xl for full width */}
+        
         <div className="w-full">
           <TopTaskBar
             items={upcomingItemsForBar}
@@ -605,7 +609,7 @@ export default function Home() {
                     </AlertDialogAction>
                     <AlertDialogAction
                         onClick={() => deleteAllOccurrences(deleteConfirmation!.task.id)}
-                        className={cn("bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+                        className={cn(buttonVariants({ variant: "destructive" }))}
                     >
                         Delete All Occurrences
                     </AlertDialogAction>
@@ -616,5 +620,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
-    

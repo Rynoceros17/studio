@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, PlusCircle, Star } from 'lucide-react'; // Removed Palette
+import { Calendar as CalendarIcon, PlusCircle, Star, Palette } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,13 +20,20 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Form schema without color
+const colorOptions = [
+  { name: 'White', value: 'hsl(var(--card))' }, // Default white
+  { name: 'Light Purple', value: 'hsl(var(--secondary))' }, // Goal Parent color
+  { name: 'Lighter Purple', value: 'hsl(var(--muted))' }, // Goal Child color
+];
+
+// Form schema with color
 const formSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
   recurring: z.boolean().optional().default(false),
   highPriority: z.boolean().optional().default(false),
+  color: z.string().optional().default(colorOptions[0].value), // Default to white
 });
 
 type TaskFormValues = z.infer<typeof formSchema>;
@@ -39,6 +46,7 @@ interface TaskFormProps {
 
 export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string>(initialData?.color || colorOptions[0].value);
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(formSchema),
@@ -48,10 +56,12 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
       date: initialData?.date ? new Date(initialData.date + 'T00:00:00') : undefined,
       recurring: initialData?.recurring || false,
       highPriority: initialData?.highPriority || false,
+      color: initialData?.color || colorOptions[0].value,
     },
   });
 
    useEffect(() => {
+     const defaultColorValue = colorOptions[0].value;
      if (initialData) {
        form.reset({
          name: initialData.name || "",
@@ -59,7 +69,9 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
          date: initialData.date ? new Date(initialData.date + 'T00:00:00') : undefined,
          recurring: initialData.recurring || false,
          highPriority: initialData.highPriority || false,
+         color: initialData.color || defaultColorValue,
        });
+       setSelectedColor(initialData.color || defaultColorValue);
      } else {
        form.reset({
          name: "",
@@ -67,7 +79,9 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
          date: undefined,
          recurring: false,
          highPriority: false,
+         color: defaultColorValue,
        });
+       setSelectedColor(defaultColorValue);
      }
    }, [initialData, form]);
 
@@ -79,10 +93,9 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
       date: format(data.date, 'yyyy-MM-dd'),
       recurring: data.recurring,
       highPriority: data.highPriority,
-      // No color property
+      color: data.color,
        details: '',
        dueDate: undefined,
-       // files: [], // Assuming files were removed if color is being removed
        exceptions: [],
     };
     addTask(newTask);
@@ -214,7 +227,43 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
               />
          </div>
 
-         {/* Color Selection UI Removed */}
+         <FormField
+            control={form.control}
+            name="color"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Task Color</FormLabel>
+                <FormControl>
+                  <div className="flex space-x-2 pt-1">
+                    {colorOptions.map((color) => (
+                      <Button
+                        key={color.value}
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className={cn(
+                          "h-8 w-8 rounded-full",
+                          field.value === color.value && "ring-2 ring-ring ring-offset-2"
+                        )}
+                        onClick={() => {
+                          field.onChange(color.value);
+                          setSelectedColor(color.value);
+                        }}
+                        aria-label={`Set task color to ${color.name}`}
+                        title={color.name}
+                      >
+                        <div
+                          className="h-5 w-5 rounded-full border"
+                          style={{ backgroundColor: color.value }}
+                        />
+                      </Button>
+                    ))}
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
           <PlusCircle className="mr-2 h-4 w-4" /> Add Task

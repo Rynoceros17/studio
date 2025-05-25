@@ -9,7 +9,7 @@ export interface Task {
   dueDate?: string; // Optional due date (yyyy-MM-dd format)
   highPriority?: boolean; // Optional: Flag for high priority tasks
   exceptions?: string[]; // Optional array of 'yyyy-MM-dd' dates to skip for recurring tasks
-  // color?: string; // Removed color property
+  color?: string; // Optional: Stores HSL string for task background
 };
 
 // Goal and Subtask types
@@ -38,7 +38,7 @@ export interface UpcomingItem {
   description?: string; // For tasks
   taskHighPriority?: boolean; // For tasks (renamed to avoid conflict)
   goalHighPriority?: boolean; // For goals
-  // color?: string; // For tasks - Removed
+  color?: string; // For tasks
   progress?: number; // For goals
 }
 
