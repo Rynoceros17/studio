@@ -31,7 +31,8 @@ import {
 } from '@dnd-kit/core';
 import {
   restrictToFirstScrollableAncestor,
-} from '@dnd-kit/modifiers';
+  restrictToVerticalAxis, // Ensure this is from @dnd-kit/modifiers if used
+} from '@dnd-kit/modifiers'; // Ensure this import is correct based on where modifiers live
 import {
   arrayMove,
   SortableContext,
@@ -41,7 +42,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -112,30 +113,33 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     const nameDisplay = truncateText(task.name, titleLimit);
     const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : '';
     
-    let cardBgClass = '';
-    let textColorClass = 'text-card-foreground'; // Default to dark text
+    let cardClasses = "bg-card border-border"; // Default: white background, standard border
+    let textColorClass = 'text-card-foreground';
     let descColorClass = 'text-muted-foreground';
     let cardStyle = {};
 
     if (isCompleted) {
-        cardBgClass = 'bg-muted opacity-60 border-transparent';
+        cardClasses = 'bg-muted opacity-60 border-transparent';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
-    } else if (task.color && task.color !== 'hsl(var(--card))') {
-        cardStyle = { backgroundColor: task.color };
-        cardBgClass = 'border-transparent'; // Or a subtle border matching the color
-    } else if (task.highPriority) {
-        cardBgClass = 'bg-card border-primary ring-1 ring-primary';
-    } else { 
-        cardBgClass = 'bg-card border-border';
+    } else {
+        // Apply custom background color if set and not the default white
+        if (task.color && task.color !== 'hsl(var(--card))') {
+            cardStyle = { backgroundColor: task.color };
+            cardClasses = 'border-border'; // Keep standard border or choose one that fits custom color
+        }
+        // High priority tasks always get a gold border
+        if (task.highPriority) {
+            cardClasses = cn(cardClasses.replace(/border-\w+/g, ''), 'border-accent border-2'); // Remove other border classes and add gold
+        }
     }
-
+    
     return (
         <Card
           className={cn(
             "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
-            cardBgClass,
-            isDragging && 'shadow-lg scale-105 border-2 border-ring animate-pulse',
+            cardClasses,
+            isDragging && 'shadow-lg scale-105 animate-pulse', // Removed specific border for dragging
             'transition-all duration-300 ease-in-out'
           )}
           style={cardStyle}
@@ -256,32 +260,31 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
   const nameDisplay = truncateText(task.name, titleLimit);
   const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : '';
   
-  let cardBgClass = '';
-  let textColorClass = 'text-card-foreground'; // Default to dark text
+  let cardClasses = "bg-card border-border"; // Default: white background, standard border
+  let textColorClass = 'text-card-foreground';
   let descColorClass = 'text-muted-foreground';
   let iconButtonClass = 'text-muted-foreground hover:text-foreground';
   let completeIconClass = 'text-muted-foreground';
   let cardStyle = {};
 
-
   if (isCompleted) {
-      cardBgClass = 'bg-muted opacity-60 border-transparent';
+      cardClasses = 'bg-muted opacity-60 border-transparent';
       textColorClass = 'text-muted-foreground';
       descColorClass = 'text-muted-foreground';
-      iconButtonClass = 'text-muted-foreground';
+      iconButtonClass = 'text-muted-foreground'; // Maintain for completed, maybe less interactive
       completeIconClass = 'text-green-600';
-  } else if (task.color && task.color !== 'hsl(var(--card))') { // Check if a custom color is set and it's not white
-      cardStyle = { backgroundColor: task.color };
-      cardBgClass = 'border-transparent'; // Use transparent or a border that matches task.color if desired
-      // textColorClass remains text-card-foreground for contrast on light pastels
-  } else if (task.highPriority) {
-      cardBgClass = 'bg-card border-primary ring-1 ring-primary'; // White background with primary border for high priority
-      // textColorClass remains text-card-foreground
-  } else { 
-      cardBgClass = 'bg-card border-border'; // Default white background
-      // textColorClass remains text-card-foreground
+  } else {
+      // Apply custom background color if set and not the default white
+      if (task.color && task.color !== 'hsl(var(--card))') {
+          cardStyle = { backgroundColor: task.color };
+          // Default border for custom color can be standard, or transparent if color implies border
+          cardClasses = 'border-border'; // Or 'border-transparent' or match task.color
+      }
+      // High priority tasks always get a gold border, overriding other border styles
+      if (task.highPriority) {
+          cardClasses = cn(cardClasses.replace(/border-\w+/g, ''), 'border-accent border-2'); // Remove other border classes, add gold
+      }
   }
-
 
   const handleClick = (e: React.MouseEvent) => {
     if (!isDragging) {
@@ -319,7 +322,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         <Card
             className={cn(
                 "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer",
-                cardBgClass,
+                cardClasses,
                 isCompletedAnim && 'animate-task-complete'
             )}
             style={cardStyle}
@@ -444,9 +447,7 @@ export function CalendarView({
         if (currentInternalViewMode !== newViewMode) {
           if (newViewMode === 'today') {
             setCurrentDisplayDate(startOfDay(new Date()));
-          } else { // Switching to 'week'
-             // Ensure currentDisplayDate for week view is the start of the week
-             // containing the date currently shown (or today if it's a fresh switch)
+          } else { 
             setCurrentDisplayDate(prevDate => startOfWeek(prevDate, { weekStartsOn: 1 }));
           }
         }
@@ -454,7 +455,7 @@ export function CalendarView({
       });
     };
 
-    updateViewMode(); // Initial check
+    updateViewMode(); 
     window.addEventListener('resize', updateViewMode);
     return () => window.removeEventListener('resize', updateViewMode);
   }, [isClient]);
@@ -471,8 +472,8 @@ export function CalendarView({
         day = addDays(day, 1);
       }
       return daysArray;
-    } else { // 'today' view
-      return [currentDisplayDate]; // Show only the currentDisplayDate for single day view
+    } else { 
+      return [currentDisplayDate]; 
     }
   }, [currentDisplayDate, viewMode]);
 
@@ -551,6 +552,7 @@ export function CalendarView({
 
     const modifiers = useMemo(() => [
        restrictToFirstScrollableAncestor,
+       restrictToVerticalAxis,
       ], []);
 
 
@@ -627,7 +629,7 @@ export function CalendarView({
     setCurrentDisplayDate(prev => {
         if (viewMode === 'week') {
             return subDays(prev, 7);
-        } else { // 'today' mode, navigate by day
+        } else { 
             return subDays(prev, 1);
         }
     });
@@ -637,7 +639,7 @@ export function CalendarView({
     setCurrentDisplayDate(prev => {
         if (viewMode === 'week') {
             return addDays(prev, 7);
-        } else { // 'today' mode, navigate by day
+        } else { 
             return addDays(prev, 1);
         }
     });
@@ -693,7 +695,7 @@ export function CalendarView({
       const weekStartForTitle = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
       const weekEndForTitle = endOfWeek(weekStartForTitle, { weekStartsOn: 1 });
       return `${format(weekStartForTitle, 'MMM d')} - ${format(weekEndForTitle, 'MMM d, yyyy')}`;
-    } else { // 'today' mode
+    } else { 
       return format(currentDisplayDate, 'MMMM do, yyyy');
     }
   }, [currentDisplayDate, viewMode, isClient]);
@@ -832,3 +834,4 @@ export function CalendarView({
     </DndContext>
   );
 }
+
