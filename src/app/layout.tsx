@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from '@/contexts/AuthContext'; // Keep AuthProvider
-import { ThemeProvider } from "@/components/ThemeProvider"; // New ThemeProvider import
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -27,7 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning for next-themes */}
+    <html lang="en" suppressHydrationWarning>
+      {/* Ensure no whitespace or comments are direct children of <html> here, before <body> */}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
@@ -35,12 +36,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider> {/* AuthProvider should be inside ThemeProvider or vice-versa, order might not matter much here */}
+          <AuthProvider>
             {children}
             <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>
+      {/* Ensure no whitespace or comments are direct children of <html> here, after </body> */}
     </html>
   );
 }
