@@ -15,7 +15,7 @@ import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
 import type { Task, Goal, UpcomingItem } from '@/lib/types';
-import useLocalStorage from '@/hooks/use-local-storage';
+import useLocalStorage from '@/hooks/useLocalStorage'; // Changed from useSyncedStorage
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -45,7 +45,9 @@ import {
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react';
+// Removed AuthButton import
+// Removed useAuth import
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, FilePlus } from 'lucide-react'; // Removed LogIn
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
@@ -106,7 +108,7 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
-         color: newTaskData.color, // Ensure color is passed
+         // color property removed
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -141,7 +143,7 @@ export default function Home() {
          description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
      });
      setIsFormOpen(false);
-  }, [setTasks, toast, parseISOStrict]);
+  }, [setTasks, toast]);
 
 
   const deleteAllOccurrences = useCallback((id: string) => {
@@ -178,7 +180,7 @@ export default function Home() {
           });
       }
       setDeleteConfirmation(null);
-  }, [tasks, setTasks, setCompletedTaskIds, toast, parseISOStrict]);
+  }, [tasks, setTasks, setCompletedTaskIds, toast]);
 
 
   const requestDeleteTask = useCallback((task: Task, dateStr: string) => {
@@ -197,8 +199,8 @@ export default function Home() {
               if (task.id === id) {
                   const updatedTask = { ...task, ...updates };
                   if ((updates.date && updates.date !== task.date) || 
-                      (updates.highPriority !== undefined && updates.highPriority !== task.highPriority) ||
-                      (updates.color !== undefined && updates.color !== task.color) // Consider color changes for sorting if needed
+                      (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)
+                      // Removed color check
                     ) {
                       needsResort = true;
                   }
@@ -229,7 +231,7 @@ export default function Home() {
           title: "Task Updated",
           description: "Core task details have been updated.",
       });
-  }, [setTasks, toast, parseISOStrict]);
+  }, [setTasks, toast]);
 
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
@@ -315,7 +317,7 @@ export default function Home() {
         });
         return combinedTasks;
     });
-  }, [setTasks, parseISOStrict]);
+  }, [setTasks]);
 
 
   const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
@@ -337,7 +339,7 @@ export default function Home() {
           });
       }
       setCompletedTaskIds(Array.from(currentCompletedKeys));
-  }, [tasks, completedTaskIds, setCompletedTaskIds, toast, parseISOStrict]);
+  }, [tasks, completedTaskIds, setCompletedTaskIds, toast]);
 
 
   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => {
@@ -386,7 +388,7 @@ export default function Home() {
      title: "Task Details Updated",
      description: "Additional details have been updated.",
    });
-  }, [setTasks, toast, parseISOStrict]);
+  }, [setTasks, toast]);
 
   const toggleGoalPriority = useCallback((goalId: string) => {
     setGoals(prevGoals =>
@@ -420,7 +422,7 @@ export default function Home() {
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
-        color: task.color,
+        // color property removed
       }));
 
     const mappedGoals: UpcomingItem[] = goals
@@ -457,7 +459,7 @@ export default function Home() {
       const dueDateB = parseISOStrict(b.dueDate)!; 
       return dueDateA.getTime() - dueDateB.getTime();
     });
-  }, [tasks, goals, isClient, calculateGoalProgress, calculateTimeLeft, parseISOStrict]);
+  }, [tasks, goals, isClient, calculateGoalProgress, calculateTimeLeft]);
 
 
   return (
@@ -507,33 +509,11 @@ export default function Home() {
                     <BookmarkListSheet />
                 </SheetContent>
             </Sheet>
-            <Button
-                variant="ghost"
-                className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10"
-                aria-label="Toggle Pomodoro Timer"
-                onClick={() => setIsTimerVisible(!isTimerVisible)}
-            >
-                <TimerIcon className="h-5 w-5" />
-                <span className="hidden md:inline ml-2">Timer</span>
-            </Button>
-            <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View scratchpad">
-                        <List className="h-5 w-5" />
-                        <span className="hidden md:inline ml-2">Scratchpad</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                    <SheetHeader className="p-4 border-b shrink-0">
-                        <SheetTitle className="text-primary">Scratchpad</SheetTitle>
-                    </SheetHeader>
-                    <TaskListSheet />
-                </SheetContent>
-            </Sheet>
+             {/* AuthButton removed from here */}
         </nav>
       </header>
 
-      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden pt-16"> 
+      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 mt-16"> {/* mt-16 ensures content below fixed header */}
 
         <div className="w-full max-w-7xl space-y-4">
           {isClient && (
@@ -557,31 +537,63 @@ export default function Home() {
           />
         </div>
 
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
+            {/* Natural Language Task Adder Button Removed */}
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="h-12 w-12 rounded-full shadow-lg"
+                  aria-label="Add new task"
+                >
+                  <Plus className="h-6 w-6" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                   <DialogTitle className="text-primary">Add New Task</DialogTitle>
+                </DialogHeader>
+                <TaskForm
+                   addTask={addTask}
+                   onTaskAdded={() => setIsFormOpen(false)}
+                   initialData={null}
+                />
+              </DialogContent>
+            </Dialog>
+        </div>
 
-           <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col space-y-2 items-end">
-                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="default"
-                      size="icon"
-                      className="h-12 w-12 rounded-full shadow-lg"
-                      aria-label="Add new task"
-                    >
-                      <Plus className="h-6 w-6" />
+        {/* Left-side FABs */}
+        <div className="fixed bottom-4 left-4 z-50 flex flex-col space-y-2 items-start">
+             {/* New Login button removed */}
+             <Link href="/blank-page" passHref legacyBehavior>
+                <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
+                    <FilePlus className="h-6 w-6" />
+                </Button>
+             </Link>
+            <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
+                        <List className="h-6 w-6" />
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                       <DialogTitle className="text-primary">Add New Task</DialogTitle>
-                    </DialogHeader>
-                    <TaskForm
-                       addTask={addTask}
-                       onTaskAdded={() => setIsFormOpen(false)}
-                       initialData={null}
-                    />
-                  </DialogContent>
-                </Dialog>
-           </div>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                    <SheetHeader className="p-4 border-b shrink-0">
+                        <SheetTitle className="text-primary">Scratchpad</SheetTitle>
+                    </SheetHeader>
+                    <TaskListSheet />
+                </SheetContent>
+            </Sheet>
+             <Button
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10"
+                aria-label="Toggle Pomodoro Timer"
+                onClick={() => setIsTimerVisible(!isTimerVisible)}
+            >
+                <TimerIcon className="h-6 w-6" />
+            </Button>
+        </div>
 
 
         {isClient && isTimerVisible && (

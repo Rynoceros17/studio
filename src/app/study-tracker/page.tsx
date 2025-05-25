@@ -1,3 +1,4 @@
+
 // src/app/study-tracker/page.tsx
 'use client';
 
@@ -11,9 +12,9 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"; // Added TooltipContent import
-import { ArrowLeft, Play, Pause, StopCircle, Trash2, Target, Save, Loader2, Plus, Tag, Trash } from 'lucide-react'; // Added Plus, Tag, Trash
-import useLocalStorage from '@/hooks/use-local-storage';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"; 
+import { ArrowLeft, Play, Pause, StopCircle, Trash2, Target, Save, Loader2, Plus, Tag, Trash } from 'lucide-react'; 
+import useLocalStorage from '@/hooks/useLocalStorage'; // Changed from useSyncedStorage
 import { formatDuration } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { startOfDay, startOfWeek } from 'date-fns';
@@ -34,7 +35,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select"; // Import Select components
+} from "@/components/ui/select"; 
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -59,47 +60,47 @@ export default function StudyTrackerPage() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
   const { toast } = useToast();
-  const [isClient, setIsClient] = useState(false); // State to track client-side rendering
+  const [isClient, setIsClient] = useState(false); 
 
-  // State for Goals
+  
   const [weeklyGoal, setWeeklyGoal] = useLocalStorage<StudyGoal>('weekwise-weekly-goal', { hours: 0, minutes: 0 });
   const [dailyGoal, setDailyGoal] = useLocalStorage<StudyGoal>('weekwise-daily-goal', { hours: 0, minutes: 0 });
   const [isGoalDialogOpen, setIsGoalDialogOpen] = useState(false);
   const [tempWeeklyGoal, setTempWeeklyGoal] = useState<StudyGoal>(weeklyGoal);
   const [tempDailyGoal, setTempDailyGoal] = useState<StudyGoal>(dailyGoal);
 
-  // State for Categories
-  const [categories, setCategories] = useLocalStorage<string[]>('weekwise-study-categories', ['General']); // Start with a default category
-  const [currentCategory, setCurrentCategory] = useState<string>('General'); // Default category
+  
+  const [categories, setCategories] = useLocalStorage<string[]>('weekwise-study-categories', ['General']); 
+  const [currentCategory, setCurrentCategory] = useState<string>('General'); 
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const newCategoryInputRef = useRef<HTMLInputElement>(null);
 
-  // Set isClient to true on component mount
+  
   useEffect(() => {
     setIsClient(true);
-    // Ensure currentCategory is valid if categories load from storage
+    
     if (!categories.includes(currentCategory) && categories.length > 0) {
         setCurrentCategory(categories[0]);
     } else if (categories.length === 0) {
-        // If storage was empty, re-initialize
+        
         setCategories(['General']);
         setCurrentCategory('General');
     }
   }, []);
 
-  // Reset category if it becomes invalid after categories change
+  
   useEffect(() => {
       if (isClient && !categories.includes(currentCategory) && categories.length > 0) {
           setCurrentCategory(categories[0]);
       } else if (isClient && categories.length === 0) {
-          setCategories(['General']); // Ensure 'General' exists if list becomes empty
+          setCategories(['General']); 
           setCurrentCategory('General');
       }
   }, [categories, currentCategory, isClient, setCategories]);
 
 
-  // Sync temp goals when actual goals change (e.g., loaded from storage)
+  
   useEffect(() => {
     setTempWeeklyGoal(weeklyGoal);
     setTempDailyGoal(dailyGoal);
@@ -108,7 +109,7 @@ export default function StudyTrackerPage() {
 
   // --- Helper Functions ---
   const getTotalSeconds = (goal: StudyGoal): number => {
-      const h = goal.hours ?? 0; // Default to 0 if undefined/null
+      const h = goal.hours ?? 0; 
       const m = goal.minutes ?? 0;
       return (h * 3600) + (m * 60);
   };
@@ -121,7 +122,7 @@ export default function StudyTrackerPage() {
   }, []);
 
   const calculateWeekSeconds = useCallback((sessions: StudySession[]): number => {
-      const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // Assuming Monday start
+      const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); 
       return sessions
           .filter(s => s.timestamp >= weekStart.getTime())
           .reduce((sum, s) => sum + s.duration, 0);
@@ -149,10 +150,10 @@ export default function StudyTrackerPage() {
   const timePerCategory = useMemo(() => {
       const categoryTotals: Record<string, number> = {};
       sessions.forEach(session => {
-          const categoryKey = session.category || 'General'; // Default to 'General' if undefined
+          const categoryKey = session.category || 'General'; 
           categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + session.duration;
       });
-      // Sort categories alphabetically for consistent display
+      
       return Object.entries(categoryTotals).sort(([a], [b]) => a.localeCompare(b));
   }, [sessions]);
 
@@ -160,7 +161,7 @@ export default function StudyTrackerPage() {
   // --- Timer Logic ---
   useEffect(() => {
     if (isRunning) {
-      startTimeRef.current = Date.now() - elapsedTime * 1000; // Adjust start time based on elapsed time
+      startTimeRef.current = Date.now() - elapsedTime * 1000; 
       intervalRef.current = setInterval(() => {
         setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
       }, 1000);
@@ -170,12 +171,12 @@ export default function StudyTrackerPage() {
         intervalRef.current = null;
       }
     }
-    return () => { // Cleanup function
+    return () => { 
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, elapsedTime]); // Rerun effect if isRunning or elapsedTime changes
+  }, [isRunning, elapsedTime]); 
 
   const startTimer = () => {
     if (!isRunning) {
@@ -190,7 +191,7 @@ export default function StudyTrackerPage() {
   };
 
   const stopAndSaveSession = useCallback(() => {
-    setIsRunning(false); // Stop the timer
+    setIsRunning(false); 
     if (elapsedTime === 0) {
       toast({ title: "No Time Recorded", description: "Start the timer to record a session.", variant: "destructive" });
       return;
@@ -204,13 +205,13 @@ export default function StudyTrackerPage() {
         label: currentLabel.trim(),
         duration: elapsedTime,
         timestamp: Date.now(),
-        category: currentCategory // Save the selected category
+        category: currentCategory 
     };
     setSessions(prevSessions => [newSession, ...prevSessions]);
     toast({ title: "Session Saved", description: `"${newSession.label}" (${formatDuration(newSession.duration)}) [${newSession.category}] saved.` });
     setElapsedTime(0);
     setCurrentLabel('');
-    // Optionally reset category or keep it for the next session? Let's keep it.
+    
   }, [elapsedTime, currentLabel, currentCategory, setSessions, toast]);
 
   const deleteSession = (id: string) => {
@@ -223,8 +224,8 @@ export default function StudyTrackerPage() {
 
   // --- Goal Setting Logic ---
   const handleGoalInputChange = (type: 'daily' | 'weekly', unit: 'hours' | 'minutes', value: string) => {
-      const numericValue = Math.max(0, parseInt(value) || 0); // Ensure non-negative integer
-      const validValue = unit === 'minutes' ? Math.min(59, numericValue) : numericValue; // Cap minutes at 59
+      const numericValue = Math.max(0, parseInt(value) || 0); 
+      const validValue = unit === 'minutes' ? Math.min(59, numericValue) : numericValue; 
 
       if (type === 'daily') {
           setTempDailyGoal(prev => ({ ...prev, [unit]: validValue }));
@@ -244,9 +245,9 @@ export default function StudyTrackerPage() {
     const addNewCategory = () => {
         const trimmedName = newCategoryName.trim();
         if (trimmedName && !categories.includes(trimmedName)) {
-            const updatedCategories = [...categories, trimmedName].sort(); // Add and sort
+            const updatedCategories = [...categories, trimmedName].sort(); 
             setCategories(updatedCategories);
-            setCurrentCategory(trimmedName); // Select the newly added category
+            setCurrentCategory(trimmedName); 
             setNewCategoryName('');
             setIsAddingCategory(false);
             toast({ title: "Category Added", description: `Category "${trimmedName}" added.` });
@@ -254,8 +255,8 @@ export default function StudyTrackerPage() {
             toast({ title: "Invalid Name", description: "Category name cannot be empty.", variant: "destructive" });
         } else {
             toast({ title: "Duplicate Category", description: `Category "${trimmedName}" already exists.`, variant: "destructive" });
-            setNewCategoryName(''); // Clear input on duplicate
-            setIsAddingCategory(false); // Hide input
+            setNewCategoryName(''); 
+            setIsAddingCategory(false); 
         }
     };
 
@@ -273,18 +274,18 @@ export default function StudyTrackerPage() {
             toast({ title: "Cannot Delete", description: "The 'General' category cannot be deleted.", variant: "destructive" });
             return;
         }
-        // Remove the category
+        
         setCategories(prev => prev.filter(cat => cat !== categoryToDelete));
-        // Update sessions using this category to 'General'
+        
         setSessions(prev => prev.map(session => session.category === categoryToDelete ? { ...session, category: 'General' } : session));
-        // If the deleted category was selected, switch to 'General'
+        
         if (currentCategory === categoryToDelete) {
             setCurrentCategory('General');
         }
         toast({ title: "Category Deleted", description: `Category "${categoryToDelete}" deleted. Associated sessions moved to 'General'.`, variant: "destructive" });
     };
 
-    // Focus input when add category button is clicked
+    
     useEffect(() => {
         if (isAddingCategory && newCategoryInputRef.current) {
             newCategoryInputRef.current.focus();
@@ -295,23 +296,23 @@ export default function StudyTrackerPage() {
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
       <Card className="shadow-lg overflow-hidden mb-8 bg-card border-border">
-        {/* Header */}
+        
         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-          <div className="flex items-center gap-4 flex-grow"> {/* Make this section grow */}
+          <div className="flex items-center gap-4 flex-grow"> 
             <Link href="/" passHref legacyBehavior>
               <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10 flex-shrink-0">
                 <ArrowLeft className="h-5 w-5" />
                 <span className="sr-only">Back to Calendar</span>
               </Button>
             </Link>
-            <div className="flex-grow min-w-0"> {/* Allow title/desc to take space and truncate */}
+            <div className="flex-grow min-w-0"> 
               <CardTitle className="text-2xl text-primary truncate">Study Tracker</CardTitle>
               <CardDescription className="text-sm text-muted-foreground truncate">
                 Track your study sessions and monitor progress towards your goals.
               </CardDescription>
             </div>
           </div>
-           {/* Goal Setting Trigger with Tooltip */}
+           
            <TooltipProvider delayDuration={100}>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -319,7 +320,7 @@ export default function StudyTrackerPage() {
                             <DialogTrigger asChild>
                                 <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10 flex-shrink-0 ml-4">
                                     <Target className="h-5 w-5" />
-                                    <span className="sr-only">Set Study Goals</span> {/* Keep sr-only for accessibility */}
+                                    <span className="sr-only">Set Study Goals</span> 
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[425px]">
@@ -330,7 +331,7 @@ export default function StudyTrackerPage() {
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
-                                    {/* Daily Goal Inputs */}
+                                    
                                     <div className="space-y-2">
                                         <Label className="font-medium">Daily Goal</Label>
                                         <div className="grid grid-cols-2 gap-2 items-center">
@@ -359,7 +360,7 @@ export default function StudyTrackerPage() {
                                             </div>
                                         </div>
                                     </div>
-                                     {/* Weekly Goal Inputs */}
+                                     
                                      <div className="space-y-2">
                                         <Label className="font-medium">Weekly Goal</Label>
                                         <div className="grid grid-cols-2 gap-2 items-center">
@@ -404,27 +405,27 @@ export default function StudyTrackerPage() {
             </TooltipProvider>
         </CardHeader>
 
-        {/* Main Content Area */}
-        <CardContent className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8"> {/* Changed to 3 columns */}
+        
+        <CardContent className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8"> 
 
-          {/* Timer & Controls Section (Column 1) */}
+          
           <div className="flex flex-col space-y-6 lg:col-span-1">
-            {/* Timer Display */}
+            
             <div className="flex flex-col items-center justify-center space-y-4 p-6 border rounded-lg bg-secondary/30">
               <div className="text-center">
                 <p className="text-6xl font-bold font-mono text-primary">
-                  {isClient ? formatDuration(elapsedTime) : '00:00'} {/* Show 00:00 during SSR */}
+                  {isClient ? formatDuration(elapsedTime) : '00:00'} 
                 </p>
                 <p className="text-sm text-muted-foreground">Elapsed Time</p>
               </div>
-              {/* Session Label Input */}
+              
               <div className="w-full max-w-xs space-y-1">
                  <Label htmlFor="session-label" className="text-xs font-medium text-muted-foreground">
                    Session Label
                  </Label>
                  <Input id="session-label" value={currentLabel} onChange={(e) => setCurrentLabel(e.target.value)} placeholder="e.g., Math Homework" className="h-9" disabled={isRunning}/>
               </div>
-               {/* Category Selector */}
+               
                 <div className="w-full max-w-xs space-y-1">
                    <Label htmlFor="session-category" className="text-xs font-medium text-muted-foreground">
                        Category
@@ -501,7 +502,7 @@ export default function StudyTrackerPage() {
 
                     </div>
                 </div>
-              {/* Timer Controls */}
+              
               <div className="flex space-x-4 pt-2">
                 {!isRunning ? ( <Button onClick={startTimer} size="lg" className="w-28 bg-green-600 hover:bg-green-700 text-white"> <Play className="mr-2 h-5 w-5" /> Start </Button> )
                  : ( <Button onClick={pauseTimer} size="lg" variant="outline" className="w-28 border-yellow-500 text-yellow-600 hover:bg-yellow-500/10"> <Pause className="mr-2 h-5 w-5" /> Pause </Button> )}
@@ -511,14 +512,14 @@ export default function StudyTrackerPage() {
 
           </div>
 
-          {/* Stats & Sessions Section (Column 2 & 3) */}
+          
            <div className="lg:col-span-2 flex flex-col space-y-6">
-               {/* Progress & Category Breakdown */}
+               
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   {/* Progress Bars */}
+                   
                    <div className="space-y-4 p-6 border rounded-lg bg-secondary/30">
                          <h3 className="text-lg font-semibold text-primary mb-4">Goal Progress</h3>
-                         {/* Daily Progress */}
+                         
                          <div className="space-y-2">
                              <div className="flex justify-between items-baseline">
                                 <Label htmlFor="daily-progress" className="text-sm font-medium text-muted-foreground">Daily Goal</Label>
@@ -527,16 +528,16 @@ export default function StudyTrackerPage() {
                                      {formatDuration(todaySecondsStudied)} / {formatDuration(getTotalSeconds(dailyGoal))}
                                    </span>
                                  ) : (
-                                   <Skeleton className="h-4 w-20" /> // Skeleton for times
+                                   <Skeleton className="h-4 w-20" /> 
                                  )}
                              </div>
                              {isClient ? (
                                  <Progress value={dailyProgress} id="daily-progress" aria-label={`Daily study progress ${dailyProgress}%`} />
                              ) : (
-                                 <Skeleton className="h-2 w-full" /> // Skeleton for progress bar
+                                 <Skeleton className="h-2 w-full" /> 
                              )}
                          </div>
-                         {/* Weekly Progress */}
+                         
                          <div className="space-y-2">
                              <div className="flex justify-between items-baseline">
                                  <Label htmlFor="weekly-progress" className="text-sm font-medium text-muted-foreground">Weekly Goal</Label>
@@ -554,15 +555,15 @@ export default function StudyTrackerPage() {
                                   <Skeleton className="h-2 w-full" />
                              )}
                          </div>
-                          {/* Show goal setting prompt only on client when no goals are set */}
+                          
                           {isClient && (getTotalSeconds(dailyGoal) === 0 && getTotalSeconds(weeklyGoal) === 0) && (
                              <p className="text-sm text-muted-foreground text-center pt-2">Set your goals using the <Target className="inline h-4 w-4 mx-1"/> icon above.</p>
                          )}
                     </div>
-                    {/* Category Time Breakdown */}
+                    
                     <div className="space-y-2 p-6 border rounded-lg bg-secondary/30">
                        <h3 className="text-lg font-semibold text-primary mb-4">Time by Category</h3>
-                        <ScrollArea className="h-[150px]"> {/* Limit height */}
+                        <ScrollArea className="h-[150px]"> 
                            {isClient ? (
                                timePerCategory.length > 0 ? (
                                    timePerCategory.map(([category, totalSeconds]) => (
@@ -585,13 +586,13 @@ export default function StudyTrackerPage() {
                     </div>
                 </div>
 
-               {/* Sessions List */}
+               
                <div className="flex flex-col flex-grow">
                     <h3 className="text-lg font-semibold mb-4 text-primary">Recorded Sessions</h3>
-                    <ScrollArea className="flex-grow border rounded-lg min-h-[200px] max-h-[400px]"> {/* Adjust height */}
+                    <ScrollArea className="flex-grow border rounded-lg min-h-[200px] max-h-[400px]"> 
                     <div className="p-4 space-y-3">
                         {!isClient ? (
-                            // Show skeletons while waiting for client-side rendering
+                            
                             <>
                                 <Skeleton className="h-16 w-full" />
                                 <Skeleton className="h-16 w-full" />

@@ -4,7 +4,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import useLocalStorage from '@/hooks/use-local-storage';
+import useLocalStorage from '@/hooks/useLocalStorage'; // Changed from useSyncedStorage
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,7 +16,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, PlusCircle, ArrowLeft, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { cn, truncateText } from '@/lib/utils';
+import { cn, truncateText, calculateGoalProgress } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
 import { TaskForm } from '@/components/TaskForm';
 import {
@@ -139,19 +139,17 @@ function SortableListItem({
         textColorClass = 'text-muted-foreground';
         expandChevronColorClass = 'text-muted-foreground';
     } else if (depth === 0) {
-        bgClass = 'bg-secondary/70'; // Parent (Very Light Purple @ 70%)
-        textColorClass = 'text-card-foreground'; // Black/Dark Grey for contrast
-        expandChevronColorClass = 'text-card-foreground';
+        bgClass = 'bg-secondary/70'; 
+        textColorClass = 'text-card-foreground'; 
     } else if (depth === 1) {
-        bgClass = 'bg-muted/50';    // Child (Lighter version of Secondary @ 50% - very pale purple)
-        textColorClass = 'text-card-foreground'; // Black/Dark Grey for contrast
-        expandChevronColorClass = 'text-card-foreground';
+        bgClass = 'bg-muted/50';    
+        textColorClass = 'text-card-foreground'; 
     }
-    // Deeper levels (depth >= 2) use default bg-card (White) and text-card-foreground
+    // Deeper levels (depth >= 2) use default bg-card
 
 
     return (
-        <div ref={setNodeRef} style={style} className="mb-0.5"> {/* Removed paddingLeft for indentation */}
+        <div ref={setNodeRef} style={style} className="mb-0.5">
             <div
                 className={cn(
                     `flex items-center justify-between space-x-2 p-2.5 rounded-md border shadow-sm`,
@@ -176,7 +174,7 @@ function SortableListItem({
                             {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
                     ) : (
-                        <div className="w-6 shrink-0"></div> // Placeholder for alignment if no children
+                        <div className="w-6 shrink-0"></div> 
                     )}
                     <Checkbox
                         id={`subtask-${subtask.id}`}
@@ -243,7 +241,7 @@ function SortableListItem({
                 </div>
             </div>
 
-            <div className="my-1"> {/* Removed paddingLeft for indentation */}
+            <div className="my-1"> 
                 {showAddChildInputFor === subtask.id && (
                     <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
                         <Input
@@ -265,7 +263,7 @@ function SortableListItem({
             </div>
 
             {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                <div className="pl-0"> {/* Removed paddingLeft for indentation */}
+                <div className="pl-0"> 
                    {renderSubtasksFunction(subtask.subtasks, goalId, depth + 1)}
                 </div>
             )}
@@ -293,13 +291,14 @@ export default function GoalsPage() {
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<Task> | null>(null);
-    const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
+    const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []); // From useLocalStorage
 
     const [expandedSubtasks, setExpandedSubtasks] = useState<Record<string, boolean>>({});
     const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
     const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null);
     
+  
 
     useEffect(() => {
         setIsClient(true);
@@ -308,7 +307,7 @@ export default function GoalsPage() {
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5, // User must drag 5px before initiating drag
+                distance: 5, 
             },
         }),
         useSensor(KeyboardSensor, {
@@ -349,35 +348,35 @@ export default function GoalsPage() {
         const overId = over.id as string;
 
         setGoals((currentGoals) => {
-            const newGoals = JSON.parse(JSON.stringify(currentGoals)) as Goal[]; // Deep copy
+            const newGoals = JSON.parse(JSON.stringify(currentGoals)) as Goal[]; 
             const reorderInList = (list: Subtask[]): boolean => {
                 const activeItemIndex = list.findIndex(item => item.id === activeId);
                 const overItemIndex = list.findIndex(item => item.id === overId);
 
                 if (activeItemIndex !== -1 && overItemIndex !== -1) {
-                    // Items are in the same list, reorder them
+                    
                     const reorderedList = arrayMove(list, activeItemIndex, overItemIndex);
-                    list.length = 0; // Clear the original list in place (if it's part of the newGoals structure)
-                    list.push(...reorderedList); // Push reordered items back
-                    return true; // Indicate reorder happened
+                    list.length = 0; 
+                    list.push(...reorderedList); 
+                    return true; 
                 }
-                // Recursively search in subtasks
+                
                 for (const item of list) {
                     if (item.subtasks && item.subtasks.length > 0) {
                         if (reorderInList(item.subtasks)) {
-                            return true; // Reorder happened in a nested list
+                            return true; 
                         }
                     }
                 }
-                return false; // Reorder did not happen in this list or its children
+                return false; 
             };
-            // Try to reorder in each goal's top-level subtasks
+            
             for (const goal of newGoals) {
                 if (reorderInList(goal.subtasks)) {
-                    break; // Stop if reorder was successful
+                    break; 
                 }
             }
-            return newGoals; // Return the modified goals array
+            return newGoals; 
         });
     };
 
@@ -395,7 +394,7 @@ export default function GoalsPage() {
     };
 
     const addTask = (newTaskData: Omit<Task, 'id'>) => {
-       const newTask: Task = { ...newTaskData, id: crypto.randomUUID(), files: newTaskData.files ?? [], details: newTaskData.details ?? '', dueDate: newTaskData.dueDate, recurring: newTaskData.recurring ?? false, highPriority: newTaskData.highPriority ?? false, exceptions: [], color: newTaskData.color };
+       const newTask: Task = { ...newTaskData, id: crypto.randomUUID(), details: newTaskData.details ?? '', dueDate: newTaskData.dueDate, recurring: newTaskData.recurring ?? false, highPriority: newTaskData.highPriority ?? false, exceptions: [] /* color removed */ };
        setTasks(prevTasks => {
            const updatedTasks = [...prevTasks, newTask];
            updatedTasks.sort((a, b) => {
@@ -441,7 +440,7 @@ export default function GoalsPage() {
     };
 
     const addSubtask = (goalId: string, parentSubtaskId?: string) => {
-        const parentId = parentSubtaskId || goalId; // If parentSubtaskId is undefined, it's a top-level subtask for the goal
+        const parentId = parentSubtaskId || goalId; 
         const subtaskName = newSubtaskInputs[parentId]?.trim();
 
         if (!subtaskName) {
@@ -453,10 +452,10 @@ export default function GoalsPage() {
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
                 if (!parentSubtaskId) {
-                    // Adding a top-level subtask to the goal
+                    
                     return { ...goal, subtasks: [...goal.subtasks, newSubtask] };
                 } else {
-                    // Adding a nested subtask to a parent subtask
+                    
                     const updatedSubtasks = addSubtaskToParentRecursive(goal.subtasks, parentSubtaskId, newSubtask);
                     return { ...goal, subtasks: updatedSubtasks };
                 }
@@ -464,11 +463,11 @@ export default function GoalsPage() {
             return goal;
         }));
 
-        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' })); // Clear input for the parent
+        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' })); 
         toast({ title: "Subtask Added", description: `Subtask "${newSubtask.name}" added.` });
-        setShowAddChildInputFor(null); // Hide input form after adding
+        setShowAddChildInputFor(null); 
         if (parentSubtaskId) {
-            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true })); // Expand parent
+            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true })); 
         }
     };
 
@@ -479,7 +478,7 @@ export default function GoalsPage() {
             if (st.id === subtaskIdToDelete) {
                 foundAndDeleted = true;
                 deletedName = st.name;
-                return false; // Exclude this subtask
+                return false; 
             }
             return true;
         });
@@ -488,14 +487,14 @@ export default function GoalsPage() {
             return { updatedSubtasks: filteredSubtasks, foundAndDeleted: true, deletedSubtaskName: deletedName };
         }
 
-        // If not found at current level, recurse into children
+        
         const result = { updatedSubtasks: [] as Subtask[], foundAndDeleted: false, deletedSubtaskName: undefined as string | undefined };
         result.updatedSubtasks = subtasks.map(st => {
             if (st.subtasks) {
                 const childResult = deleteSubtaskRecursive(st.subtasks, subtaskIdToDelete);
                 if (childResult.foundAndDeleted) {
-                    foundAndDeleted = true; // Propagate found status
-                    deletedName = childResult.deletedSubtaskName; // Propagate name
+                    foundAndDeleted = true; 
+                    deletedName = childResult.deletedSubtaskName; 
                     return { ...st, subtasks: childResult.updatedSubtasks };
                 }
             }
@@ -532,26 +531,6 @@ export default function GoalsPage() {
         }));
     };
 
-    const calculateProgress = (goal: Goal): number => {
-        let totalSubtasks = 0;
-        let completedSubtasks = 0;
-        const countSubtasksRecursive = (subtasks: Subtask[]) => {
-            subtasks.forEach(subtask => {
-                totalSubtasks++;
-                if (subtask.completed) {
-                    completedSubtasks++;
-                }
-                if (subtask.subtasks && subtask.subtasks.length > 0) {
-                    countSubtasksRecursive(subtask.subtasks);
-                }
-            });
-        };
-        if (goal.subtasks && goal.subtasks.length > 0) {
-            countSubtasksRecursive(goal.subtasks);
-        }
-        if (totalSubtasks === 0) return 0;
-        return Math.round((completedSubtasks / totalSubtasks) * 100);
-    };
 
     const handleKeyPressGoal = (event: React.KeyboardEvent<HTMLInputElement>) => { if (event.key === 'Enter') addGoal(); };
     const handleKeyPressSubtask = (event: React.KeyboardEvent<HTMLInputElement>, goalId: string, parentSubtaskId?: string) => {
@@ -565,11 +544,11 @@ export default function GoalsPage() {
         setIsTaskFormOpen(true);
     };
 
-    // Recursive function to render subtasks
+    
     const renderSubtasks = (subtasksToRender: Subtask[], goalId: string, currentDepth: number): JSX.Element => {
         return (
           <SortableContext items={subtasksToRender.map(st => st.id)} strategy={verticalListSortingStrategy}>
-            <div className={cn(currentDepth > 0 && "pl-0")}> {/* Base div for sortable context, pl-0 ensures no double indent */}
+            <div className={cn(currentDepth > 0 && "pl-0")}> 
               {subtasksToRender.map(subtask => (
                 <SortableListItem
                   key={subtask.id}
@@ -587,7 +566,7 @@ export default function GoalsPage() {
                   setShowAddChildInputFor={setShowAddChildInputFor}
                   handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
                   deleteSubtask={deleteSubtask}
-                  renderSubtasksFunction={renderSubtasks} // Pass the render function itself for recursion
+                  renderSubtasksFunction={renderSubtasks} 
                 />
               ))}
             </div>
@@ -663,7 +642,7 @@ export default function GoalsPage() {
                                  <div className="space-y-4 pr-2">
                                     <Accordion type="multiple" className="w-full">
                                         {goals.map((goal) => {
-                                            const progress = calculateProgress(goal);
+                                            const progress = calculateGoalProgress(goal);
                                             return (
                                                 <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4">
                                                     <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
