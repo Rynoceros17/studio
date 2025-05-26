@@ -46,9 +46,8 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
-import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, FilePlus } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// Removed useAuth import as it's not directly used in page.tsx for login button visibility anymore
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, FilePlus } from 'lucide-react'; // Removed LogIn icon as it's handled by AuthButton
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
@@ -57,7 +56,6 @@ export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
-  const { user, authLoading } = useAuth();
 
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -78,7 +76,7 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-        const initialX = window.innerWidth - 300 - 24;
+        const initialX = window.innerWidth - 300 - 24; // Default position for timer
         const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
     }
@@ -111,7 +109,7 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
-         color: newTaskData.color,
+         // color: newTaskData.color, // Color removed
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -422,7 +420,7 @@ export default function Home() {
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
-        color: task.color,
+        // color: task.color, // Color property removed
       }));
 
     const mappedGoals: UpcomingItem[] = goals
@@ -471,38 +469,41 @@ export default function Home() {
         )}
       >
         {/* Top Row: Title and AuthButton */}
-        <div className="flex justify-between items-center w-full px-4 h-12 md:h-14">
-            <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
-                WeekWise
-            </h1>
+        <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
+            WeekWise
+          </h1>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
             <AuthButton />
+          </div>
         </div>
+
 
         {/* Bottom Row: Navigation Icons */}
         <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
             <Link href="/timetable" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to timetable">
                     <LayoutDashboard className="h-5 w-5" />
-                    <span className="hidden md:inline ml-2">Timetable</span>
+                    <span className="ml-2">Timetable</span>
                 </Button>
             </Link>
             <Link href="/study-tracker" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to study tracker">
                     <BookOpen className="h-5 w-5" />
-                    <span className="hidden md:inline ml-2">Study</span>
+                    <span className="ml-2">Study</span>
                 </Button>
             </Link>
             <Link href="/goals" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View goals">
                     <Target className="h-5 w-5" />
-                    <span className="hidden md:inline ml-2">Goals</span>
+                    <span className="ml-2">Goals</span>
                 </Button>
             </Link>
             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                 <SheetTrigger asChild>
                     <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View bookmarks">
                         <BookmarkIcon className="h-5 w-5" />
-                        <span className="hidden md:inline ml-2">Bookmarks</span>
+                        <span className="ml-2">Bookmarks</span>
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
@@ -519,13 +520,13 @@ export default function Home() {
                 onClick={() => setIsTimerVisible(!isTimerVisible)}
             >
                 <TimerIcon className="h-5 w-5" />
-                <span className="hidden md:inline ml-2">Timer</span>
+                <span className="ml-2">Timer</span>
             </Button>
             <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
                 <SheetTrigger asChild>
                     <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Open scratchpad">
                         <List className="h-5 w-5" />
-                        <span className="hidden md:inline ml-2">Scratchpad</span>
+                        <span className="ml-2">Scratchpad</span>
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
@@ -586,13 +587,7 @@ export default function Home() {
         </div>
 
         <div className="fixed bottom-4 left-4 z-50 flex flex-col space-y-2 items-start">
-             {(!authLoading && !user) && (
-                 <Link href="/login" passHref legacyBehavior>
-                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
-                        <LogIn className="h-6 w-6" />
-                    </Button>
-                 </Link>
-             )}
+              {/* Removed conditional login button, AuthButton in header handles login/user state */}
               <Link href="/blank-page" passHref legacyBehavior>
                 <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
                     <FilePlus className="h-6 w-6" />
@@ -637,3 +632,5 @@ export default function Home() {
     </DndContext>
   );
 }
+
+    
