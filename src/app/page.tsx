@@ -106,42 +106,30 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
-         // color: newTaskData.color || undefined, // Removed color
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
-         // Sort tasks: by date, then by highPriority, then maintain original relative order
          updatedTasks.sort((a, b) => {
              const dateA = parseISOStrict(a.date);
              const dateB = parseISOStrict(b.date);
 
-             // Handle cases where date might be null/invalid
              if (!dateA && !dateB) return 0;
-             if (!dateA) return 1; // Put tasks without valid dates at the end
+             if (!dateA) return 1;
              if (!dateB) return -1;
 
              const dateComparison = dateA.getTime() - dateB.getTime();
              if (dateComparison !== 0) return dateComparison;
 
-             // If dates are the same, sort by highPriority (true comes first)
              if (a.highPriority !== b.highPriority) {
                   return a.highPriority ? -1 : 1;
              }
              
-             // Maintain original relative order if dates and priority are the same
-             // This part is tricky without original indices, relying on stable sort or previous position
-             // For simplicity, if dates and priority are same, original order is not strictly enforced here
-             // but could be if we stored an original index or timestamp of creation.
-             // The most reliable way is to ensure newly added tasks appear at the end for their date/priority group.
              const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
              const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
 
-             // If one is new and the other is not, the new one comes after.
              if (originalAIndex === -1 && originalBIndex !== -1) return 1;
              if (originalAIndex !== -1 && originalBIndex === -1) return -1;
-             // If both are new or both old, their relative order doesn't change based on this sort.
-             // If both were old, their relative order is preserved by stable sort or their previous relative position.
-             if (originalAIndex === -1 && originalBIndex === -1) return 0; // Should not happen if prevTasks are correctly passed
+             if (originalAIndex === -1 && originalBIndex === -1) return 0;
              return originalAIndex - originalBIndex;
 
          });
@@ -160,7 +148,6 @@ export default function Home() {
       const taskToDelete = tasks.find(task => task.id === id);
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
       
-      // Remove all completions for this task ID, regardless of date
       setCompletedTaskIds(prevIds => prevIds.filter(completionKey => !completionKey.startsWith(`${id}_`)));
       if (taskToDelete) {
           toast({
@@ -169,23 +156,20 @@ export default function Home() {
               variant: "destructive",
           });
       }
-       setDeleteConfirmation(null); // Close confirmation dialog
+       setDeleteConfirmation(null);
   }, [tasks, setTasks, setCompletedTaskIds, toast]);
 
 
-  // Callback to delete only a specific instance of a recurring task
   const deleteRecurringInstance = useCallback((taskId: string, dateStr: string) => {
       const taskToModify = tasks.find(task => task.id === taskId);
       setTasks(prevTasks => prevTasks.map(task => {
           if (task.id === taskId) {
-              // Add the date as an exception
               const updatedExceptions = [...(task.exceptions || []), dateStr];
               return { ...task, exceptions: updatedExceptions };
           }
           return task;
       }));
       
-      // Remove completion only for this specific instance
       setCompletedTaskIds(prevIds => prevIds.filter(completionKey => completionKey !== `${taskId}_${dateStr}`));
       if (taskToModify) {
           toast({
@@ -193,16 +177,15 @@ export default function Home() {
               description: `"${taskToModify.name}" for ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} will be skipped.`,
           });
       }
-      setDeleteConfirmation(null); // Close confirmation dialog
+      setDeleteConfirmation(null);
   }, [tasks, setTasks, setCompletedTaskIds, toast]);
 
 
-  // Opens the delete confirmation dialog or directly deletes non-recurring tasks
   const requestDeleteTask = useCallback((task: Task, dateStr: string) => {
       if (task.recurring) {
-          setDeleteConfirmation({ task, dateStr }); // Open confirmation dialog
+          setDeleteConfirmation({ task, dateStr });
       } else {
-          deleteAllOccurrences(task.id); // Delete directly if not recurring
+          deleteAllOccurrences(task.id);
       }
   }, [deleteAllOccurrences]);
 
@@ -213,10 +196,8 @@ export default function Home() {
           const updatedTasks = prevTasks.map(task => {
               if (task.id === id) {
                   const updatedTask = { ...task, ...updates };
-                  // Check if properties affecting sort order have changed
                   if ((updates.date && updates.date !== task.date) ||
                       (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)
-                    // Add other sort-relevant properties here, e.g., color if it affects sorting visually
                     ) {
                       needsResort = true;
                   }
@@ -226,7 +207,6 @@ export default function Home() {
           });
 
           if (needsResort) {
-              // Re-sort the tasks array if a sort-relevant property changed
               updatedTasks.sort((a, b) => {
                   const dateA = parseISOStrict(a.date);
                   const dateB = parseISOStrict(b.date);
@@ -239,8 +219,7 @@ export default function Home() {
                   if (a.highPriority !== b.highPriority) {
                       return a.highPriority ? -1 : 1;
                   }
-                  // Add other sorting criteria if needed
-                  return 0; // Fallback, maintain original relative order if possible
+                  return 0;
               });
           }
           return updatedTasks;
@@ -254,36 +233,30 @@ export default function Home() {
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
     setTasks(prevTasks => {
-        // Separate tasks for the target date and all other tasks
         const tasksForDate = prevTasks.filter(task => {
             const taskDateObj = parseISOStrict(task.date);
-             const currentDay = parseISOStrict(date); // The date for which we are reordering
+             const currentDay = parseISOStrict(date);
              if (!taskDateObj || !currentDay) return false;
 
-             // Exclude tasks that have an exception for this date
              if (task.exceptions?.includes(date)) return false;
 
-             // Check if the task falls on this date (recurring or single)
              if (task.recurring) {
                  const taskStartDayOfWeek = taskDateObj.getDay();
                  const currentDayOfWeek = currentDay.getDay();
-                 // Task is recurring on this day of the week, and current day is on or after task start date
                  return taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj;
              } else {
-                  // Task is a single occurrence on this specific date
                   return format(taskDateObj, 'yyyy-MM-dd') === date;
              }
         });
 
         const otherTasks = prevTasks.filter(task => {
            const taskDateObj = parseISOStrict(task.date);
-           if (!taskDateObj) return true; // Keep tasks without a valid date in 'otherTasks'
+           if (!taskDateObj) return true;
            const currentDay = parseISOStrict(date);
            if (!currentDay) return true;
 
-           if (task.exceptions?.includes(date)) return true; // Keep excepted tasks in 'otherTasks'
+           if (task.exceptions?.includes(date)) return true;
 
-           // Check if the task *does not* fall on this date
            if (task.recurring) {
                const taskStartDayOfWeek = taskDateObj.getDay();
                const currentDayOfWeek = currentDay.getDay();
@@ -293,16 +266,12 @@ export default function Home() {
            }
         });
 
-        // Create a map for quick lookup of tasks for the target date
         const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
         
-        // Create the reordered list for the target date
         const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
 
-        // Combine other tasks with the reordered tasks for the target date
         const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
 
-        // Re-sort the entire list to maintain overall sort order (date, priority)
          combinedTasks.sort((a, b) => {
              const dateA = parseISOStrict(a.date);
              const dateB = parseISOStrict(b.date);
@@ -313,7 +282,6 @@ export default function Home() {
              const dateComparison = dateA.getTime() - dateB.getTime();
              if (dateComparison !== 0) return dateComparison;
 
-             // If tasks are on the same day (the target date for reordering)
              const aIsForTargetDate = tasksForDate.some(t => t.id === a.id);
              const bIsForTargetDate = tasksForDate.some(t => t.id === b.id);
 
@@ -321,27 +289,24 @@ export default function Home() {
                  const aIndex = orderedTaskIds.indexOf(a.id);
                  const bIndex = orderedTaskIds.indexOf(b.id);
                  if (aIndex !== -1 && bIndex !== -1) {
-                     return aIndex - bIndex; // Use the new explicit order
+                     return aIndex - bIndex;
                  }
              }
              
-              // Fallback: sort by high priority if not on the reordered date or if order not specified
               if (a.highPriority !== b.highPriority) {
                   return a.highPriority ? -1 : 1;
               }
              
-             // Fallback to original index if all else is equal (to maintain stability for non-reordered items)
              const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
              const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
-              if (originalAIndex === -1 && originalBIndex === -1) return 0; // Both new
-              if (originalAIndex === -1) return 1; // a is new, b is old
-              if (originalBIndex === -1) return -1; // b is new, a is old
+              if (originalAIndex === -1 && originalBIndex === -1) return 0;
+              if (originalAIndex === -1) return 1;
+              if (originalBIndex === -1) return -1;
              return originalAIndex - originalBIndex;
         });
         return combinedTasks;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setTasks]); // Removed tasksByDay
+  }, [setTasks]);
 
 
   const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
@@ -366,14 +331,12 @@ export default function Home() {
   }, [tasks, completedTaskIds, setCompletedTaskIds, toast]);
 
 
-  // Update only details and dueDate (and files if re-added)
   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => {
    setTasks(prevTasks => {
-      let needsResort = false; // If dueDate changes, we might need to re-sort
+      let needsResort = false;
      const updatedTasks = prevTasks.map(task => {
        if (task.id === id) {
            const updatedTask = { ...task, ...updates };
-            // Check if properties affecting sort order have changed
             if (updates.dueDate && updates.dueDate !== task.dueDate) {
                 needsResort = true;
             }
@@ -383,7 +346,6 @@ export default function Home() {
      });
 
       if (needsResort) {
-           // Re-sort based on broader criteria if a sort-relevant property changed
            updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
@@ -397,13 +359,12 @@ export default function Home() {
                    return a.highPriority ? -1 : 1;
                }
 
-               // Optionally sort by due date if main dates are the same
                const dueDateA = parseISOStrict(a.dueDate);
                const dueDateB = parseISOStrict(b.dueDate);
                if (dueDateA && dueDateB) {
                    return dueDateA.getTime() - dueDateB.getTime();
                }
-               if (dueDateA) return -1; // Tasks with due dates might come before those without
+               if (dueDateA) return -1;
                if (dueDateB) return 1;
                return 0;
            });
@@ -431,9 +392,9 @@ export default function Home() {
     }
   }, [goals, setGoals, toast]);
 
-  // Memoize the list of upcoming items for the TopTaskBar
+
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
-    if (!isClient) return []; // Don't run on server or before client is ready
+    if (!isClient) return [];
 
     const today = startOfDay(new Date());
 
@@ -441,25 +402,24 @@ export default function Home() {
       .filter(task => {
         if (!task.dueDate) return false;
         const dueDate = parseISOStrict(task.dueDate);
-        return dueDate && dueDate >= today; // Due date is today or in the future
+        return dueDate && dueDate >= today;
       })
       .map(task => ({
         id: task.id,
         name: task.name,
         dueDate: task.dueDate!,
         type: 'task' as 'task',
-        originalDate: task.date, // For tasks, the date it's scheduled on
+        originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
-        // color: task.color, // Color removed
       }));
 
     const mappedGoals: UpcomingItem[] = goals
       .filter(goal => {
         if (!goal.dueDate) return false;
         const timeLeftDetails = calculateTimeLeft(goal.dueDate);
-        if (!timeLeftDetails || timeLeftDetails.isPastDue) return false; // Exclude past due goals
-        if (calculateGoalProgress(goal) >= 100) return false; // Exclude completed goals
+        if (!timeLeftDetails || timeLeftDetails.isPastDue) return false;
+        if (calculateGoalProgress(goal) >= 100) return false;
         return true;
       })
       .map(goal => ({
@@ -473,32 +433,28 @@ export default function Home() {
 
     const combinedItems = [...mappedTasks, ...mappedGoals];
 
-    // Sort: High priority items first, then by due date (earliest first)
     return combinedItems.sort((a, b) => {
-      // Determine priority status for a and b
       const aIsHighPriority = a.type === 'goal' ? a.goalHighPriority : a.taskHighPriority;
       const bIsHighPriority = b.type === 'goal' ? b.goalHighPriority : b.taskHighPriority;
 
       if (aIsHighPriority && !bIsHighPriority) return -1;
       if (!aIsHighPriority && bIsHighPriority) return 1;
 
-      // If priorities are the same, sort by due date
-      const dueDateA = parseISOStrict(a.dueDate)!; // Non-null asserted as they are filtered
+      const dueDateA = parseISOStrict(a.dueDate)!;
       const dueDateB = parseISOStrict(b.dueDate)!;
       return dueDateA.getTime() - dueDateB.getTime();
     });
-  }, [tasks, goals, isClient, calculateGoalProgress, calculateTimeLeft, parseISOStrict]); // Added calculateTimeLeft and parseISOStrict
+  }, [tasks, goals, isClient]);
 
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header
         className={cn(
-          "bg-background shadow-sm w-full", // Removed border-b
-          "flex h-16 items-center justify-between px-4"
+          "bg-background border-b shadow-sm w-full",
+          "flex h-16 items-center px-4"
         )}
       >
-        {/* Left Navigation Group */}
         <nav className="flex space-x-1">
             <Link href="/timetable" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to timetable">
@@ -520,12 +476,10 @@ export default function Home() {
             </Link>
         </nav>
 
-        {/* Centered Title */}
         <div className="flex-1 text-center">
             <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">WeekWise</h1>
         </div>
 
-        {/* Right Navigation Group */}
         <nav className="flex space-x-1">
             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                 <SheetTrigger asChild>
@@ -567,7 +521,7 @@ export default function Home() {
         </nav>
       </header>
 
-      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 mt-16"> {/* Added mt-16 for header height */}
+      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-16">
 
         <div className="w-full max-w-7xl space-y-4">
           {isClient && (
@@ -584,7 +538,7 @@ export default function Home() {
           )}
         </div>
         
-        <div className="w-full mt-4"> {/* Ensure TopTaskBar has some margin if needed and takes full width */}
+        <div className="w-full">
           <TopTaskBar
             items={upcomingItemsForBar}
             toggleGoalPriority={toggleGoalPriority}
@@ -616,7 +570,6 @@ export default function Home() {
             </Dialog>
         </div>
 
-        {/* Bottom Left FABs */}
         <div className="fixed bottom-4 left-4 z-50 flex flex-col space-y-2 items-start">
              <Link href="/blank-page" passHref legacyBehavior>
                 <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
@@ -645,13 +598,13 @@ export default function Home() {
                     <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
-                         className={cn("text-foreground")} // Ensuring text color for this action
+                         className={cn("text-foreground")}
                     >
                         Delete This Occurrence Only
                     </AlertDialogAction>
                     <AlertDialogAction
                         onClick={() => deleteAllOccurrences(deleteConfirmation!.task.id)}
-                        className={cn(buttonVariants({ variant: "destructive" }))} // Using buttonVariants for destructive style
+                        className={cn(buttonVariants({ variant: "destructive" }))}
                     >
                         Delete All Occurrences
                     </AlertDialogAction>
@@ -662,4 +615,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
