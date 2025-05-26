@@ -46,10 +46,9 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, Loader2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar components
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading state
+import { useAuth } from '@/contexts/AuthContext';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, FilePlus } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
@@ -58,7 +57,7 @@ export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
-  const { user, authLoading } = useAuth(); // Get user and authLoading state
+  const { user, authLoading } = useAuth();
 
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -79,8 +78,8 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-        const initialX = window.innerWidth - 300 - 24; // Timer width + padding
-        const initialY = 24; // Padding from top
+        const initialX = window.innerWidth - 300 - 24;
+        const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
     }
   }, []);
@@ -112,6 +111,7 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
+         color: newTaskData.color,
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -401,12 +401,18 @@ export default function Home() {
 
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
     if (!isClient) return [];
+    const today = startOfDay(new Date());
 
     const mappedTasks: UpcomingItem[] = tasks
       .filter(task => {
         if (!task.dueDate) return false;
+        const dueDateObj = parseISOStrict(task.dueDate);
+        if (!dueDateObj) return false;
+        
         const timeLeftDetails = calculateTimeLeft(task.dueDate);
-        return timeLeftDetails && !timeLeftDetails.isPastDue;
+        if (!timeLeftDetails || timeLeftDetails.isPastDue) return false; 
+
+        return true;
       })
       .map(task => ({
         id: task.id,
@@ -416,14 +422,19 @@ export default function Home() {
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
+        color: task.color,
       }));
 
     const mappedGoals: UpcomingItem[] = goals
       .filter(goal => {
         if (!goal.dueDate) return false;
+        const dueDateObj = parseISOStrict(goal.dueDate);
+        if (!dueDateObj) return false;
+        
         const timeLeftDetails = calculateTimeLeft(goal.dueDate);
         if (!timeLeftDetails || timeLeftDetails.isPastDue) return false;
         if (calculateGoalProgress(goal) >= 100) return false;
+
         return true;
       })
       .map(goal => ({
@@ -448,9 +459,7 @@ export default function Home() {
       const dueDateB = parseISOStrict(b.dueDate)!;
       return dueDateA.getTime() - dueDateB.getTime();
     });
-  }, [tasks, goals, isClient]);
-
-  const userInitial = user?.email ? user.email[0].toUpperCase() : null;
+  }, [tasks, goals, isClient, calculateTimeLeft, calculateGoalProgress]);
 
 
   return (
@@ -458,10 +467,19 @@ export default function Home() {
       <header
         className={cn(
           "bg-background border-b shadow-sm w-full",
-          "flex h-16 items-center px-4 sm:justify-between"
+          "flex flex-col" // Main header is flex column
         )}
       >
-        <nav className="flex space-x-1">
+        {/* Top Row: Title and AuthButton */}
+        <div className="flex justify-between items-center w-full px-4 h-12 md:h-14">
+            <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
+                WeekWise
+            </h1>
+            <AuthButton />
+        </div>
+
+        {/* Bottom Row: Navigation Icons */}
+        <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
             <Link href="/timetable" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to timetable">
                     <LayoutDashboard className="h-5 w-5" />
@@ -480,13 +498,6 @@ export default function Home() {
                     <span className="hidden md:inline ml-2">Goals</span>
                 </Button>
             </Link>
-        </nav>
-
-        <div className="flex-1 text-center">
-            <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">WeekWise</h1>
-        </div>
-
-        <nav className="flex space-x-1">
             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                 <SheetTrigger asChild>
                     <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View bookmarks">
@@ -501,6 +512,15 @@ export default function Home() {
                     <BookmarkListSheet />
                 </SheetContent>
             </Sheet>
+            <Button
+                variant="ghost"
+                className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10"
+                aria-label="Toggle Pomodoro Timer"
+                onClick={() => setIsTimerVisible(!isTimerVisible)}
+            >
+                <TimerIcon className="h-5 w-5" />
+                <span className="hidden md:inline ml-2">Timer</span>
+            </Button>
             <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
                 <SheetTrigger asChild>
                     <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Open scratchpad">
@@ -515,20 +535,10 @@ export default function Home() {
                     <TaskListSheet />
                 </SheetContent>
             </Sheet>
-            <Button
-                variant="ghost"
-                className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10"
-                aria-label="Toggle Pomodoro Timer"
-                onClick={() => setIsTimerVisible(!isTimerVisible)}
-            >
-                <TimerIcon className="h-5 w-5" />
-                <span className="hidden md:inline ml-2">Timer</span>
-            </Button>
-            <AuthButton />
         </nav>
       </header>
 
-      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-16">
+      <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
          <div className="w-full">
            <TopTaskBar
              items={upcomingItemsForBar}
@@ -576,22 +586,18 @@ export default function Home() {
         </div>
 
         <div className="fixed bottom-4 left-4 z-50 flex flex-col space-y-2 items-start">
-             {authLoading ? (
-                <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10" disabled>
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                </Button>
-             ) : user ? (
-                <Avatar className="h-12 w-12 rounded-full shadow-lg border-2 border-primary cursor-default">
-                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || "User"} />
-                    <AvatarFallback className="text-lg bg-primary text-primary-foreground">{userInitial}</AvatarFallback>
-                </Avatar>
-             ) : (
+             {(!authLoading && !user) && (
                  <Link href="/login" passHref legacyBehavior>
                     <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
                         <LogIn className="h-6 w-6" />
                     </Button>
                  </Link>
              )}
+              <Link href="/blank-page" passHref legacyBehavior>
+                <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
+                    <FilePlus className="h-6 w-6" />
+                </Button>
+             </Link>
         </div>
 
 
@@ -631,4 +637,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
