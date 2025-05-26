@@ -45,7 +45,11 @@ import {
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn } from 'lucide-react'; // Changed FilePlus to LogIn
+import { AuthButton } from '@/components/AuthButton';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar components
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading state
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
@@ -54,6 +58,8 @@ export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
+  const { user, authLoading } = useAuth(); // Get user and authLoading state
+
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
   const completedCount = useMemo(() => {
@@ -82,7 +88,7 @@ export default function Home() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10, // Drag only if moved more than 10px
+        distance: 10,
       },
     })
   );
@@ -106,7 +112,6 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
-         color: newTaskData.color, // Ensure color is passed through
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -397,14 +402,11 @@ export default function Home() {
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
     if (!isClient) return [];
 
-    const today = startOfDay(new Date());
-
     const mappedTasks: UpcomingItem[] = tasks
       .filter(task => {
         if (!task.dueDate) return false;
-        const dueDate = parseISOStrict(task.dueDate);
         const timeLeftDetails = calculateTimeLeft(task.dueDate);
-        return dueDate && timeLeftDetails && !timeLeftDetails.isPastDue;
+        return timeLeftDetails && !timeLeftDetails.isPastDue;
       })
       .map(task => ({
         id: task.id,
@@ -429,8 +431,8 @@ export default function Home() {
         name: goal.name,
         dueDate: goal.dueDate!,
         type: 'goal' as 'goal',
-        progress: calculateGoalProgress(goal),
         goalHighPriority: goal.highPriority,
+        progress: calculateGoalProgress(goal),
       }));
 
     const combinedItems = [...mappedTasks, ...mappedGoals];
@@ -448,13 +450,15 @@ export default function Home() {
     });
   }, [tasks, goals, isClient]);
 
+  const userInitial = user?.email ? user.email[0].toUpperCase() : null;
+
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header
         className={cn(
           "bg-background border-b shadow-sm w-full",
-          "flex h-16 items-center px-4 sm:px-6 lg:px-8"
+          "flex h-16 items-center px-4 sm:justify-between"
         )}
       >
         <nav className="flex space-x-1">
@@ -520,12 +524,18 @@ export default function Home() {
                 <TimerIcon className="h-5 w-5" />
                 <span className="hidden md:inline ml-2">Timer</span>
             </Button>
+            <AuthButton />
         </nav>
       </header>
 
       <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-16">
-
-        <div className="w-full max-w-7xl space-y-4">
+         <div className="w-full">
+           <TopTaskBar
+             items={upcomingItemsForBar}
+             toggleGoalPriority={toggleGoalPriority}
+           />
+         </div>
+        <div className="w-full max-w-7xl space-y-4 mt-4">
           {isClient && (
               <CalendarView
                 tasks={tasks}
@@ -540,13 +550,6 @@ export default function Home() {
           )}
         </div>
         
-        <div className="w-full">
-          <TopTaskBar
-            items={upcomingItemsForBar}
-            toggleGoalPriority={toggleGoalPriority}
-          />
-        </div>
-
         <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
               <DialogTrigger asChild>
@@ -573,11 +576,22 @@ export default function Home() {
         </div>
 
         <div className="fixed bottom-4 left-4 z-50 flex flex-col space-y-2 items-start">
-             <Link href="/login" passHref legacyBehavior>
-                <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
-                    <LogIn className="h-6 w-6" />
+             {authLoading ? (
+                <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10" disabled>
+                    <Loader2 className="h-6 w-6 animate-spin" />
                 </Button>
-             </Link>
+             ) : user ? (
+                <Avatar className="h-12 w-12 rounded-full shadow-lg border-2 border-primary cursor-default">
+                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || "User"} />
+                    <AvatarFallback className="text-lg bg-primary text-primary-foreground">{userInitial}</AvatarFallback>
+                </Avatar>
+             ) : (
+                 <Link href="/login" passHref legacyBehavior>
+                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
+                        <LogIn className="h-6 w-6" />
+                    </Button>
+                 </Link>
+             )}
         </div>
 
 
@@ -617,3 +631,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
