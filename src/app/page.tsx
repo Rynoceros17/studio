@@ -46,8 +46,8 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
-// Removed useAuth import as it's not directly used in page.tsx for login button visibility anymore
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, FilePlus } from 'lucide-react'; // Removed LogIn icon as it's handled by AuthButton
+import { useAuth } from '@/contexts/AuthContext';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react'; // Removed LogIn, FilePlus, UserIcon
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
@@ -71,6 +71,7 @@ export default function Home() {
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
+  const { user, authLoading } = useAuth();
 
 
   useEffect(() => {
@@ -109,7 +110,6 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
-         // color: newTaskData.color, // Color removed
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -310,7 +310,7 @@ export default function Home() {
         });
         return combinedTasks;
     });
-  }, [setTasks]);
+  }, [setTasks]); 
 
 
   const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
@@ -399,17 +399,12 @@ export default function Home() {
 
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
     if (!isClient) return [];
-    const today = startOfDay(new Date());
-
+    
     const mappedTasks: UpcomingItem[] = tasks
       .filter(task => {
         if (!task.dueDate) return false;
-        const dueDateObj = parseISOStrict(task.dueDate);
-        if (!dueDateObj) return false;
-        
         const timeLeftDetails = calculateTimeLeft(task.dueDate);
         if (!timeLeftDetails || timeLeftDetails.isPastDue) return false; 
-
         return true;
       })
       .map(task => ({
@@ -420,19 +415,14 @@ export default function Home() {
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
-        // color: task.color, // Color property removed
       }));
 
     const mappedGoals: UpcomingItem[] = goals
       .filter(goal => {
         if (!goal.dueDate) return false;
-        const dueDateObj = parseISOStrict(goal.dueDate);
-        if (!dueDateObj) return false;
-        
         const timeLeftDetails = calculateTimeLeft(goal.dueDate);
         if (!timeLeftDetails || timeLeftDetails.isPastDue) return false;
         if (calculateGoalProgress(goal) >= 100) return false;
-
         return true;
       })
       .map(goal => ({
@@ -457,7 +447,7 @@ export default function Home() {
       const dueDateB = parseISOStrict(b.dueDate)!;
       return dueDateA.getTime() - dueDateB.getTime();
     });
-  }, [tasks, goals, isClient, calculateTimeLeft, calculateGoalProgress]);
+  }, [tasks, goals, isClient]);
 
 
   return (
@@ -465,10 +455,9 @@ export default function Home() {
       <header
         className={cn(
           "bg-background border-b shadow-sm w-full",
-          "flex flex-col" // Main header is flex column
+          "flex flex-col"
         )}
       >
-        {/* Top Row: Title and AuthButton */}
         <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
           <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
             WeekWise
@@ -479,31 +468,30 @@ export default function Home() {
         </div>
 
 
-        {/* Bottom Row: Navigation Icons */}
         <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
             <Link href="/timetable" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to timetable">
                     <LayoutDashboard className="h-5 w-5" />
-                    <span className="ml-2">Timetable</span>
+                    <span className="ml-2 hidden md:inline">Timetable</span>
                 </Button>
             </Link>
             <Link href="/study-tracker" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to study tracker">
                     <BookOpen className="h-5 w-5" />
-                    <span className="ml-2">Study</span>
+                    <span className="ml-2 hidden md:inline">Study</span>
                 </Button>
             </Link>
             <Link href="/goals" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View goals">
                     <Target className="h-5 w-5" />
-                    <span className="ml-2">Goals</span>
+                    <span className="ml-2 hidden md:inline">Goals</span>
                 </Button>
             </Link>
             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                 <SheetTrigger asChild>
                     <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View bookmarks">
                         <BookmarkIcon className="h-5 w-5" />
-                        <span className="ml-2">Bookmarks</span>
+                        <span className="ml-2 hidden md:inline">Bookmarks</span>
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
@@ -520,13 +508,13 @@ export default function Home() {
                 onClick={() => setIsTimerVisible(!isTimerVisible)}
             >
                 <TimerIcon className="h-5 w-5" />
-                <span className="ml-2">Timer</span>
+                <span className="ml-2 hidden md:inline">Timer</span>
             </Button>
             <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
                 <SheetTrigger asChild>
                     <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Open scratchpad">
                         <List className="h-5 w-5" />
-                        <span className="ml-2">Scratchpad</span>
+                        <span className="ml-2 hidden md:inline">Scratchpad</span>
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
@@ -539,7 +527,7 @@ export default function Home() {
         </nav>
       </header>
 
-      <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
+      <main className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
          <div className="w-full">
            <TopTaskBar
              items={upcomingItemsForBar}
@@ -586,15 +574,7 @@ export default function Home() {
             </Dialog>
         </div>
 
-        <div className="fixed bottom-4 left-4 z-50 flex flex-col space-y-2 items-start">
-              {/* Removed conditional login button, AuthButton in header handles login/user state */}
-              <Link href="/blank-page" passHref legacyBehavior>
-                <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
-                    <FilePlus className="h-6 w-6" />
-                </Button>
-             </Link>
-        </div>
-
+        {/* Removed Bottom-Left Login/Avatar/Blank Page Button */}
 
         {isClient && isTimerVisible && (
           <PomodoroTimer
@@ -632,5 +612,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
-    
