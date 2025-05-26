@@ -45,7 +45,7 @@ import {
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, FilePlus } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn } from 'lucide-react'; // Changed FilePlus to LogIn
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
@@ -106,6 +106,7 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
+         color: newTaskData.color, // Ensure color is passed through
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -402,7 +403,8 @@ export default function Home() {
       .filter(task => {
         if (!task.dueDate) return false;
         const dueDate = parseISOStrict(task.dueDate);
-        return dueDate && dueDate >= today;
+        const timeLeftDetails = calculateTimeLeft(task.dueDate);
+        return dueDate && timeLeftDetails && !timeLeftDetails.isPastDue;
       })
       .map(task => ({
         id: task.id,
@@ -452,7 +454,7 @@ export default function Home() {
       <header
         className={cn(
           "bg-background border-b shadow-sm w-full",
-          "flex h-16 items-center px-4"
+          "flex h-16 items-center px-4 sm:px-6 lg:px-8"
         )}
       >
         <nav className="flex space-x-1">
@@ -571,9 +573,9 @@ export default function Home() {
         </div>
 
         <div className="fixed bottom-4 left-4 z-50 flex flex-col space-y-2 items-start">
-             <Link href="/blank-page" passHref legacyBehavior>
+             <Link href="/login" passHref legacyBehavior>
                 <Button variant="outline" size="icon" className="h-12 w-12 rounded-full shadow-lg text-primary border-primary hover:bg-primary/10">
-                    <FilePlus className="h-6 w-6" />
+                    <LogIn className="h-6 w-6" />
                 </Button>
              </Link>
         </div>
