@@ -43,26 +43,25 @@ body {
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
   .dark {
-    /* Define dark mode colors if needed, otherwise inherit or adjust */
-    --background: 240 10% 10%; /* Dark Grey */
-    --foreground: 0 0% 98%; /* White */
-    --card: 240 10% 15%; /* Darker Grey */
-    --card-foreground: 0 0% 98%; /* White */
-    --popover: 240 10% 15%; /* Darker Grey */
-    --popover-foreground: 0 0% 98%; /* White */
-    --primary: 259 43% 71%; /* Light Purple #A892D6 */
-    --primary-foreground: 240 10% 10%; /* Dark Grey */
-    --secondary: 259 30% 30%; /* Darker Very Light Purple */
-    --secondary-foreground: 0 0% 98%; /* White */
-    --muted: 259 30% 25%; /* Darker Muted */
-    --muted-foreground: 240 5% 65%; /* Lighter Muted Grey */
-    --accent: 51 100% 50%; /* Gold #FFD700 */
-    --accent-foreground: 240 10% 10%; /* Dark Grey */
+    --background: 240 6% 12%; /* Very Dark Desaturated Blue/Grey */
+    --foreground: 220 15% 88%; /* Light, slightly cool Gray */
+    --card: 240 6% 16%; /* Darker Desaturated Blue/Grey (slightly lighter than main bg) */
+    --card-foreground: 220 15% 88%; /* Match main foreground */
+    --popover: 240 6% 16%; /* Similar to card */
+    --popover-foreground: 220 15% 88%; /* Match main foreground */
+    --primary: 259 43% 71%; /* Light Purple #A892D6 - Kept same */
+    --primary-foreground: 240 10% 10%; /* Dark Grey for text on primary buttons - Kept same */
+    --secondary: 259 25% 22%; /* Darker, more desaturated purple */
+    --secondary-foreground: 220 15% 88%; /* Match main foreground */
+    --muted: 240 6% 20%; /* Slightly lighter gray than card for muted elements */
+    --muted-foreground: 220 10% 65%; /* Softer gray for muted text */
+    --accent: 51 100% 50%; /* Gold #FFD700 - Kept same */
+    --accent-foreground: 240 10% 10%; /* Dark Grey for text on accent - Kept same */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 259 20% 40%; /* Darker Border */
-    --input: 259 20% 40%; /* Darker Input */
-    --ring: 259 43% 71%; /* Primary */
+    --border: 240 6% 25%; /* Subtle dark gray border */
+    --input: 240 6% 25%; /* Subtle dark gray input border */
+    --ring: 259 43% 71%; /* Primary - Kept same for focus rings */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
