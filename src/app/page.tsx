@@ -14,8 +14,8 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Goal, UpcomingItem } from '@/lib/types';
-import useLocalStorage from '@/hooks/useLocalStorage';
+import type { Task, Goal, UpcomingItem, TimeLeft } from '@/lib/types';
+import useLocalStorage from '@/hooks/useLocalStorage'; // Changed from useSyncedStorage to useLocalStorage
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -45,9 +45,7 @@ import {
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
-import { AuthButton } from '@/components/AuthButton';
-import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react'; // Removed LogIn, FilePlus, UserIcon
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
@@ -71,13 +69,12 @@ export default function Home() {
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
-  const { user, authLoading } = useAuth();
 
 
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-        const initialX = window.innerWidth - 300 - 24; // Default position for timer
+        const initialX = window.innerWidth - 300 - 24;
         const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
     }
@@ -110,6 +107,7 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
+         // color: newTaskData.color || 'hsl(var(--card))', // Ensure color is set, defaults to white
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -310,6 +308,7 @@ export default function Home() {
         });
         return combinedTasks;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setTasks]); 
 
 
@@ -415,6 +414,7 @@ export default function Home() {
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
+        timeLeftDetails: calculateTimeLeft(task.dueDate), // Store pre-calculated details
       }));
 
     const mappedGoals: UpcomingItem[] = goals
@@ -432,6 +432,7 @@ export default function Home() {
         type: 'goal' as 'goal',
         goalHighPriority: goal.highPriority,
         progress: calculateGoalProgress(goal),
+        timeLeftDetails: calculateTimeLeft(goal.dueDate), // Store pre-calculated details
       }));
 
     const combinedItems = [...mappedTasks, ...mappedGoals];
@@ -454,20 +455,19 @@ export default function Home() {
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header
         className={cn(
-          "bg-background border-b shadow-sm w-full",
-          "flex flex-col"
+          "bg-background border-b shadow-sm w-full", // Removed fixed positioning classes
+          "flex flex-col" // Base for two rows
         )}
       >
+        {/* Top Row: Title and Auth */}
         <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
           <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
             WeekWise
           </h1>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-            <AuthButton />
-          </div>
+          {/* AuthButton was removed in a previous step. If needed, it would go here, likely absolutely positioned right. */}
         </div>
 
-
+        {/* Bottom Row: Navigation Icons */}
         <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
             <Link href="/timetable" passHref legacyBehavior>
                 <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to timetable">
@@ -527,14 +527,9 @@ export default function Home() {
         </nav>
       </header>
 
-      <main className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
-         <div className="w-full">
-           <TopTaskBar
-             items={upcomingItemsForBar}
-             toggleGoalPriority={toggleGoalPriority}
-           />
-         </div>
-        <div className="w-full max-w-7xl space-y-4 mt-4">
+      <main className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"> {/* Adjusted padding-top */}
+        
+        <div className="w-full max-w-7xl space-y-4">
           {isClient && (
               <CalendarView
                 tasks={tasks}
@@ -548,6 +543,13 @@ export default function Home() {
               />
           )}
         </div>
+        
+        <div className="w-full">
+           <TopTaskBar
+             items={upcomingItemsForBar}
+             toggleGoalPriority={toggleGoalPriority}
+           />
+         </div>
         
         <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -573,8 +575,6 @@ export default function Home() {
               </DialogContent>
             </Dialog>
         </div>
-
-        {/* Removed Bottom-Left Login/Avatar/Blank Page Button */}
 
         {isClient && isTimerVisible && (
           <PomodoroTimer
