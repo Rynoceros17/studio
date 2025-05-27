@@ -14,8 +14,8 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Goal, UpcomingItem, TimeLeft } from '@/lib/types';
-import useLocalStorage from '@/hooks/useLocalStorage'; // Changed from useSyncedStorage to useLocalStorage
+import type { Task, Goal, UpcomingItem } from '@/lib/types';
+import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -45,8 +45,10 @@ import {
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen } from 'lucide-react';
-import { format, parseISO, startOfDay } from 'date-fns';
+import { AuthButton } from '@/components/AuthButton';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn } from 'lucide-react'; // Added LogIn
+import { format, parseISO, startOfDay, addDays, subDays } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
 
@@ -54,6 +56,7 @@ export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
+  const { user, authLoading } = useAuth(); // Get user and authLoading state
 
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -107,7 +110,6 @@ export default function Home() {
          exceptions: [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
-         // color: newTaskData.color || 'hsl(var(--card))', // Ensure color is set, defaults to white
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
@@ -308,8 +310,7 @@ export default function Home() {
         });
         return combinedTasks;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setTasks]); 
+  }, [setTasks]);
 
 
   const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
@@ -399,12 +400,15 @@ export default function Home() {
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
     if (!isClient) return [];
     
+    const today = startOfDay(new Date());
+
     const mappedTasks: UpcomingItem[] = tasks
       .filter(task => {
         if (!task.dueDate) return false;
+        const taskDueDate = parseISOStrict(task.dueDate);
+        if (!taskDueDate) return false;
         const timeLeftDetails = calculateTimeLeft(task.dueDate);
-        if (!timeLeftDetails || timeLeftDetails.isPastDue) return false; 
-        return true;
+        return timeLeftDetails && !timeLeftDetails.isPastDue;
       })
       .map(task => ({
         id: task.id,
@@ -414,12 +418,14 @@ export default function Home() {
         originalDate: task.date,
         description: task.description,
         taskHighPriority: task.highPriority,
-        timeLeftDetails: calculateTimeLeft(task.dueDate), // Store pre-calculated details
+        timeLeftDetails: calculateTimeLeft(task.dueDate),
       }));
 
     const mappedGoals: UpcomingItem[] = goals
       .filter(goal => {
         if (!goal.dueDate) return false;
+        const goalDueDate = parseISOStrict(goal.dueDate);
+        if (!goalDueDate) return false;
         const timeLeftDetails = calculateTimeLeft(goal.dueDate);
         if (!timeLeftDetails || timeLeftDetails.isPastDue) return false;
         if (calculateGoalProgress(goal) >= 100) return false;
@@ -432,7 +438,7 @@ export default function Home() {
         type: 'goal' as 'goal',
         goalHighPriority: goal.highPriority,
         progress: calculateGoalProgress(goal),
-        timeLeftDetails: calculateTimeLeft(goal.dueDate), // Store pre-calculated details
+        timeLeftDetails: calculateTimeLeft(goal.dueDate),
       }));
 
     const combinedItems = [...mappedTasks, ...mappedGoals];
@@ -455,16 +461,18 @@ export default function Home() {
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
       <header
         className={cn(
-          "bg-background border-b shadow-sm w-full", // Removed fixed positioning classes
-          "flex flex-col" // Base for two rows
+          "bg-background border-b shadow-sm w-full",
+          "flex flex-col" 
         )}
       >
         {/* Top Row: Title and Auth */}
         <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
+          <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">
             WeekWise
           </h1>
-          {/* AuthButton was removed in a previous step. If needed, it would go here, likely absolutely positioned right. */}
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            <AuthButton />
+          </div>
         </div>
 
         {/* Bottom Row: Navigation Icons */}
@@ -527,7 +535,7 @@ export default function Home() {
         </nav>
       </header>
 
-      <main className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"> {/* Adjusted padding-top */}
+      <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
         
         <div className="w-full max-w-7xl space-y-4">
           {isClient && (
@@ -544,13 +552,14 @@ export default function Home() {
           )}
         </div>
         
-        <div className="w-full">
+        <div className="w-full mt-4">
            <TopTaskBar
              items={upcomingItemsForBar}
              toggleGoalPriority={toggleGoalPriority}
            />
          </div>
         
+        {/* Floating Action Buttons */}
         <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
               <DialogTrigger asChild>
@@ -575,6 +584,23 @@ export default function Home() {
               </DialogContent>
             </Dialog>
         </div>
+
+        {/* Conditional Login Button - Bottom Left */}
+        {!authLoading && !user && (
+          <div className="fixed bottom-4 left-4 z-50">
+            <Link href="/login" passHref legacyBehavior>
+              <Button
+                variant="default"
+                size="icon"
+                className="h-12 w-12 rounded-full shadow-lg"
+                aria-label="Login"
+              >
+                <LogIn className="h-6 w-6" />
+              </Button>
+            </Link>
+          </div>
+        )}
+
 
         {isClient && isTimerVisible && (
           <PomodoroTimer
@@ -612,3 +638,5 @@ export default function Home() {
     </DndContext>
   );
 }
+
+
