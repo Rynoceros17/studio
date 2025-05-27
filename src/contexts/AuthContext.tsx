@@ -8,19 +8,22 @@ import {
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword, // Import createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
   signOut,
   type Auth,
+  GoogleAuthProvider, // Added
+  signInWithPopup, // Added
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { app, auth as firebaseAuth, db } from '@/lib/firebase/firebase';
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { app, auth as firebaseAuthFromLib, db } from '@/lib/firebase/firebase'; // Import app, auth, db
 
 interface AuthContextType {
   user: FirebaseUser | null;
   authLoading: boolean;
   firebaseError: AuthError | null;
-  signInUser: (email: string, pass: string) => Promise<any>; // Keep specific types if preferred
-  signUpUser: (email: string, pass: string) => Promise<any>; // Add signUpUser
+  signInUser: (email: string, pass: string) => Promise<any>;
+  signUpUser: (email: string, pass: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>; // Added
   signOutUser: () => Promise<void>;
 }
 
@@ -33,32 +36,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authInstance, setAuthInstance] = useState<Auth | null>(null);
 
   useEffect(() => {
-    if (firebaseAuth && typeof firebaseAuth.onAuthStateChanged === 'function') {
-      setAuthInstance(firebaseAuth);
+    // Ensure app is initialized before trying to get auth
+    if (app && Object.keys(app).length > 0 && app.name && firebaseAuthFromLib) {
+        if (firebaseAuthFromLib && typeof firebaseAuthFromLib.onAuthStateChanged === 'function') {
+          setAuthInstance(firebaseAuthFromLib);
+        } else {
+          console.warn("Firebase Auth instance from firebase.ts is not valid. AuthProvider cannot initialize auth services.");
+          setFirebaseError({ code: "auth/internal-error", message: "Firebase Auth not properly initialized from firebase.ts" } as AuthError);
+          setAuthLoading(false);
+        }
     } else {
-      console.warn("Firebase Auth instance from firebase.ts is not valid. AuthProvider cannot initialize.");
+      // This case should ideally be caught by firebase.ts checks.
+      // console.warn("Firebase app not available in AuthContext. AuthProvider cannot initialize.");
+      setFirebaseError({ code: "auth/config-not-found", message: "Firebase app not initialized, check environment variables and firebase.ts." } as AuthError);
       setAuthLoading(false);
-      setFirebaseError({ code: "auth/internal-error", message: "Firebase Auth not properly initialized from firebase.ts" } as AuthError);
     }
-  }, []);
+  }, []); // Removed dependency on `app` as it's module-level
 
   useEffect(() => {
     if (!authInstance) {
-      if (app && Object.keys(app).length > 0 && app.name) {
-        // Error already set if authInstance is null
-      } else {
-        setFirebaseError({ code: "auth/config-not-found", message: "Firebase app not initialized, check environment variables." } as AuthError);
-        setAuthLoading(false);
+      // If authInstance is still null after the first effect, and firebaseError isn't already set,
+      // it implies an issue with firebase.ts or the initial app load.
+      if (!firebaseError) { // Only set error if not already set by previous effect
+        // console.warn("Auth instance not set in AuthProvider. onAuthStateChanged listener cannot be set up.");
+        setAuthLoading(false); // Ensure loading stops
       }
       return;
     }
-
+    // console.log("AuthProvider: Setting up onAuthStateChanged listener with authInstance:", authInstance);
+    setAuthLoading(true);
     const unsubscribe = onAuthStateChanged(
       authInstance,
       async (currentUser) => {
+        // console.log("AuthProvider: onAuthStateChanged triggered. Current user:", currentUser?.uid || 'None');
         setUser(currentUser);
-        setAuthLoading(false);
-        setFirebaseError(null);
+        setFirebaseError(null); // Clear previous errors on auth state change
         if (currentUser) {
           if (db && typeof (db as any).collection === 'function') {
             const userRef = doc(db, "users", currentUser.uid);
@@ -72,90 +84,92 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 lastLogin: serverTimestamp(),
               };
               if (!userDoc.exists()) {
+                // console.log(`AuthProvider: User document for ${currentUser.uid} does not exist. Creating...`);
                 await setDoc(userRef, {
                   ...userData,
                   createdAt: serverTimestamp(),
                 });
               } else {
-                await updateDoc(userRef, userData);
+                // console.log(`AuthProvider: Updating lastLogin for user ${currentUser.uid}.`);
+                await updateDoc(userRef, { lastLogin: serverTimestamp() });
               }
             } catch (error) {
-              console.error("Error creating/updating user document in Firestore:", error);
+              console.error("AuthProvider: Error creating/updating user document in Firestore:", error);
               setFirebaseError(error as AuthError);
             }
           } else {
-            console.warn("Firestore (db) not available for user document creation.");
+            console.warn("AuthProvider: Firestore (db) not available for user document creation.");
+            setFirebaseError({ code: "auth/internal-error", message: "Firestore not available for user profile." } as AuthError);
           }
         }
+        setAuthLoading(false);
       },
       (error) => {
-        console.error("Auth state change error:", error);
+        console.error("AuthProvider: Auth state change error:", error);
         setFirebaseError(error as AuthError);
         setAuthLoading(false);
       }
     );
+    return () => {
+      // console.log("AuthProvider: Cleaning up onAuthStateChanged listener.");
+      unsubscribe();
+    };
+  }, [authInstance, firebaseError]); // Added firebaseError to deps, so if it's set early, we don't try to setup listener
 
-    return () => unsubscribe();
-  }, [authInstance]);
-
-  const signInUser = useCallback(
-    async (email: string, password: string):Promise<any> => {
-      if (!authInstance) {
-        const err = { code: "auth/no-auth-instance", message: "Firebase Auth not initialized for sign-in." } as AuthError;
-        console.error(err.message);
-        setFirebaseError(err);
-        throw err;
-      }
-      setFirebaseError(null);
-      setAuthLoading(true);
-      try {
-        const userCredential = await signInWithEmailAndPassword(authInstance, email, password);
-        setAuthLoading(false);
-        return userCredential;
-      } catch (error) {
-        setFirebaseError(error as AuthError);
-        setAuthLoading(false);
-        throw error;
-      }
-    },
-    [authInstance]
-  );
-
-  const signUpUser = useCallback(
-    async (email: string, password: string):Promise<any> => {
-      if (!authInstance) {
-        const err = { code: "auth/no-auth-instance", message: "Firebase Auth not initialized for sign-up." } as AuthError;
-        console.error(err.message);
-        setFirebaseError(err);
-        throw err;
-      }
-      setFirebaseError(null);
-      setAuthLoading(true);
-      try {
-        const userCredential = await createUserWithEmailAndPassword(authInstance, email, password);
-        // Firestore user doc creation will be handled by onAuthStateChanged
-        setAuthLoading(false);
-        return userCredential;
-      } catch (error) {
-        setFirebaseError(error as AuthError);
-        setAuthLoading(false);
-        throw error;
-      }
-    },
-    [authInstance]
-  );
-
-  const SsignOutUser = useCallback(async () => {
+  const performAuthOperation = async (operation: () => Promise<any>) => {
     if (!authInstance) {
-      console.error("Firebase Auth not initialized for sign-out.");
-      return;
+      const err = { code: "auth/no-auth-instance", message: "Firebase Auth not initialized." } as AuthError;
+      console.error(err.message);
+      setFirebaseError(err);
+      throw err;
     }
     setFirebaseError(null);
     setAuthLoading(true);
     try {
+      const result = await operation();
+      return result;
+    } catch (error) {
+      console.error("AuthProvider: Firebase auth operation error:", (error as AuthError).code, (error as AuthError).message);
+      setFirebaseError(error as AuthError);
+      throw error;
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const signInUser = useCallback(
+    (email: string, password: string):Promise<any> =>
+      performAuthOperation(() => signInWithEmailAndPassword(authInstance!, email, password)),
+    [authInstance]
+  );
+
+  const signUpUser = useCallback(
+    (email: string, password: string):Promise<any> =>
+      performAuthOperation(() => createUserWithEmailAndPassword(authInstance!, email, password)),
+    [authInstance]
+  );
+
+  const signInWithGoogle = useCallback(
+    ():Promise<any> => {
+        const provider = new GoogleAuthProvider();
+        return performAuthOperation(() => signInWithPopup(authInstance!, provider));
+    },
+    [authInstance]
+  );
+
+  const signOutUser = useCallback(async () => {
+    if (!authInstance) {
+      console.error("AuthProvider: Firebase Auth not initialized for sign-out.");
+      return;
+    }
+    setFirebaseError(null);
+    setAuthLoading(true); // Show loading during sign out
+    try {
+      // console.log("AuthProvider: Signing out user.");
       await signOut(authInstance);
+      // setUser(null) is handled by onAuthStateChanged
     } catch (error: any) {
-      console.error("Error during sign-out:", error);
+      console.error("AuthProvider: Error during sign-out:", error);
       setFirebaseError(error as AuthError);
     } finally {
         setAuthLoading(false);
@@ -167,9 +181,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authLoading,
     firebaseError,
     signInUser,
-    signUpUser, // Add to context value
-    signOutUser: SsignOutUser,
-  }), [user, authLoading, firebaseError, signInUser, signUpUser, SsignOutUser]);
+    signUpUser,
+    signInWithGoogle,
+    signOutUser,
+  }), [user, authLoading, firebaseError, signInUser, signUpUser, signInWithGoogle, signOutUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -181,3 +196,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    
