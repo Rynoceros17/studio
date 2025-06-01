@@ -1,40 +1,68 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# Local Environment Variables
+.env*.local
+!.env.example
+
+# Dependencies
 /node_modules
 /.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+.pnp.js
+.pnp.loader
 
-# testing
-/coverage
+# Next.js build output
+/.next
+/out
 
-# next.js
-/.next/
-/out/
+# IDE specific
+/.vscode
+*.code-workspace
 
-# production
-/build
-
-# misc
+# macOS
 .DS_Store
-*.pem
+*.AppleDouble
+.LSOverride
 
-# debug
+# Optional: logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# vercel
-.vercel
+# Optional: Gatsby files
+.cache/
+public
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Optional: Next.js specific files (if not using the default .next directory)
+# .next/
+# out/
 
-.genkit/*
+# Optional: Test results
+/coverage
+/.nyc_output
+
+# Optional: IDE files for WebStorm, etc.
+.idea/
+
+# Optional: dotenv environment variables file for production (if you use a different one)
+# .env.production
+
+# Optional: Turborepo
+.turbo
+
+# Optional: Drizzle ORM specific files
+# drizzle/
+# migrations/
+
+# Optional: SQLite database files
+# *.db
+# *.sqlite
+# *.sqlite3
+
+# Genkit state files
+/.genkit/log.json
+/.genkit/trace.json
+/.genkit/cache.json
