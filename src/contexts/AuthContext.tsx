@@ -36,35 +36,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authInstance, setAuthInstance] = useState<Auth | null>(null);
 
   useEffect(() => {
-    // This effect attempts to set the authInstance from the imported firebaseAuthFromLib
-    // This depends on src/lib/firebase/firebase.ts successfully initializing Firebase
     if (firebaseAuthFromLib && typeof firebaseAuthFromLib.onAuthStateChanged === 'function') {
+      // console.log("AuthProvider: Firebase Auth instance from firebase.ts is valid. Setting authInstance.");
       setAuthInstance(firebaseAuthFromLib);
     } else {
-      console.warn("AuthProvider: Firebase Auth instance from firebase.ts is not valid. AuthProvider cannot initialize auth services.");
+      console.warn("AuthProvider: Firebase Auth instance from firebase.ts is not valid. AuthProvider cannot initialize auth services. This might be due to missing Firebase config environment variables or an issue in firebase.ts.");
       setFirebaseError({ code: "auth/internal-error", message: "Firebase Auth not properly initialized from firebase.ts" } as AuthError);
-      setAuthLoading(false); // Stop loading if Firebase itself isn't set up
+      setAuthLoading(false);
     }
-  }, []); // Run once on mount
+  }, []);
 
   useEffect(() => {
     if (!authInstance) {
-      // If authInstance is still null after the first effect (and not because it's still loading),
-      // it implies a fundamental issue with Firebase setup (e.g., missing env vars).
-      // The first useEffect should have set firebaseError and setAuthLoading to false in this case.
-      // We ensure authLoading is false if there's no authInstance to listen to.
-      if (authLoading && !firebaseError) { // Only if authLoading is true and no explicit error set by previous effect
-         // This state indicates Firebase itself might not have initialized.
-         // Let previous effect handle setting firebaseError if firebaseAuthFromLib was bad.
-         // If firebaseAuthFromLib was good but authInstance didn't set for some other reason,
-         // we ensure loading stops.
+      // console.log("AuthProvider: authInstance is null, onAuthStateChanged listener not set up.");
+      if (authLoading && !firebaseError) { // Only if still loading and no explicit error from previous effect
+        // console.log("AuthProvider: authInstance is null and no firebaseError, setting authLoading to false.");
         setAuthLoading(false);
       }
       return;
     }
 
     // console.log("AuthProvider: Setting up onAuthStateChanged listener with authInstance:", authInstance);
-    // Ensure authLoading is true before starting listener, if not already set by previous effect.
     if (!authLoading) setAuthLoading(true);
 
     const unsubscribe = onAuthStateChanged(
@@ -72,9 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (currentUser) => {
         // console.log("AuthProvider: onAuthStateChanged triggered. Current user:", currentUser?.uid || 'None');
         setUser(currentUser);
-        setFirebaseError(null);
+        setFirebaseError(null); // Clear previous auth errors on successful state change
         if (currentUser) {
-          if (db && typeof (db as any).collection === 'function') { // Check if db is a valid Firestore instance
+          if (db && typeof (db as any).collection === 'function') {
             const userRef = doc(db, "users", currentUser.uid);
             try {
               const userDoc = await getDoc(userRef);
@@ -97,18 +89,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             } catch (error) {
               console.error("AuthProvider: Error creating/updating user document in Firestore:", error);
-              setFirebaseError(error as AuthError);
+              setFirebaseError(error as AuthError); // This could be a Firestore error, not strictly AuthError
             }
           } else {
-            console.warn("AuthProvider: Firestore (db) not available or not a valid Firestore instance for user document creation.");
-            setFirebaseError({ code: "auth/internal-error", message: "Firestore not available for user profile." } as AuthError);
+            console.warn("AuthProvider: Firestore (db) not available for user document creation.");
+            // setFirebaseError({ code: "auth/internal-error", message: "Firestore not available for user profile." } as AuthError);
           }
         }
+        // console.log("AuthProvider: onAuthStateChanged finished, setting authLoading to false.");
         setAuthLoading(false);
       },
       (error) => {
         console.error("AuthProvider: Auth state change error:", error);
         setFirebaseError(error as AuthError);
+        // console.log("AuthProvider: Auth state change error, setting authLoading to false.");
         setAuthLoading(false);
       }
     );
@@ -117,39 +111,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // console.log("AuthProvider: Cleaning up onAuthStateChanged listener.");
       unsubscribe();
     };
-  }, [authInstance, authLoading, firebaseError]); // Added authLoading and firebaseError
+  }, [authInstance]); // Removed authLoading and firebaseError from deps to avoid loops based on their changes
 
   const performAuthOperation = async (operation: () => Promise<any>) => {
     if (!authInstance) {
       const err = { code: "auth/no-auth-instance", message: "Firebase Auth not initialized." } as AuthError;
-      console.error(err.message);
+      console.error("performAuthOperation: " + err.message);
       setFirebaseError(err);
-      setAuthLoading(false); // Ensure loading stops
+      setAuthLoading(false);
       throw err;
     }
     setFirebaseError(null);
     setAuthLoading(true);
     try {
       const result = await operation();
-      // setAuthLoading(false); // Handled by onAuthStateChanged or finally block
+      // On success, onAuthStateChanged will typically handle setting authLoading to false.
       return result;
     } catch (error) {
       console.error("AuthProvider: Firebase auth operation error:", (error as AuthError).code, (error as AuthError).message);
       setFirebaseError(error as AuthError);
-      // setAuthLoading(false); // Handled by onAuthStateChanged or finally block
+      setAuthLoading(false); // Crucial: ensure loading is stopped on error
       throw error;
-    } finally {
-      // onAuthStateChanged will set authLoading to false after operations like signIn/signUp
-      // For signOut, we set it manually.
-      // If the operation doesn't trigger onAuthStateChanged (e.g. some profile updates),
-      // ensure loading stops. For signIn/signUp/signOut, onAuthStateChanged is the primary mechanism.
     }
   };
 
   const signInUser = useCallback(
     (email: string, password: string): Promise<any> =>
       performAuthOperation(() => signInWithEmailAndPassword(authInstance!, email, password)),
-    [authInstance]
+    [authInstance] // performAuthOperation will be recreated if authInstance changes.
   );
 
   const signUpUser = useCallback(
@@ -160,7 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = useCallback((): Promise<any> => {
     if (!authInstance) {
-      return Promise.reject({ code: "auth/no-auth-instance", message: "Firebase Auth not initialized." });
+      const err = { code: "auth/no-auth-instance", message: "Firebase Auth not initialized." } as AuthError;
+      setFirebaseError(err);
+      setAuthLoading(false);
+      return Promise.reject(err);
     }
     const provider = new GoogleAuthProvider();
     return performAuthOperation(() => signInWithPopup(authInstance!, provider));
@@ -169,11 +161,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOutUser = useCallback(async () => {
     if (!authInstance) {
       console.error("AuthProvider: Firebase Auth not initialized for sign-out.");
-      setAuthLoading(false);
+      setAuthLoading(false); // Ensure loading stops if somehow called without authInstance
       return;
     }
     setFirebaseError(null);
-    setAuthLoading(true);
+    setAuthLoading(true); // Set loading before sign out
     try {
       // console.log("AuthProvider: Signing out user.");
       await signOut(authInstance);
@@ -181,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error("AuthProvider: Error during sign-out:", error);
       setFirebaseError(error as AuthError);
-      setAuthLoading(false); // Ensure loading stops on direct error
+      setAuthLoading(false); // Ensure loading stops on direct error if onAuthStateChanged doesn't cover it quickly
     }
   }, [authInstance]);
 
