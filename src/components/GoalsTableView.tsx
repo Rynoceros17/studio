@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useRef, useLayoutEffect } from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react'; // Added useState
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, PlusCircle, CornerDownRight, X } from 'lucide-react';
+import { Plus, Trash2, PlusCircle, CornerDownRight, X, ChevronDown, ChevronUp } from 'lucide-react'; // Added ChevronDown, ChevronUp
 import type { Goal, Subtask } from '@/lib/types';
 import { cn, truncateText, calculateGoalProgress } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +15,6 @@ import { format, parseISO } from 'date-fns';
 
 interface GoalsTableViewProps {
   goals: Goal[];
-  // expandedSubtasks prop is no longer used for rendering logic in table view
-  // toggleSubtaskExpansion prop is no longer used for rendering logic in table view
   newSubtaskInputs: Record<string, string>;
   handleSubtaskInputChange: (parentId: string, value: string) => void;
   handleKeyPressSubtask: (event: React.KeyboardEvent<HTMLInputElement>, goalId: string, parentItemId?: string) => void;
@@ -29,13 +27,12 @@ interface GoalsTableViewProps {
   deleteGoal: (goalId: string) => void;
 }
 
-// Component for the deepest level tasks (Grandchildren)
 const GrandchildTaskItem: React.FC<{
   task: Subtask;
   goalId: string;
   parentSubtaskId: string;
   props: GoalsTableViewProps;
-  depth: number; // Kept for potential future styling, though not used for expansion
+  depth: number;
 }> = ({ task, goalId, parentSubtaskId, props, depth }) => {
   const {
     toggleSubtaskCompletion, handleCreateTaskFromSubtask, deleteSubtaskFromGoal,
@@ -50,7 +47,6 @@ const GrandchildTaskItem: React.FC<{
       <div className="flex items-center">
         <div className="flex items-center space-x-1.5 min-w-0 flex-grow pl-2">
           <span className="w-6 inline-block shrink-0">
-            {/* No chevron, always expanded if children exist */}
           </span>
           <Checkbox
             id={`gc-${task.id}`}
@@ -105,12 +101,11 @@ const GrandchildTaskItem: React.FC<{
   );
 };
 
-// Component for Child Subtasks (Middle Column)
 const ChildRow: React.FC<{
   subtask: Subtask;
   goalId: string;
   props: GoalsTableViewProps;
-  depth: number; // Kept for potential future styling
+  depth: number;
 }> = ({ subtask, goalId, props, depth }) => {
   const {
     newSubtaskInputs, handleSubtaskInputChange,
@@ -140,7 +135,6 @@ const ChildRow: React.FC<{
         <div className="flex-grow">
           <div className="flex items-center space-x-1.5 min-w-0 mb-1">
             <span className="w-7 inline-block shrink-0">
-                {/* No chevron, always expanded if children exist */}
             </span>
             <Checkbox
               id={`child-${subtask.id}`}
@@ -198,7 +192,6 @@ const ChildRow: React.FC<{
   );
 };
 
-// Component for Top-Level Goals (First Column)
 const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, props }) => {
   const {
     newSubtaskInputs, handleSubtaskInputChange,
@@ -206,20 +199,26 @@ const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, p
     setShowAddChildInputFor, deleteGoal
   } = props;
 
+  const [showAllSubGoals, setShowAllSubGoals] = useState(false);
   const parentCellRef = useRef<HTMLDivElement>(null);
   const childrenColumnRef = useRef<HTMLDivElement>(null);
+
+  const subTasksToDisplay = goal.subtasks && goal.subtasks.length > 3 && !showAllSubGoals
+    ? goal.subtasks.slice(0, 3)
+    : goal.subtasks || [];
 
   useLayoutEffect(() => {
     if (parentCellRef.current && childrenColumnRef.current) {
       const childrenHeight = childrenColumnRef.current.scrollHeight;
-      parentCellRef.current.style.minHeight = goal.subtasks && goal.subtasks.length > 0 ? `${childrenHeight}px` : 'auto';
+      parentCellRef.current.style.minHeight = subTasksToDisplay.length > 0 ? `${childrenHeight}px` : 'auto';
     } else if (parentCellRef.current) {
         parentCellRef.current.style.minHeight = 'auto';
     }
-  }, [goal.subtasks, goal.subtasks?.length, newSubtaskInputs, showAddChildInputFor]);
+  }, [subTasksToDisplay, newSubtaskInputs, showAddChildInputFor, showAllSubGoals]);
 
   const progress = calculateGoalProgress(goal);
   const hasChildren = goal.subtasks && goal.subtasks.length > 0;
+  const hasMoreThanThreeChildren = goal.subtasks && goal.subtasks.length > 3;
 
   return (
     <div className="flex border-b-2 border-primary/30 bg-secondary/10">
@@ -227,7 +226,6 @@ const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, p
         <div className="flex-grow">
           <div className="flex items-center space-x-1.5 min-w-0 mb-1.5">
             <span className="w-8 inline-block shrink-0">
-                 {/* No chevron, always expanded if children exist */}
             </span>
             <h3 className="text-base font-semibold text-primary truncate" title={goal.name}>
               {truncateText(goal.name, 30)}
@@ -271,9 +269,33 @@ const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, p
       </div>
       <div ref={childrenColumnRef} className="w-2/3 flex flex-col min-h-0">
         {hasChildren ? (
-          goal.subtasks.map(subtask => (
-            <ChildRow key={subtask.id} subtask={subtask} goalId={goal.id} props={props} depth={1}/>
-          ))
+          <>
+            {subTasksToDisplay.map(subtask => (
+              <ChildRow key={subtask.id} subtask={subtask} goalId={goal.id} props={props} depth={1}/>
+            ))}
+            {hasMoreThanThreeChildren && !showAllSubGoals && (
+              <div className="p-2 border-t border-border/50 text-center">
+                <Button
+                  variant="link"
+                  className="text-xs text-primary h-auto p-1"
+                  onClick={() => setShowAllSubGoals(true)}
+                >
+                  See all {goal.subtasks.length} sub-goals <ChevronDown className="ml-1 h-3 w-3" />
+                </Button>
+              </div>
+            )}
+            {hasMoreThanThreeChildren && showAllSubGoals && (
+              <div className="p-2 border-t border-border/50 text-center">
+                <Button
+                  variant="link"
+                  className="text-xs text-primary h-auto p-1"
+                  onClick={() => setShowAllSubGoals(false)}
+                >
+                  Show less <ChevronUp className="ml-1 h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </>
         ) : (
             <div className="p-4 text-center text-sm text-muted-foreground italic flex-grow flex items-center justify-center">No sub-goals or tasks for this goal.</div>
         )}
@@ -300,7 +322,6 @@ export const GoalsTableView: React.FC<GoalsTableViewProps> = (props) => {
   return (
     <Card className="shadow-md border overflow-hidden">
       <CardContent className="p-0">
-        {/* Header Row */}
         <div className="flex bg-muted/60 border-b-2 border-primary/40 font-semibold text-sm text-primary sticky top-0 z-10">
           <div className="w-1/3 p-3 border-r border-primary/30">Goal</div>
           <div className="w-2/3 flex">
@@ -308,7 +329,6 @@ export const GoalsTableView: React.FC<GoalsTableViewProps> = (props) => {
             <div className="w-1/2 p-3">Further Breakdown / Actions</div>
           </div>
         </div>
-        {/* Goal Rows */}
         <div className="flex flex-col">
           {goals.map(goal => (
             <GoalRow key={goal.id} goal={goal} props={props} />
@@ -318,5 +338,3 @@ export const GoalsTableView: React.FC<GoalsTableViewProps> = (props) => {
     </Card>
   );
 };
-
-    
