@@ -14,16 +14,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, PlusCircle, ArrowLeft, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon, ListTree, Rows } from 'lucide-react'; // Added ListTree, Rows
+import { Plus, Trash2, PlusCircle, ArrowLeft, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon, ListTree, Rows } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn, truncateText, calculateGoalProgress } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
 import { TaskForm } from '@/components/TaskForm';
-import { GoalsTableView } from '@/components/GoalsTableView'; // New Import
+import { GoalsTableView } from '@/components/GoalsTableView';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
+  DialogHeader as FormDialogHeader, // Aliased to avoid conflict
   DialogTitle as FormDialogTitle,
 } from "@/components/ui/dialog";
 import { format, parseISO, isValid } from 'date-fns';
@@ -140,11 +140,11 @@ function SortableListItem({
         textColorClass = 'text-muted-foreground';
         expandChevronColorClass = 'text-muted-foreground';
     } else if (depth === 0) {
-        bgClass = 'bg-secondary/70'; 
-        textColorClass = 'text-card-foreground'; 
+        bgClass = 'bg-secondary/70';
+        textColorClass = 'text-card-foreground';
     } else if (depth === 1) {
-        bgClass = 'bg-muted/50';    
-        textColorClass = 'text-card-foreground'; 
+        bgClass = 'bg-muted/50';
+        textColorClass = 'text-card-foreground';
     }
     // Deeper levels (depth >= 2) use default bg-card
 
@@ -175,7 +175,7 @@ function SortableListItem({
                             {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
                     ) : (
-                        <div className="w-6 shrink-0"></div> 
+                        <div className="w-6 shrink-0"></div>
                     )}
                     <Checkbox
                         id={`subtask-${subtask.id}`}
@@ -242,7 +242,7 @@ function SortableListItem({
                 </div>
             </div>
 
-            <div className="my-1"> 
+            <div className="my-1">
                 {showAddChildInputFor === subtask.id && (
                     <div className="flex space-x-2 items-center p-2 border rounded-md bg-card shadow">
                         <Input
@@ -264,7 +264,7 @@ function SortableListItem({
             </div>
 
             {subtask.subtasks && subtask.subtasks.length > 0 && expandedSubtasks[subtask.id] && (
-                <div className="pl-0"> 
+                <div className="pl-0">
                    {renderSubtasksFunction(subtask.subtasks, goalId, depth + 1)}
                 </div>
             )}
@@ -298,8 +298,8 @@ export default function GoalsPage() {
     const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
     const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null);
-    const [viewMode, setViewMode] = useState<'accordion' | 'table'>('table'); // Default to table view
-  
+    const [viewMode, setViewMode] = useState<'table' | 'accordion'>('table');
+
 
     useEffect(() => {
         setIsClient(true);
@@ -308,7 +308,7 @@ export default function GoalsPage() {
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5, 
+                distance: 5,
             },
         }),
         useSensor(KeyboardSensor, {
@@ -349,35 +349,35 @@ export default function GoalsPage() {
         const overId = over.id as string;
 
         setGoals((currentGoals) => {
-            const newGoals = JSON.parse(JSON.stringify(currentGoals)) as Goal[]; 
+            const newGoals = JSON.parse(JSON.stringify(currentGoals)) as Goal[];
             const reorderInList = (list: Subtask[]): boolean => {
                 const activeItemIndex = list.findIndex(item => item.id === activeId);
                 const overItemIndex = list.findIndex(item => item.id === overId);
 
                 if (activeItemIndex !== -1 && overItemIndex !== -1) {
-                    
+
                     const reorderedList = arrayMove(list, activeItemIndex, overItemIndex);
-                    list.length = 0; 
-                    list.push(...reorderedList); 
-                    return true; 
+                    list.length = 0;
+                    list.push(...reorderedList);
+                    return true;
                 }
-                
+
                 for (const item of list) {
                     if (item.subtasks && item.subtasks.length > 0) {
                         if (reorderInList(item.subtasks)) {
-                            return true; 
+                            return true;
                         }
                     }
                 }
-                return false; 
+                return false;
             };
-            
+
             for (const goal of newGoals) {
                 if (reorderInList(goal.subtasks)) {
-                    break; 
+                    break;
                 }
             }
-            return newGoals; 
+            return newGoals;
         });
     };
 
@@ -418,11 +418,11 @@ export default function GoalsPage() {
         if (!newGoalName.trim()) {
             toast({ title: "Missing Goal Name", description: "Please provide a name for the goal.", variant: "destructive" }); return;
         }
-        const newGoal: Goal = { 
-            id: crypto.randomUUID(), 
-            name: newGoalName.trim(), 
+        const newGoal: Goal = {
+            id: crypto.randomUUID(),
+            name: newGoalName.trim(),
             dueDate: newGoalDueDate ? format(newGoalDueDate, 'yyyy-MM-dd') : undefined,
-            subtasks: [] 
+            subtasks: []
         };
         setGoals(prev => [...prev, newGoal]);
         setNewGoalName('');
@@ -441,7 +441,7 @@ export default function GoalsPage() {
     };
 
     const addSubtaskToGoalOrSubtask = (goalId: string, parentSubtaskId?: string) => { // Renamed
-        const parentId = parentSubtaskId || goalId; 
+        const parentId = parentSubtaskId || goalId;
         const subtaskName = newSubtaskInputs[parentId]?.trim();
 
         if (!subtaskName) {
@@ -462,11 +462,11 @@ export default function GoalsPage() {
             return goal;
         }));
 
-        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' })); 
+        setNewSubtaskInputs(prev => ({ ...prev, [parentId]: '' }));
         toast({ title: "Subtask Added", description: `Subtask "${newSubtask.name}" added.` });
-        setShowAddChildInputFor(null); 
+        setShowAddChildInputFor(null);
         if (parentSubtaskId) {
-            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true })); 
+            setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true }));
         }
     };
 
@@ -477,7 +477,7 @@ export default function GoalsPage() {
             if (st.id === subtaskIdToDelete) {
                 foundAndDeleted = true;
                 deletedName = st.name;
-                return false; 
+                return false;
             }
             return true;
         });
@@ -486,14 +486,14 @@ export default function GoalsPage() {
             return { updatedSubtasks: filteredSubtasks, foundAndDeleted: true, deletedSubtaskName: deletedName };
         }
 
-        
+
         const result = { updatedSubtasks: [] as Subtask[], foundAndDeleted: false, deletedSubtaskName: undefined as string | undefined };
         result.updatedSubtasks = subtasks.map(st => {
             if (st.subtasks) {
                 const childResult = deleteSubtaskRecursive(st.subtasks, subtaskIdToDelete);
                 if (childResult.foundAndDeleted) {
-                    foundAndDeleted = true; 
-                    deletedName = childResult.deletedSubtaskName; 
+                    foundAndDeleted = true;
+                    deletedName = childResult.deletedSubtaskName;
                     return { ...st, subtasks: childResult.updatedSubtasks };
                 }
             }
@@ -543,11 +543,11 @@ export default function GoalsPage() {
         setIsTaskFormOpen(true);
     };
 
-    
+
     const renderAccordionSubtasks = (subtasksToRender: Subtask[], goalId: string, currentDepth: number): JSX.Element => { // Renamed for clarity
         return (
           <SortableContext items={subtasksToRender.map(st => st.id)} strategy={verticalListSortingStrategy}>
-            <div className={cn(currentDepth > 0 && "pl-0")}> 
+            <div className={cn(currentDepth > 0 && "pl-0")}>
               {subtasksToRender.map(subtask => (
                 <SortableListItem
                   key={subtask.id}
@@ -565,7 +565,7 @@ export default function GoalsPage() {
                   setShowAddChildInputFor={setShowAddChildInputFor}
                   handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
                   deleteSubtask={deleteSubtaskFromGoal}
-                  renderSubtasksFunction={renderAccordionSubtasks} 
+                  renderSubtasksFunction={renderAccordionSubtasks}
                 />
               ))}
             </div>
@@ -576,159 +576,155 @@ export default function GoalsPage() {
 
     return (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
-            <div className="container mx-auto p-4 md:p-6 lg:p-8">
-                <Card className="shadow-lg overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-                        <div className="flex items-center gap-4">
-                            <Link href="/" passHref legacyBehavior>
-                                <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
-                                    <ArrowLeft className="h-5 w-5" />
-                                    <span className="sr-only">Back to Calendar</span>
+            <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+                {/* Header Section */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b">
+                    <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                        <Link href="/" passHref legacyBehavior>
+                            <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
+                                <ArrowLeft className="h-5 w-5" />
+                                <span className="sr-only">Back to Calendar</span>
+                            </Button>
+                        </Link>
+                        <div>
+                            <h1 className="text-2xl font-semibold text-primary">Manage Your Goals</h1>
+                            <p className="text-sm text-muted-foreground">
+                                {viewMode === 'accordion'
+                                    ? "Create goals, break them into subtasks, track progress, and drag to reorder."
+                                    : "View goals and subtasks in a hierarchical table. Use the form to add new goals."}
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        variant="outline"
+                        onClick={() => setViewMode(viewMode === 'accordion' ? 'table' : 'accordion')}
+                        className="sm:ml-auto"
+                        aria-label={`Switch to ${viewMode === 'accordion' ? 'Table' : 'Accordion'} View`}
+                    >
+                        {viewMode === 'accordion' ? <ListTree className="mr-2 h-4 w-4" /> : <Rows className="mr-2 h-4 w-4" />}
+                        Switch to {viewMode === 'accordion' ? 'Table' : 'Accordion'} View
+                    </Button>
+                </div>
+
+                {/* "Add New Goal" form is now always visible at the top */}
+                <div className="p-4 border rounded-md bg-secondary/30 shadow-sm space-y-3">
+                    <div>
+                        <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
+                        <div className="flex space-x-2">
+                            <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
+                        </div>
+                    </div>
+                    <div>
+                        <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
+                        <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal h-10",
+                                        !newGoalDueDate && "text-muted-foreground"
+                                    )}
+                                    onClick={() => setIsGoalDatePickerOpen(true)}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {newGoalDueDate ? format(newGoalDueDate, "PPP") : <span>Pick a due date</span>}
                                 </Button>
-                            </Link>
-                            <div>
-                                <CardTitle className="text-2xl text-primary">Manage Your Goals</CardTitle>
-                                <CardDescription className="text-sm text-muted-foreground">
-                                    {viewMode === 'accordion' 
-                                        ? "Create goals, break them into subtasks, track progress, and drag to reorder."
-                                        : "View goals and subtasks in a hierarchical table. Use the form to add new goals."}
-                                </CardDescription>
-                            </div>
-                        </div>
-                        <Button
-                            variant="outline"
-                            onClick={() => setViewMode(viewMode === 'accordion' ? 'table' : 'accordion')}
-                            className="ml-auto"
-                            aria-label={`Switch to ${viewMode === 'accordion' ? 'Table' : 'Accordion'} View`}
-                        >
-                            {viewMode === 'accordion' ? <ListTree className="mr-2 h-4 w-4" /> : <Rows className="mr-2 h-4 w-4" />}
-                            Switch to {viewMode === 'accordion' ? 'Table' : 'Accordion'} View
-                        </Button>
-                    </CardHeader>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={newGoalDueDate}
+                                    onSelect={(date) => { setNewGoalDueDate(date); setIsGoalDatePickerOpen(false); }}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <Button onClick={addGoal} size="default" className="h-10 w-full"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
+                </div>
 
-                    <CardContent className="p-6 space-y-6">
-                        {/* "Add New Goal" form is now always visible at the top */}
-                        <div className="p-4 border rounded-md bg-secondary/30 shadow-sm space-y-3">
-                            <div>
-                                <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
-                                <div className="flex space-x-2">
-                                    <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
-                                </div>
-                            </div>
-                            <div>
-                                <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
-                                <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-full justify-start text-left font-normal h-10",
-                                                !newGoalDueDate && "text-muted-foreground"
-                                            )}
-                                            onClick={() => setIsGoalDatePickerOpen(true)}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {newGoalDueDate ? format(newGoalDueDate, "PPP") : <span>Pick a due date</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={newGoalDueDate}
-                                            onSelect={(date) => { setNewGoalDueDate(date); setIsGoalDatePickerOpen(false); }}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <Button onClick={addGoal} size="default" className="h-10 w-full"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
-                        </div>
-
-                        {!isClient ? (
-                             <p className="text-base text-muted-foreground text-center py-8">Loading goals...</p>
-                        ) : goals.length === 0 ? (
-                            <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one using the form above to get started!</p>
-                        ) : viewMode === 'accordion' ? (
-                            <ScrollArea className="max-h-[60vh]"> 
-                                 <div className="space-y-4 pr-2">
-                                    <Accordion type="multiple" className="w-full">
-                                        {goals.map((goal) => {
-                                            const progress = calculateGoalProgress(goal);
-                                            return (
-                                                <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4">
-                                                    <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
-                                                        <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/30 rounded-t-md transition-colors">
-                                                            <AccordionTrigger className="flex-grow p-4 text-base font-medium text-left text-primary hover:no-underline">
-                                                                <div className="flex flex-col min-w-0">
-                                                                    <div className="flex items-center space-x-3">
-                                                                        <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 40)}</span>
-                                                                        <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0 h-6 px-2.5">{progress}%</Badge>
-                                                                    </div>
-                                                                    {goal.dueDate && isValid(parseISO(goal.dueDate)) && (
-                                                                        <span className="text-xs text-muted-foreground mt-1">
-                                                                            Due: {format(parseISO(goal.dueDate), 'MMM d, yyyy')}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </AccordionTrigger>
-                                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 mr-3 shrink-0" onClick={(e) => { e.stopPropagation(); deleteGoal(goal.id); }} aria-label={`Delete goal ${goal.name}`}>
-                                                                <Trash2 className="h-4 w-4" />
+                {/* Goals Display Area */}
+                {!isClient ? (
+                     <p className="text-base text-muted-foreground text-center py-8">Loading goals...</p>
+                ) : goals.length === 0 ? (
+                    <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one using the form above to get started!</p>
+                ) : viewMode === 'accordion' ? (
+                    <ScrollArea className="max-h-[calc(100vh-350px)]"> {/* Adjusted height for accordion view */}
+                         <div className="space-y-4 pr-2">
+                            <Accordion type="multiple" className="w-full">
+                                {goals.map((goal) => {
+                                    const progress = calculateGoalProgress(goal);
+                                    return (
+                                        <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4">
+                                            <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
+                                                <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/30 rounded-t-md transition-colors">
+                                                    <AccordionTrigger className="flex-grow p-4 text-base font-medium text-left text-primary hover:no-underline">
+                                                        <div className="flex flex-col min-w-0">
+                                                            <div className="flex items-center space-x-3">
+                                                                <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 40)}</span>
+                                                                <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0 h-6 px-2.5">{progress}%</Badge>
+                                                            </div>
+                                                            {goal.dueDate && isValid(parseISO(goal.dueDate)) && (
+                                                                <span className="text-xs text-muted-foreground mt-1">
+                                                                    Due: {format(parseISO(goal.dueDate), 'MMM d, yyyy')}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 mr-3 shrink-0" onClick={(e) => { e.stopPropagation(); deleteGoal(goal.id); }} aria-label={`Delete goal ${goal.name}`}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </CardHeader>
+                                                <AccordionContent>
+                                                    <CardContent className="p-4 space-y-4 border-t bg-muted/20">
+                                                        <Progress value={progress} className="h-2.5" />
+                                                        <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                                                            {goal.subtasks.length === 0 ? (
+                                                                <p className="text-sm text-muted-foreground italic text-center py-2">No subtasks yet. Add one below.</p>
+                                                            ) : (
+                                                                renderAccordionSubtasks(goal.subtasks, goal.id, 0)
+                                                            )}
+                                                        </div>
+                                                        <div className="flex space-x-2 pt-3 border-t mt-3">
+                                                            <Input
+                                                                value={newSubtaskInputs[goal.id] || ''}
+                                                                onChange={(e) => handleSubtaskInputChange(goal.id, e.target.value)}
+                                                                placeholder="Add a top-level subtask..."
+                                                                className="h-9 text-sm flex-grow bg-card"
+                                                                onKeyPress={(e) => handleKeyPressSubtask(e, goal.id)}
+                                                            />
+                                                            <Button onClick={() => addSubtaskToGoalOrSubtask(goal.id)} size="sm" className="h-9 px-3">
+                                                                <Plus className="h-4 w-4" />
                                                             </Button>
-                                                        </CardHeader>
-                                                        <AccordionContent>
-                                                            <CardContent className="p-4 space-y-4 border-t bg-muted/20">
-                                                                <Progress value={progress} className="h-2.5" />
-                                                                <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-                                                                    {goal.subtasks.length === 0 ? (
-                                                                        <p className="text-sm text-muted-foreground italic text-center py-2">No subtasks yet. Add one below.</p>
-                                                                    ) : (
-                                                                        renderAccordionSubtasks(goal.subtasks, goal.id, 0)
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex space-x-2 pt-3 border-t mt-3">
-                                                                    <Input
-                                                                        value={newSubtaskInputs[goal.id] || ''}
-                                                                        onChange={(e) => handleSubtaskInputChange(goal.id, e.target.value)}
-                                                                        placeholder="Add a top-level subtask..."
-                                                                        className="h-9 text-sm flex-grow bg-card"
-                                                                        onKeyPress={(e) => handleKeyPressSubtask(e, goal.id)}
-                                                                    />
-                                                                    <Button onClick={() => addSubtaskToGoalOrSubtask(goal.id)} size="sm" className="h-9 px-3">
-                                                                        <Plus className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            </CardContent>
-                                                        </AccordionContent>
-                                                    </Card>
-                                                </AccordionItem>
-                                            );
-                                        })}
-                                    </Accordion>
-                                 </div>
-                            </ScrollArea>
-                        ) : ( // Table View
-                            <GoalsTableView
-                                goals={goals}
-                                newSubtaskInputs={newSubtaskInputs}
-                                handleSubtaskInputChange={handleSubtaskInputChange}
-                                handleKeyPressSubtask={handleKeyPressSubtask}
-                                addSubtaskToGoalOrSubtask={addSubtaskToGoalOrSubtask}
-                                toggleSubtaskCompletion={toggleSubtaskCompletion}
-                                showAddChildInputFor={showAddChildInputFor}
-                                setShowAddChildInputFor={setShowAddChildInputFor}
-                                handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
-                                deleteSubtaskFromGoal={deleteSubtaskFromGoal}
-                                deleteGoal={deleteGoal}
-                            />
-                        )}
-                    </CardContent>
-                </Card>
+                                                        </div>
+                                                    </CardContent>
+                                                </AccordionContent>
+                                            </Card>
+                                        </AccordionItem>
+                                    );
+                                })}
+                            </Accordion>
+                         </div>
+                    </ScrollArea>
+                ) : ( // Table View
+                    <GoalsTableView
+                        goals={goals}
+                        newSubtaskInputs={newSubtaskInputs}
+                        handleSubtaskInputChange={handleSubtaskInputChange}
+                        handleKeyPressSubtask={handleKeyPressSubtask}
+                        addSubtaskToGoalOrSubtask={addSubtaskToGoalOrSubtask}
+                        toggleSubtaskCompletion={toggleSubtaskCompletion}
+                        showAddChildInputFor={showAddChildInputFor}
+                        setShowAddChildInputFor={setShowAddChildInputFor}
+                        handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
+                        deleteSubtaskFromGoal={deleteSubtaskFromGoal}
+                        deleteGoal={deleteGoal}
+                    />
+                )}
 
                 <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader><FormDialogTitle className="text-primary">{prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}</FormDialogTitle></DialogHeader>
+                  <FormDialogHeader><FormDialogTitle className="text-primary">{prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}</FormDialogTitle></FormDialogHeader>
                      <TaskForm addTask={addTask} onTaskAdded={() => { setIsTaskFormOpen(false); setPrefilledTaskData(null); }} initialData={prefilledTaskData}/>
-                  </DialogContent>
                 </Dialog>
             </div>
             <DragOverlay>
@@ -741,4 +737,3 @@ export default function GoalsPage() {
 }
 
 
-    
