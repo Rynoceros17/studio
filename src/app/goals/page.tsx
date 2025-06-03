@@ -4,7 +4,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import useLocalStorage from '@/hooks/useLocalStorage'; // Changed from useSyncedStorage
+import useLocalStorage from '@/hooks/useLocalStorage';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,11 +14,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, PlusCircle, ArrowLeft, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, PlusCircle, ArrowLeft, CornerDownRight, ChevronDown, ChevronRight, X, GripVertical, Calendar as CalendarIcon, ListTree, Rows } from 'lucide-react'; // Added ListTree, Rows
 import { useToast } from "@/hooks/use-toast";
 import { cn, truncateText, calculateGoalProgress } from '@/lib/utils';
 import type { Subtask, Goal, Task } from '@/lib/types';
 import { TaskForm } from '@/components/TaskForm';
+import { GoalsTableView } from '@/components/GoalsTableView'; // New Import
 import {
   Dialog,
   DialogContent,
@@ -291,13 +292,13 @@ export default function GoalsPage() {
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<Task> | null>(null);
-    const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []); // From useLocalStorage
+    const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
 
     const [expandedSubtasks, setExpandedSubtasks] = useState<Record<string, boolean>>({});
     const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
     const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null);
-    
+    const [viewMode, setViewMode] = useState<'accordion' | 'table'>('accordion');
   
 
     useEffect(() => {
@@ -394,7 +395,7 @@ export default function GoalsPage() {
     };
 
     const addTask = (newTaskData: Omit<Task, 'id'>) => {
-       const newTask: Task = { ...newTaskData, id: crypto.randomUUID(), details: newTaskData.details ?? '', dueDate: newTaskData.dueDate, recurring: newTaskData.recurring ?? false, highPriority: newTaskData.highPriority ?? false, exceptions: [] /* color removed */ };
+       const newTask: Task = { ...newTaskData, id: crypto.randomUUID(), details: newTaskData.details ?? '', dueDate: newTaskData.dueDate, recurring: newTaskData.recurring ?? false, highPriority: newTaskData.highPriority ?? false, exceptions: [] };
        setTasks(prevTasks => {
            const updatedTasks = [...prevTasks, newTask];
            updatedTasks.sort((a, b) => {
@@ -439,7 +440,7 @@ export default function GoalsPage() {
         setNewSubtaskInputs(prev => ({ ...prev, [parentId]: value }));
     };
 
-    const addSubtask = (goalId: string, parentSubtaskId?: string) => {
+    const addSubtaskToGoalOrSubtask = (goalId: string, parentSubtaskId?: string) => { // Renamed
         const parentId = parentSubtaskId || goalId; 
         const subtaskName = newSubtaskInputs[parentId]?.trim();
 
@@ -451,11 +452,9 @@ export default function GoalsPage() {
 
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
-                if (!parentSubtaskId) {
-                    
+                if (!parentSubtaskId) { // Adding to a top-level goal
                     return { ...goal, subtasks: [...goal.subtasks, newSubtask] };
-                } else {
-                    
+                } else { // Adding to an existing subtask
                     const updatedSubtasks = addSubtaskToParentRecursive(goal.subtasks, parentSubtaskId, newSubtask);
                     return { ...goal, subtasks: updatedSubtasks };
                 }
@@ -468,6 +467,10 @@ export default function GoalsPage() {
         setShowAddChildInputFor(null); 
         if (parentSubtaskId) {
             setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true })); 
+        } else { // If adding to a goal, expand the goal in table view if applicable (not handled by this state directly)
+            // For accordion view, goals are items, so their expansion is different.
+            // For table view, a goal itself might need an expanded state if it directly shows subtasks.
+            // This part might need adjustment depending on how table view handles goal expansion.
         }
     };
 
@@ -505,7 +508,7 @@ export default function GoalsPage() {
         return result;
     };
 
-    const deleteSubtask = (goalId: string, subtaskIdToDelete: string) => {
+    const deleteSubtaskFromGoal = (goalId: string, subtaskIdToDelete: string) => { // Renamed
         setGoals(prevGoals => prevGoals.map(goal => {
             if (goal.id === goalId) {
                 const { updatedSubtasks, foundAndDeleted, deletedSubtaskName } = deleteSubtaskRecursive(goal.subtasks, subtaskIdToDelete);
@@ -535,7 +538,7 @@ export default function GoalsPage() {
     const handleKeyPressGoal = (event: React.KeyboardEvent<HTMLInputElement>) => { if (event.key === 'Enter') addGoal(); };
     const handleKeyPressSubtask = (event: React.KeyboardEvent<HTMLInputElement>, goalId: string, parentSubtaskId?: string) => {
         if (event.key === 'Enter') {
-            addSubtask(goalId, parentSubtaskId);
+            addSubtaskToGoalOrSubtask(goalId, parentSubtaskId);
         }
     };
 
@@ -545,7 +548,7 @@ export default function GoalsPage() {
     };
 
     
-    const renderSubtasks = (subtasksToRender: Subtask[], goalId: string, currentDepth: number): JSX.Element => {
+    const renderAccordionSubtasks = (subtasksToRender: Subtask[], goalId: string, currentDepth: number): JSX.Element => { // Renamed for clarity
         return (
           <SortableContext items={subtasksToRender.map(st => st.id)} strategy={verticalListSortingStrategy}>
             <div className={cn(currentDepth > 0 && "pl-0")}> 
@@ -560,13 +563,13 @@ export default function GoalsPage() {
                   newSubtaskInputs={newSubtaskInputs}
                   handleSubtaskInputChange={handleSubtaskInputChange}
                   handleKeyPressSubtask={handleKeyPressSubtask}
-                  addSubtask={addSubtask}
+                  addSubtask={addSubtaskToGoalOrSubtask}
                   toggleSubtaskCompletion={toggleSubtaskCompletion}
                   showAddChildInputFor={showAddChildInputFor}
                   setShowAddChildInputFor={setShowAddChildInputFor}
                   handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
-                  deleteSubtask={deleteSubtask}
-                  renderSubtasksFunction={renderSubtasks} 
+                  deleteSubtask={deleteSubtaskFromGoal}
+                  renderSubtasksFunction={renderAccordionSubtasks} 
                 />
               ))}
             </div>
@@ -590,54 +593,67 @@ export default function GoalsPage() {
                             <div>
                                 <CardTitle className="text-2xl text-primary">Manage Your Goals</CardTitle>
                                 <CardDescription className="text-sm text-muted-foreground">
-                                    Create goals, break them into subtasks, and track your progress. Drag to reorder.
+                                    {viewMode === 'accordion' 
+                                        ? "Create goals, break them into subtasks, track progress, and drag to reorder."
+                                        : "View goals and subtasks in a hierarchical table."}
                                 </CardDescription>
                             </div>
                         </div>
+                        <Button
+                            variant="outline"
+                            onClick={() => setViewMode(viewMode === 'accordion' ? 'table' : 'accordion')}
+                            className="ml-auto"
+                            aria-label={`Switch to ${viewMode === 'accordion' ? 'Table' : 'Accordion'} View`}
+                        >
+                            {viewMode === 'accordion' ? <ListTree className="mr-2 h-4 w-4" /> : <Rows className="mr-2 h-4 w-4" />}
+                            Switch to {viewMode === 'accordion' ? 'Table' : 'Accordion'} View
+                        </Button>
                     </CardHeader>
 
                     <CardContent className="p-6 space-y-6">
-                        <div className="p-4 border rounded-md bg-secondary/30 shadow-sm space-y-3">
-                            <div>
-                                <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
-                                <div className="flex space-x-2">
-                                    <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
+                        {viewMode === 'accordion' && (
+                            <div className="p-4 border rounded-md bg-secondary/30 shadow-sm space-y-3">
+                                <div>
+                                    <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
+                                    <div className="flex space-x-2">
+                                        <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
+                                    </div>
                                 </div>
+                                <div>
+                                    <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
+                                    <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full justify-start text-left font-normal h-10",
+                                                    !newGoalDueDate && "text-muted-foreground"
+                                                )}
+                                                onClick={() => setIsGoalDatePickerOpen(true)}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {newGoalDueDate ? format(newGoalDueDate, "PPP") : <span>Pick a due date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={newGoalDueDate}
+                                                onSelect={(date) => { setNewGoalDueDate(date); setIsGoalDatePickerOpen(false); }}
+                                                initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <Button onClick={addGoal} size="default" className="h-10 w-full"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
                             </div>
-                            <div>
-                                <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
-                                <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-full justify-start text-left font-normal h-10",
-                                                !newGoalDueDate && "text-muted-foreground"
-                                            )}
-                                            onClick={() => setIsGoalDatePickerOpen(true)}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {newGoalDueDate ? format(newGoalDueDate, "PPP") : <span>Pick a due date</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={newGoalDueDate}
-                                            onSelect={(date) => { setNewGoalDueDate(date); setIsGoalDatePickerOpen(false); }}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <Button onClick={addGoal} size="default" className="h-10 w-full"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
-                        </div>
+                        )}
 
                         {!isClient ? (
                              <p className="text-base text-muted-foreground text-center py-8">Loading goals...</p>
                         ) : goals.length === 0 ? (
-                            <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one above to get started!</p>
-                        ) : (
+                            <p className="text-base text-muted-foreground text-center py-8">No goals yet. {viewMode === 'accordion' && 'Add one above to get started!'}</p>
+                        ) : viewMode === 'accordion' ? (
                             <ScrollArea className="max-h-[60vh]"> 
                                  <div className="space-y-4 pr-2">
                                     <Accordion type="multiple" className="w-full">
@@ -671,7 +687,7 @@ export default function GoalsPage() {
                                                                     {goal.subtasks.length === 0 ? (
                                                                         <p className="text-sm text-muted-foreground italic text-center py-2">No subtasks yet. Add one below.</p>
                                                                     ) : (
-                                                                        renderSubtasks(goal.subtasks, goal.id, 0)
+                                                                        renderAccordionSubtasks(goal.subtasks, goal.id, 0)
                                                                     )}
                                                                 </div>
                                                                 <div className="flex space-x-2 pt-3 border-t mt-3">
@@ -682,7 +698,7 @@ export default function GoalsPage() {
                                                                         className="h-9 text-sm flex-grow bg-card"
                                                                         onKeyPress={(e) => handleKeyPressSubtask(e, goal.id)}
                                                                     />
-                                                                    <Button onClick={() => addSubtask(goal.id)} size="sm" className="h-9 px-3">
+                                                                    <Button onClick={() => addSubtaskToGoalOrSubtask(goal.id)} size="sm" className="h-9 px-3">
                                                                         <Plus className="h-4 w-4" />
                                                                     </Button>
                                                                 </div>
@@ -695,6 +711,22 @@ export default function GoalsPage() {
                                     </Accordion>
                                  </div>
                             </ScrollArea>
+                        ) : ( // Table View
+                            <GoalsTableView
+                                goals={goals}
+                                expandedSubtasks={expandedSubtasks}
+                                toggleSubtaskExpansion={toggleSubtaskExpansion}
+                                newSubtaskInputs={newSubtaskInputs}
+                                handleSubtaskInputChange={handleSubtaskInputChange}
+                                handleKeyPressSubtask={handleKeyPressSubtask}
+                                addSubtaskToGoalOrSubtask={addSubtaskToGoalOrSubtask}
+                                toggleSubtaskCompletion={toggleSubtaskCompletion}
+                                showAddChildInputFor={showAddChildInputFor}
+                                setShowAddChildInputFor={setShowAddChildInputFor}
+                                handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
+                                deleteSubtaskFromGoal={deleteSubtaskFromGoal}
+                                deleteGoal={deleteGoal}
+                            />
                         )}
                     </CardContent>
                 </Card>
