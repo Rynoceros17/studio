@@ -298,7 +298,7 @@ export default function GoalsPage() {
     const [showAddChildInputFor, setShowAddChildInputFor] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
     const [activeDraggedItem, setActiveDraggedItem] = useState<Subtask | null>(null);
-    const [viewMode, setViewMode] = useState<'accordion' | 'table'>('accordion');
+    const [viewMode, setViewMode] = useState<'accordion' | 'table'>('table'); // Default to table view
   
 
     useEffect(() => {
@@ -467,10 +467,6 @@ export default function GoalsPage() {
         setShowAddChildInputFor(null); 
         if (parentSubtaskId) {
             setExpandedSubtasks(prev => ({ ...prev, [parentSubtaskId]: true })); 
-        } else { // If adding to a goal, expand the goal in table view if applicable (not handled by this state directly)
-            // For accordion view, goals are items, so their expansion is different.
-            // For table view, a goal itself might need an expanded state if it directly shows subtasks.
-            // This part might need adjustment depending on how table view handles goal expansion.
         }
     };
 
@@ -595,7 +591,7 @@ export default function GoalsPage() {
                                 <CardDescription className="text-sm text-muted-foreground">
                                     {viewMode === 'accordion' 
                                         ? "Create goals, break them into subtasks, track progress, and drag to reorder."
-                                        : "View goals and subtasks in a hierarchical table."}
+                                        : "View goals and subtasks in a hierarchical table. Use the form to add new goals."}
                                 </CardDescription>
                             </div>
                         </div>
@@ -611,48 +607,47 @@ export default function GoalsPage() {
                     </CardHeader>
 
                     <CardContent className="p-6 space-y-6">
-                        {viewMode === 'accordion' && (
-                            <div className="p-4 border rounded-md bg-secondary/30 shadow-sm space-y-3">
-                                <div>
-                                    <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
-                                    <div className="flex space-x-2">
-                                        <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
-                                    </div>
+                        {/* "Add New Goal" form is now always visible at the top */}
+                        <div className="p-4 border rounded-md bg-secondary/30 shadow-sm space-y-3">
+                            <div>
+                                <Label htmlFor="goal-name" className="text-sm font-medium text-muted-foreground mb-1 block">New Goal Name</Label>
+                                <div className="flex space-x-2">
+                                    <Input id="goal-name" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} placeholder="e.g., Complete online course" className="h-10 text-base md:text-sm flex-grow" onKeyPress={handleKeyPressGoal}/>
                                 </div>
-                                <div>
-                                    <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
-                                    <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-full justify-start text-left font-normal h-10",
-                                                    !newGoalDueDate && "text-muted-foreground"
-                                                )}
-                                                onClick={() => setIsGoalDatePickerOpen(true)}
-                                            >
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {newGoalDueDate ? format(newGoalDueDate, "PPP") : <span>Pick a due date</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                                mode="single"
-                                                selected={newGoalDueDate}
-                                                onSelect={(date) => { setNewGoalDueDate(date); setIsGoalDatePickerOpen(false); }}
-                                                initialFocus
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-                                <Button onClick={addGoal} size="default" className="h-10 w-full"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
                             </div>
-                        )}
+                            <div>
+                                <Label htmlFor="goal-due-date" className="text-sm font-medium text-muted-foreground mb-1 block">Due Date (Optional)</Label>
+                                <Popover open={isGoalDatePickerOpen} onOpenChange={setIsGoalDatePickerOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full justify-start text-left font-normal h-10",
+                                                !newGoalDueDate && "text-muted-foreground"
+                                            )}
+                                            onClick={() => setIsGoalDatePickerOpen(true)}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {newGoalDueDate ? format(newGoalDueDate, "PPP") : <span>Pick a due date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={newGoalDueDate}
+                                            onSelect={(date) => { setNewGoalDueDate(date); setIsGoalDatePickerOpen(false); }}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <Button onClick={addGoal} size="default" className="h-10 w-full"><Plus className="mr-2 h-4 w-4" /> Add Goal</Button>
+                        </div>
 
                         {!isClient ? (
                              <p className="text-base text-muted-foreground text-center py-8">Loading goals...</p>
                         ) : goals.length === 0 ? (
-                            <p className="text-base text-muted-foreground text-center py-8">No goals yet. {viewMode === 'accordion' && 'Add one above to get started!'}</p>
+                            <p className="text-base text-muted-foreground text-center py-8">No goals yet. Add one using the form above to get started!</p>
                         ) : viewMode === 'accordion' ? (
                             <ScrollArea className="max-h-[60vh]"> 
                                  <div className="space-y-4 pr-2">
@@ -714,8 +709,6 @@ export default function GoalsPage() {
                         ) : ( // Table View
                             <GoalsTableView
                                 goals={goals}
-                                expandedSubtasks={expandedSubtasks}
-                                toggleSubtaskExpansion={toggleSubtaskExpansion}
                                 newSubtaskInputs={newSubtaskInputs}
                                 handleSubtaskInputChange={handleSubtaskInputChange}
                                 handleKeyPressSubtask={handleKeyPressSubtask}
@@ -747,3 +740,5 @@ export default function GoalsPage() {
     );
 }
 
+
+    
