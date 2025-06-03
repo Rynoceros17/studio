@@ -1,9 +1,8 @@
 
 "use client";
 
-import React from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -30,182 +29,306 @@ interface GoalsTableViewProps {
   deleteGoal: (goalId: string) => void;
 }
 
-interface TableViewItemProps extends GoalsTableViewProps {
-  item: Goal | Subtask;
-  itemType: 'goal' | 'subtask';
-  goalId: string; // ID of the top-level goal this item belongs to (or is)
+// Component for the deepest level tasks (Grandchildren)
+const GrandchildTaskItem: React.FC<{
+  task: Subtask;
+  goalId: string;
+  parentSubtaskId: string; 
+  props: GoalsTableViewProps;
   depth: number;
-}
+}> = ({ task, goalId, parentSubtaskId, props, depth }) => {
+  const {
+    toggleSubtaskCompletion, handleCreateTaskFromSubtask, deleteSubtaskFromGoal,
+    showAddChildInputFor, setShowAddChildInputFor, newSubtaskInputs, handleSubtaskInputChange,
+    handleKeyPressSubtask, addSubtaskToGoalOrSubtask, expandedSubtasks, toggleSubtaskExpansion
+  } = props;
 
-const TableViewItem: React.FC<TableViewItemProps> = ({
-  item, itemType, goalId, depth,
-  expandedSubtasks, toggleSubtaskExpansion,
-  newSubtaskInputs, handleSubtaskInputChange, handleKeyPressSubtask, addSubtaskToGoalOrSubtask,
-  toggleSubtaskCompletion, showAddChildInputFor, setShowAddChildInputFor,
-  handleCreateTaskFromSubtask, deleteSubtaskFromGoal, deleteGoal
-}) => {
-  const isGoal = itemType === 'goal';
-  const currentItem = item as any;
-
-  const id = currentItem.id;
-  const name = currentItem.name;
-  const subtasks = currentItem.subtasks || [];
-  const completed = isGoal ? false : (item as Subtask).completed; // Goals don't have a direct completed status here
-  const progress = isGoal ? calculateGoalProgress(item as Goal) : 0;
-  const dueDate = isGoal ? (item as Goal).dueDate : undefined;
-
-
-  let bgClass = 'bg-card hover:bg-muted/30 transition-colors duration-150';
-  let textColorClass = 'text-card-foreground';
-  if (isGoal) {
-    bgClass = 'bg-secondary/30 hover:bg-secondary/40';
-    textColorClass = 'text-primary font-medium';
-  } else if (completed) {
-    bgClass = 'bg-muted/70 hover:bg-muted/80 opacity-80';
-    textColorClass = 'text-muted-foreground line-through';
-  } else if (depth === 0) { // Top-level subtask under a goal
-    bgClass = 'bg-card hover:bg-muted/30';
-  } else { // Deeper subtasks
-    bgClass = 'bg-muted/20 hover:bg-muted/30';
-  }
-
+  const hasChildren = task.subtasks && task.subtasks.length > 0;
 
   return (
-    <>
-      <TableRow className={cn(bgClass, isGoal && "border-b-2 border-primary/20")}>
-        <TableCell style={{ paddingLeft: `${(depth * 1.25) + 0.75}rem` }} className="py-2.5 align-middle">
-          <div className="flex items-center space-x-1.5 min-w-0">
-            {subtasks.length > 0 ? (
-              <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(id)} className="h-7 w-7 shrink-0">
-                {expandedSubtasks[id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+    <div className={cn("border-b border-border/30 flex items-center py-1.5", task.completed && "opacity-70 bg-muted/30")}>
+      <div className="flex items-center space-x-1.5 min-w-0 flex-grow pl-2">
+         {hasChildren ? (
+            <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(task.id)} className="h-6 w-6 shrink-0">
+                {expandedSubtasks[task.id] ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </Button>
+        ) : (
+            <span className="w-6 inline-block shrink-0"></span>
+        )}
+        <Checkbox
+          id={`gc-${task.id}`}
+          checked={task.completed}
+          onCheckedChange={() => toggleSubtaskCompletion(goalId, task.id)}
+          className="shrink-0 h-4 w-4 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+        />
+        <Label htmlFor={`gc-${task.id}`} className={cn("text-xs truncate", task.completed && "line-through text-muted-foreground")} title={task.name}>
+          {truncateText(task.name, 30)}
+        </Label>
+      </div>
+      <div className="flex items-center space-x-1 shrink-0 pr-2">
+        <Button variant="outline" size="icon" className={cn("h-6 w-6 border-dashed text-xs", task.completed && "cursor-not-allowed")} onClick={() => !task.completed && setShowAddChildInputFor(task.id)} disabled={task.completed} title="Add Child">
+          <Plus className="h-3 w-3" />
+        </Button>
+        <Button variant="outline" size="icon" className={cn("h-6 w-6 text-xs", task.completed && "cursor-not-allowed")} onClick={() => !task.completed && handleCreateTaskFromSubtask(task)} disabled={task.completed} title="Create Calendar Task">
+          <PlusCircle className="h-3 w-3" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 text-xs" onClick={() => deleteSubtaskFromGoal(goalId, task.id)} title="Delete Task">
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+       {showAddChildInputFor === task.id && (
+        <div className="w-full pl-8 pr-2 py-1 bg-background border-t border-border/50">
+          <div className="flex space-x-2 items-center">
+            <Input
+              value={newSubtaskInputs[task.id] || ''}
+              onChange={(e) => handleSubtaskInputChange(task.id, e.target.value)}
+              placeholder="Add a deeper subtask..."
+              className="h-7 text-xs flex-grow"
+              onKeyPress={(e) => handleKeyPressSubtask(e, goalId, task.id)}
+              autoFocus
+            />
+            <Button onClick={() => addSubtaskToGoalOrSubtask(goalId, task.id)} size="sm" className="h-7 px-2 text-xs shrink-0">
+              <CornerDownRight className="mr-1 h-3 w-3" /> Add
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-7 w-7 text-xs shrink-0">
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+      {hasChildren && expandedSubtasks[task.id] && (
+        <div className="pl-4 w-full border-t border-border/30">
+          {task.subtasks?.map(sub => (
+            <GrandchildTaskItem key={sub.id} task={sub} goalId={goalId} parentSubtaskId={task.id} props={props} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Component for Child Subtasks (Middle Column)
+const ChildRow: React.FC<{
+  subtask: Subtask;
+  goalId: string;
+  props: GoalsTableViewProps;
+  depth: number;
+}> = ({ subtask, goalId, props, depth }) => {
+  const {
+    expandedSubtasks, toggleSubtaskExpansion, newSubtaskInputs, handleSubtaskInputChange,
+    handleKeyPressSubtask, addSubtaskToGoalOrSubtask, toggleSubtaskCompletion,
+    showAddChildInputFor, setShowAddChildInputFor, handleCreateTaskFromSubtask,
+    deleteSubtaskFromGoal
+  } = props;
+
+  const childCellRef = useRef<HTMLDivElement>(null);
+  const grandchildrenColumnRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (childCellRef.current && grandchildrenColumnRef.current) {
+      const grandchildrenHeight = grandchildrenColumnRef.current.scrollHeight;
+      childCellRef.current.style.minHeight = expandedSubtasks[subtask.id] && subtask.subtasks && subtask.subtasks.length > 0 ? `${grandchildrenHeight}px` : 'auto';
+    } else if (childCellRef.current) {
+         childCellRef.current.style.minHeight = 'auto';
+    }
+  }, [expandedSubtasks, subtask.id, subtask.subtasks, subtask.subtasks?.length]);
+
+
+  const hasGrandchildren = subtask.subtasks && subtask.subtasks.length > 0;
+
+  return (
+    <div className={cn("flex border-b border-border/50", subtask.completed && "opacity-80 bg-muted/20")}>
+      <div ref={childCellRef} className="w-1/2 border-r border-border/50 p-2 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center space-x-1.5 min-w-0 mb-1">
+            {hasGrandchildren ? (
+              <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className="h-7 w-7 shrink-0">
+                {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
             ) : (
               <span className="w-7 inline-block shrink-0"></span>
             )}
-            {!isGoal && (
-              <Checkbox
-                id={`tv-item-${id}`}
-                checked={completed}
-                onCheckedChange={() => toggleSubtaskCompletion(goalId, id)}
-                className="shrink-0 h-4 w-4 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                aria-label={`Mark ${name} as ${completed ? 'incomplete' : 'complete'}`}
-              />
-            )}
-            <Label htmlFor={!isGoal ? `tv-item-${id}` : undefined} className={cn("text-sm truncate", textColorClass, completed ? 'cursor-default' : 'cursor-pointer')} title={name}>
-              {truncateText(name, 50 - depth * 4)}
+            <Checkbox
+              id={`child-${subtask.id}`}
+              checked={subtask.completed}
+              onCheckedChange={() => toggleSubtaskCompletion(goalId, subtask.id)}
+              className="shrink-0 h-4 w-4 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+            />
+            <Label htmlFor={`child-${subtask.id}`} className={cn("text-sm font-medium truncate", subtask.completed && "line-through text-muted-foreground")} title={subtask.name}>
+              {truncateText(subtask.name, 25)}
             </Label>
-            {isGoal && <Badge variant={progress === 100 ? "default" : "secondary"} className="ml-2 text-xs shrink-0 h-5 px-2">{progress}%</Badge>}
-            {isGoal && dueDate && (
-                <span className="text-xs text-muted-foreground ml-2 shrink-0 whitespace-nowrap">(Due: {format(parseISO(dueDate), 'MMM d')})</span>
-            )}
           </div>
-        </TableCell>
-        <TableCell className="py-2.5 align-middle text-right pr-3">
-          <div className="flex items-center space-x-1 justify-end">
-            <Button variant="outline" size="icon" className={cn("h-7 w-7 border-dashed", completed ? "text-muted-foreground cursor-not-allowed border-muted" : "text-card-foreground border-current hover:border-primary hover:text-primary")}
-              onClick={() => !completed && setShowAddChildInputFor(id)}
-              disabled={completed} title={isGoal ? "Add Top-Level Subtask" : "Add Child Subtask"}>
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-            {!isGoal && (
-              <Button variant="outline" size="icon" className={cn("h-7 w-7", completed ? "text-muted-foreground border-muted cursor-not-allowed" : "text-primary border-primary hover:bg-primary/10")}
-                onClick={() => !completed && handleCreateTaskFromSubtask(item as Subtask)}
-                disabled={completed} title="Create Calendar Task">
-                <PlusCircle className="h-3.5 w-3.5" />
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"
-              onClick={() => isGoal ? deleteGoal(id) : deleteSubtaskFromGoal(goalId, id)}
-              title={isGoal ? "Delete Goal" : "Delete Subtask"}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </TableCell>
-      </TableRow>
-
-      {/* Input row for adding child/top-level subtask */}
-      {showAddChildInputFor === id && (
-        <TableRow className="bg-card shadow-inner">
-          <TableCell colSpan={2} className="py-2 pr-2" style={{ paddingLeft: `${(depth + (isGoal ? 0 : 1)) * 1.25 + 0.75}rem` }}>
-            <div className="flex space-x-2 items-center">
-              <Input
-                value={newSubtaskInputs[id] || ''}
-                onChange={(e) => handleSubtaskInputChange(id, e.target.value)}
-                placeholder={isGoal ? "Add a top-level subtask..." : "Add a child subtask..."}
-                className="h-8 text-xs flex-grow"
-                onKeyPress={(e) => handleKeyPressSubtask(e, goalId, isGoal ? undefined : id)}
-                autoFocus
-              />
-              <Button onClick={() => addSubtaskToGoalOrSubtask(goalId, isGoal ? undefined : id)} size="sm" className="h-8 px-2.5 text-xs shrink-0">
-                <CornerDownRight className="mr-1 h-3 w-3" /> Add
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-8 w-8 text-xs shrink-0">
-                <X className="h-3.5 w-3.5" />
-              </Button>
+          {showAddChildInputFor === subtask.id && (
+            <div className="mt-1.5 p-1.5 border rounded-md bg-background shadow-sm">
+              <div className="flex space-x-2 items-center">
+                <Input
+                  value={newSubtaskInputs[subtask.id] || ''}
+                  onChange={(e) => handleSubtaskInputChange(subtask.id, e.target.value)}
+                  placeholder="Add a task..."
+                  className="h-8 text-xs flex-grow"
+                  onKeyPress={(e) => handleKeyPressSubtask(e, goalId, subtask.id)}
+                  autoFocus
+                />
+                <Button onClick={() => addSubtaskToGoalOrSubtask(goalId, subtask.id)} size="sm" className="h-8 px-2 text-xs shrink-0">
+                  <CornerDownRight className="mr-1 h-3 w-3" /> Add
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-8 w-8 text-xs shrink-0">
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
-          </TableCell>
-        </TableRow>
-      )}
-
-      {expandedSubtasks[id] && subtasks.map((subItem: Subtask) => (
-        <TableViewItem
-          key={subItem.id}
-          item={subItem}
-          itemType="subtask"
-          goalId={goalId}
-          depth={depth + 1}
-          // Pass all props down
-          expandedSubtasks={expandedSubtasks}
-          toggleSubtaskExpansion={toggleSubtaskExpansion}
-          newSubtaskInputs={newSubtaskInputs}
-          handleSubtaskInputChange={handleSubtaskInputChange}
-          handleKeyPressSubtask={handleKeyPressSubtask}
-          addSubtaskToGoalOrSubtask={addSubtaskToGoalOrSubtask}
-          toggleSubtaskCompletion={toggleSubtaskCompletion}
-          showAddChildInputFor={showAddChildInputFor}
-          setShowAddChildInputFor={setShowAddChildInputFor}
-          handleCreateTaskFromSubtask={handleCreateTaskFromSubtask}
-          deleteSubtaskFromGoal={deleteSubtaskFromGoal}
-          deleteGoal={deleteGoal} // Technically won't be used by subtask, but keep consistent
-        />
-      ))}
-    </>
+          )}
+        </div>
+        <div className="flex items-center space-x-1 mt-auto pt-1">
+          <Button variant="outline" size="icon" className={cn("h-7 w-7 border-dashed text-xs", subtask.completed && "cursor-not-allowed")} onClick={() => !subtask.completed && setShowAddChildInputFor(subtask.id)} disabled={subtask.completed} title="Add Task">
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="outline" size="icon" className={cn("h-7 w-7 text-xs", subtask.completed && "cursor-not-allowed")} onClick={() => !subtask.completed && handleCreateTaskFromSubtask(subtask)} disabled={subtask.completed} title="Create Calendar Task">
+            <PlusCircle className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 text-xs" onClick={() => deleteSubtaskFromGoal(goalId, subtask.id)} title="Delete Sub-Goal">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+      <div ref={grandchildrenColumnRef} className="w-1/2 flex flex-col">
+        {hasGrandchildren && expandedSubtasks[subtask.id] ? (
+          subtask.subtasks?.map(gc => (
+            <GrandchildTaskItem key={gc.id} task={gc} goalId={goalId} parentSubtaskId={subtask.id} props={props} depth={depth + 1} />
+          ))
+        ) : hasGrandchildren && !expandedSubtasks[subtask.id] ? (
+             <div className="p-2 text-center text-xs text-muted-foreground italic flex-grow flex items-center justify-center">Expand to see tasks.</div>
+        ) : (
+             <div className="p-2 text-center text-xs text-muted-foreground italic flex-grow flex items-center justify-center">No further tasks.</div>
+        )}
+      </div>
+    </div>
   );
 };
 
+// Component for Top-Level Goals (First Column)
+const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, props }) => {
+  const {
+    expandedSubtasks, toggleSubtaskExpansion, newSubtaskInputs, handleSubtaskInputChange,
+    handleKeyPressSubtask, addSubtaskToGoalOrSubtask, showAddChildInputFor,
+    setShowAddChildInputFor, deleteGoal
+  } = props;
 
-export const GoalsTableView: React.FC<GoalsTableViewProps> = ({ goals, ...props }) => {
+  const parentCellRef = useRef<HTMLDivElement>(null);
+  const childrenColumnRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (parentCellRef.current && childrenColumnRef.current) {
+      const childrenHeight = childrenColumnRef.current.scrollHeight;
+      parentCellRef.current.style.minHeight = expandedSubtasks[goal.id] && goal.subtasks && goal.subtasks.length > 0 ? `${childrenHeight}px` : 'auto';
+    } else if (parentCellRef.current) {
+        parentCellRef.current.style.minHeight = 'auto';
+    }
+  }, [expandedSubtasks, goal.id, goal.subtasks, goal.subtasks.length]);
+
+  const progress = calculateGoalProgress(goal);
+  const hasChildren = goal.subtasks && goal.subtasks.length > 0;
+
   return (
-    <Card className="shadow-md border">
-      <CardContent className="p-0">
-        <Table className="min-w-full table-fixed">
-          <TableHeader>
-            <TableRow className="bg-muted/40">
-              <TableHead className="py-3 pl-4 w-[70%]">Task / Subtask</TableHead>
-              <TableHead className="w-[30%] text-right py-3 pr-3">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {goals.map(goal => (
-              <TableViewItem
-                key={goal.id}
-                item={goal}
-                itemType="goal"
-                goalId={goal.id} 
-                depth={0} // Goals are at depth 0
-                {...props}
-              />
-            ))}
-            {goals.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={2} className="text-center text-muted-foreground py-10">
-                  No goals yet. Switch to Accordion view to add a new goal using the form at the top.
-                </TableCell>
-              </TableRow>
+    <div className="flex border-b-2 border-primary/30 bg-secondary/10">
+      <div ref={parentCellRef} className="w-1/3 border-r border-primary/30 p-3 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center space-x-1.5 min-w-0 mb-1.5">
+            {hasChildren ? (
+              <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(goal.id)} className="h-8 w-8 shrink-0">
+                {expandedSubtasks[goal.id] ? <ChevronDown className="h-5 w-5 text-primary" /> : <ChevronRight className="h-5 w-5 text-primary" />}
+              </Button>
+            ) : (
+              <span className="w-8 inline-block shrink-0"></span>
             )}
-          </TableBody>
-        </Table>
+            <h3 className="text-base font-semibold text-primary truncate" title={goal.name}>
+              {truncateText(goal.name, 30)}
+            </h3>
+          </div>
+          <div className="pl-10 space-y-1 text-xs text-muted-foreground">
+            <p>Progress: <Badge variant={progress === 100 ? "default" : "secondary"} className="ml-1 text-xs">{progress}%</Badge></p>
+            {goal.dueDate && <p>Due: {format(parseISO(goal.dueDate), 'MMM d, yyyy')}</p>}
+          </div>
+           {showAddChildInputFor === goal.id && (
+            <div className="mt-2 p-2 border rounded-md bg-background shadow-sm">
+              <div className="flex space-x-2 items-center">
+                <Input
+                  value={newSubtaskInputs[goal.id] || ''}
+                  onChange={(e) => handleSubtaskInputChange(goal.id, e.target.value)}
+                  placeholder="Add a sub-goal/task..."
+                  className="h-9 text-sm flex-grow"
+                  onKeyPress={(e) => handleKeyPressSubtask(e, goal.id, undefined)}
+                  autoFocus
+                />
+                <Button onClick={() => addSubtaskToGoalOrSubtask(goal.id, undefined)} size="sm" className="h-9 px-2.5 text-sm shrink-0">
+                  <CornerDownRight className="mr-1 h-3.5 w-3.5" /> Add
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setShowAddChildInputFor(null)} className="h-9 w-9 text-sm shrink-0">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center space-x-1 mt-auto pt-2 pl-10">
+          <Button variant="outline" size="sm" className="h-8 text-xs border-dashed" onClick={() => setShowAddChildInputFor(goal.id)} title="Add Sub-Goal/Task">
+            <Plus className="mr-1 h-3.5 w-3.5" /> Sub-Goal
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteGoal(goal.id)} title="Delete Goal">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      <div ref={childrenColumnRef} className="w-2/3 flex flex-col min-h-0"> {/* Ensure this column can shrink if empty */}
+        {hasChildren && expandedSubtasks[goal.id] ? (
+          goal.subtasks.map(subtask => (
+            <ChildRow key={subtask.id} subtask={subtask} goalId={goal.id} props={props} depth={1}/>
+          ))
+        ) : hasChildren && !expandedSubtasks[goal.id] ? (
+            <div className="p-4 text-center text-sm text-muted-foreground italic flex-grow flex items-center justify-center">Expand goal to see sub-goals/tasks.</div>
+        ) : (
+            <div className="p-4 text-center text-sm text-muted-foreground italic flex-grow flex items-center justify-center">No sub-goals or tasks for this goal.</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const GoalsTableView: React.FC<GoalsTableViewProps> = (props) => {
+  const { goals } = props;
+
+  if (goals.length === 0) {
+    return (
+         <Card className="shadow-md border">
+            <CardContent className="p-0">
+                <div className="p-10 text-center text-muted-foreground">
+                    No goals yet. Switch to Accordion view to add a new goal using the form at the top.
+                </div>
+            </CardContent>
+         </Card>
+    );
+  }
+
+  return (
+    <Card className="shadow-md border overflow-hidden">
+      <CardContent className="p-0">
+        {/* Header Row */}
+        <div className="flex bg-muted/60 border-b-2 border-primary/40 font-semibold text-sm text-primary sticky top-0 z-10">
+          <div className="w-1/3 p-3 border-r border-primary/30">Goal</div>
+          <div className="w-2/3 flex">
+            <div className="w-1/2 p-3 border-r border-primary/30">Sub-Goal / Task</div>
+            <div className="w-1/2 p-3">Further Breakdown / Actions</div>
+          </div>
+        </div>
+        {/* Goal Rows */}
+        <div className="flex flex-col">
+          {goals.map(goal => (
+            <GoalRow key={goal.id} goal={goal} props={props} />
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
 };
+
+    
