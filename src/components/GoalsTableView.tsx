@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useRef, useLayoutEffect, useState } from 'react';
+import React, { useRef, useLayoutEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, PlusCircle, ChevronDown, ChevronRight, CornerDownRight, X } from 'lucide-react';
+import { Plus, Trash2, PlusCircle, CornerDownRight, X } from 'lucide-react'; // Removed ChevronDown, ChevronRight
 import type { Goal, Subtask } from '@/lib/types';
 import { cn, truncateText, calculateGoalProgress } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +15,8 @@ import { format, parseISO } from 'date-fns';
 
 interface GoalsTableViewProps {
   goals: Goal[];
-  expandedSubtasks: Record<string, boolean>;
-  toggleSubtaskExpansion: (itemId: string) => void;
+  // expandedSubtasks: Record<string, boolean>; // Kept in props for interface consistency, but will be ignored
+  // toggleSubtaskExpansion: (itemId: string) => void; // Kept in props for interface consistency, but will be ignored
   newSubtaskInputs: Record<string, string>;
   handleSubtaskInputChange: (parentId: string, value: string) => void;
   handleKeyPressSubtask: (event: React.KeyboardEvent<HTMLInputElement>, goalId: string, parentItemId?: string) => void;
@@ -40,7 +40,7 @@ const GrandchildTaskItem: React.FC<{
   const {
     toggleSubtaskCompletion, handleCreateTaskFromSubtask, deleteSubtaskFromGoal,
     showAddChildInputFor, setShowAddChildInputFor, newSubtaskInputs, handleSubtaskInputChange,
-    handleKeyPressSubtask, addSubtaskToGoalOrSubtask, expandedSubtasks, toggleSubtaskExpansion
+    handleKeyPressSubtask, addSubtaskToGoalOrSubtask
   } = props;
 
   const hasChildren = task.subtasks && task.subtasks.length > 0;
@@ -49,13 +49,10 @@ const GrandchildTaskItem: React.FC<{
     <div className={cn("border-b border-border/30 flex flex-col py-1", task.completed && "opacity-70 bg-muted/30")}>
       <div className="flex items-center">
         <div className="flex items-center space-x-1.5 min-w-0 flex-grow pl-2">
-          {hasChildren ? (
-              <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(task.id)} className="h-6 w-6 shrink-0">
-                  {expandedSubtasks[task.id] ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-              </Button>
-          ) : (
-              <span className="w-6 inline-block shrink-0"></span>
-          )}
+          {/* Always render children if they exist, remove chevron */}
+          <span className="w-6 inline-block shrink-0">
+            {/* Placeholder for potential future icons if needed, or just spacing */}
+          </span>
           <Checkbox
             id={`gc-${task.id}`}
             checked={task.completed}
@@ -98,7 +95,8 @@ const GrandchildTaskItem: React.FC<{
           </div>
         </div>
       )}
-      {hasChildren && expandedSubtasks[task.id] && (
+      {/* Always render children if they exist */}
+      {hasChildren && (
         <div className="pl-4 w-full border-t border-border/30 mt-1">
           {task.subtasks?.map(sub => (
             <GrandchildTaskItem key={sub.id} task={sub} goalId={goalId} parentSubtaskId={task.id} props={props} depth={depth + 1} />
@@ -117,7 +115,7 @@ const ChildRow: React.FC<{
   depth: number;
 }> = ({ subtask, goalId, props, depth }) => {
   const {
-    expandedSubtasks, toggleSubtaskExpansion, newSubtaskInputs, handleSubtaskInputChange,
+    newSubtaskInputs, handleSubtaskInputChange,
     handleKeyPressSubtask, addSubtaskToGoalOrSubtask, toggleSubtaskCompletion,
     showAddChildInputFor, setShowAddChildInputFor, handleCreateTaskFromSubtask,
     deleteSubtaskFromGoal
@@ -129,11 +127,12 @@ const ChildRow: React.FC<{
   useLayoutEffect(() => {
     if (childCellRef.current && grandchildrenColumnRef.current) {
       const grandchildrenHeight = grandchildrenColumnRef.current.scrollHeight;
-      childCellRef.current.style.minHeight = expandedSubtasks[subtask.id] && subtask.subtasks && subtask.subtasks.length > 0 ? `${grandchildrenHeight}px` : 'auto';
+      // Always expanded, so check if subtasks exist
+      childCellRef.current.style.minHeight = subtask.subtasks && subtask.subtasks.length > 0 ? `${grandchildrenHeight}px` : 'auto';
     } else if (childCellRef.current) {
          childCellRef.current.style.minHeight = 'auto';
     }
-  }, [expandedSubtasks, subtask.id, subtask.subtasks, subtask.subtasks?.length, newSubtaskInputs, showAddChildInputFor]);
+  }, [subtask.subtasks, subtask.subtasks?.length, newSubtaskInputs, showAddChildInputFor]);
 
 
   const hasGrandchildren = subtask.subtasks && subtask.subtasks.length > 0;
@@ -143,13 +142,10 @@ const ChildRow: React.FC<{
       <div ref={childCellRef} className="w-1/2 border-r border-border/50 p-2 flex flex-col justify-between">
         <div className="flex-grow">
           <div className="flex items-center space-x-1.5 min-w-0 mb-1">
-            {hasGrandchildren ? (
-              <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(subtask.id)} className="h-7 w-7 shrink-0">
-                {expandedSubtasks[subtask.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </Button>
-            ) : (
-              <span className="w-7 inline-block shrink-0"></span>
-            )}
+            {/* Always render children if they exist, remove chevron */}
+            <span className="w-7 inline-block shrink-0">
+                {/* Placeholder for potential future icons or just spacing */}
+            </span>
             <Checkbox
               id={`child-${subtask.id}`}
               checked={subtask.completed}
@@ -185,7 +181,7 @@ const ChildRow: React.FC<{
           <Button variant="outline" size="icon" className={cn("h-7 w-7 border-dashed text-xs", subtask.completed && "cursor-not-allowed")} onClick={() => !subtask.completed && setShowAddChildInputFor(subtask.id)} disabled={subtask.completed} title="Add Task">
             <Plus className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="outline" size="icon" className={cn("h-7 w-7 text-xs", subtask.completed && "cursor-not-allowed")} onClick={() => !subtask.completed && handleCreateTaskFromSubtask(subtask)} disabled={subtask.completed} title="Create Calendar Task">
+          <Button variant="outline" size="icon" className={cn("h-7 w-7 text-xs", subtask.completed && "cursor-not-allowed")} onClick={() => !task.completed && handleCreateTaskFromSubtask(subtask)} disabled={subtask.completed} title="Create Calendar Task">
             <PlusCircle className="h-3.5 w-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 text-xs" onClick={() => deleteSubtaskFromGoal(goalId, subtask.id)} title="Delete Sub-Goal">
@@ -194,12 +190,11 @@ const ChildRow: React.FC<{
         </div>
       </div>
       <div ref={grandchildrenColumnRef} className="w-1/2 flex flex-col">
-        {hasGrandchildren && expandedSubtasks[subtask.id] ? (
+        {/* Always render children if they exist */}
+        {hasGrandchildren ? (
           subtask.subtasks?.map(gc => (
             <GrandchildTaskItem key={gc.id} task={gc} goalId={goalId} parentSubtaskId={subtask.id} props={props} depth={depth + 1} />
           ))
-        ) : hasGrandchildren && !expandedSubtasks[subtask.id] ? (
-             <div className="p-2 text-center text-xs text-muted-foreground italic flex-grow flex items-center justify-center">Expand to see tasks.</div>
         ) : (
              <div className="p-2 text-center text-xs text-muted-foreground italic flex-grow flex items-center justify-center">No further tasks.</div>
         )}
@@ -211,7 +206,7 @@ const ChildRow: React.FC<{
 // Component for Top-Level Goals (First Column)
 const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, props }) => {
   const {
-    expandedSubtasks, toggleSubtaskExpansion, newSubtaskInputs, handleSubtaskInputChange,
+    newSubtaskInputs, handleSubtaskInputChange,
     handleKeyPressSubtask, addSubtaskToGoalOrSubtask, showAddChildInputFor,
     setShowAddChildInputFor, deleteGoal
   } = props;
@@ -222,11 +217,12 @@ const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, p
   useLayoutEffect(() => {
     if (parentCellRef.current && childrenColumnRef.current) {
       const childrenHeight = childrenColumnRef.current.scrollHeight;
-      parentCellRef.current.style.minHeight = expandedSubtasks[goal.id] && goal.subtasks && goal.subtasks.length > 0 ? `${childrenHeight}px` : 'auto';
+      // Always expanded, so check if subtasks exist
+      parentCellRef.current.style.minHeight = goal.subtasks && goal.subtasks.length > 0 ? `${childrenHeight}px` : 'auto';
     } else if (parentCellRef.current) {
         parentCellRef.current.style.minHeight = 'auto';
     }
-  }, [expandedSubtasks, goal.id, goal.subtasks, goal.subtasks?.length, newSubtaskInputs, showAddChildInputFor]);
+  }, [goal.subtasks, goal.subtasks?.length, newSubtaskInputs, showAddChildInputFor]);
 
   const progress = calculateGoalProgress(goal);
   const hasChildren = goal.subtasks && goal.subtasks.length > 0;
@@ -236,13 +232,10 @@ const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, p
       <div ref={parentCellRef} className="w-1/3 border-r border-primary/30 p-3 flex flex-col justify-between">
         <div className="flex-grow">
           <div className="flex items-center space-x-1.5 min-w-0 mb-1.5">
-            {hasChildren ? (
-              <Button variant="ghost" size="icon" onClick={() => toggleSubtaskExpansion(goal.id)} className="h-8 w-8 shrink-0">
-                {expandedSubtasks[goal.id] ? <ChevronDown className="h-5 w-5 text-primary" /> : <ChevronRight className="h-5 w-5 text-primary" />}
-              </Button>
-            ) : (
-              <span className="w-8 inline-block shrink-0"></span>
-            )}
+            {/* Always render children if they exist, remove chevron */}
+            <span className="w-8 inline-block shrink-0">
+                 {/* Placeholder for potential future icons or just spacing */}
+            </span>
             <h3 className="text-base font-semibold text-primary truncate" title={goal.name}>
               {truncateText(goal.name, 30)}
             </h3>
@@ -284,12 +277,11 @@ const GoalRow: React.FC<{ goal: Goal; props: GoalsTableViewProps }> = ({ goal, p
         </div>
       </div>
       <div ref={childrenColumnRef} className="w-2/3 flex flex-col min-h-0">
-        {hasChildren && expandedSubtasks[goal.id] ? (
+        {/* Always render children if they exist */}
+        {hasChildren ? (
           goal.subtasks.map(subtask => (
             <ChildRow key={subtask.id} subtask={subtask} goalId={goal.id} props={props} depth={1}/>
           ))
-        ) : hasChildren && !expandedSubtasks[goal.id] ? (
-            <div className="p-4 text-center text-sm text-muted-foreground italic flex-grow flex items-center justify-center">Expand goal to see sub-goals/tasks.</div>
         ) : (
             <div className="p-4 text-center text-sm text-muted-foreground italic flex-grow flex items-center justify-center">No sub-goals or tasks for this goal.</div>
         )}
@@ -334,3 +326,5 @@ export const GoalsTableView: React.FC<GoalsTableViewProps> = (props) => {
     </Card>
   );
 };
+
+    
