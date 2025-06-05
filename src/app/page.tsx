@@ -18,11 +18,13 @@ import type { Task, Goal, UpcomingItem } from '@/lib/types';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
+  DialogTitle as FormDialogTitle, // Aliased to avoid conflict
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -33,21 +35,21 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle,
+    AlertDialogTitle as AlertTitle, // Aliased
 } from "@/components/ui/alert-dialog"
 import {
   Sheet,
   SheetContent,
   SheetHeader,
-  SheetTitle,
+  SheetTitle as SheetDialogTitle, // Aliased
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn } from 'lucide-react'; // Added LogIn
+import { useAuth } from '@/contexts/AuthContext';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 
@@ -56,7 +58,7 @@ export default function Home() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
-  const { user, authLoading } = useAuth(); // Get user and authLoading state
+  const { user, authLoading } = useAuth();
 
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -72,6 +74,7 @@ export default function Home() {
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
+  const [chatInput, setChatInput] = useState('');
 
 
   useEffect(() => {
@@ -456,6 +459,20 @@ export default function Home() {
     });
   }, [tasks, goals, isClient]);
 
+  const handleSendChatMessage = () => {
+    if (chatInput.trim()) {
+      console.log("Chat message sent:", chatInput);
+      // Future AI integration point
+      setChatInput('');
+    }
+  };
+
+  const handleChatKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleSendChatMessage();
+    }
+  };
+
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
@@ -504,7 +521,7 @@ export default function Home() {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
                     <SheetHeader className="p-4 border-b shrink-0">
-                        <SheetTitle className="text-primary">Bookmarks</SheetTitle>
+                        <SheetDialogTitle className="text-primary">Bookmarks</SheetDialogTitle>
                     </SheetHeader>
                     <BookmarkListSheet />
                 </SheetContent>
@@ -527,7 +544,7 @@ export default function Home() {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
                     <SheetHeader className="p-4 border-b shrink-0">
-                        <SheetTitle className="text-primary">Scratchpad</SheetTitle>
+                        <SheetDialogTitle className="text-primary">Scratchpad</SheetDialogTitle>
                     </SheetHeader>
                     <TaskListSheet />
                 </SheetContent>
@@ -558,6 +575,35 @@ export default function Home() {
              toggleGoalPriority={toggleGoalPriority}
            />
          </div>
+
+        {/* Chatbot Input Area */}
+        <div className="w-full max-w-7xl mt-4">
+            <Card className="shadow-md border-border">
+                <CardHeader className="p-3 border-b">
+                    <CardTitle className="text-base text-primary">AI Assistant (Coming Soon)</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3">
+                    <div className="flex space-x-2">
+                        <Input
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            placeholder="Ask WeekWise AI anything..."
+                            className="h-10 text-sm"
+                            onKeyPress={handleChatKeyPress}
+                        />
+                        <Button onClick={handleSendChatMessage} className="h-10 px-3">
+                            <SendHorizonal className="h-4 w-4" />
+                            <span className="sr-only">Send</span>
+                        </Button>
+                    </div>
+                    {/* Placeholder for chat messages display later - you can uncomment and style this when ready
+                    <div className="mt-3 h-32 border rounded p-2 overflow-y-auto bg-muted/50">
+                        <p className="text-xs text-muted-foreground italic">Chat history will appear here...</p>
+                    </div>
+                    */}
+                </CardContent>
+            </Card>
+        </div>
         
         {/* Floating Action Buttons */}
         <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
@@ -574,7 +620,7 @@ export default function Home() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                   <DialogTitle className="text-primary">Add New Task</DialogTitle>
+                   <FormDialogTitle className="text-primary">Add New Task</FormDialogTitle>
                 </DialogHeader>
                 <TaskForm
                    addTask={addTask}
@@ -612,7 +658,7 @@ export default function Home() {
         <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Recurring Task</AlertDialogTitle>
+                    <AlertTitle>Delete Recurring Task</AlertTitle>
                     <AlertDialogDescription>
                         Do you want to delete only this occurrence of "{deleteConfirmation?.task?.name}" on {deleteConfirmation?.dateStr ? format(parseISOStrict(deleteConfirmation.dateStr) ?? new Date(), 'PPP') : ''}, or all future occurrences?
                     </AlertDialogDescription>
@@ -639,4 +685,4 @@ export default function Home() {
   );
 }
 
-
+    
