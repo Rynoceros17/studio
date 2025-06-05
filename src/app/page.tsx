@@ -468,7 +468,8 @@ export default function Home() {
   };
 
   const handleChatKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault(); // Prevent newline on Enter
       handleSendChatMessage();
     }
   };
@@ -584,6 +585,10 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="p-3">
                     <div className="flex space-x-2">
+                        <Button onClick={handleSendChatMessage} className="h-10 px-3">
+                            <SendHorizonal className="h-4 w-4" />
+                            <span className="sr-only">Send Chat Message</span>
+                        </Button>
                         <Input
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
@@ -591,10 +596,6 @@ export default function Home() {
                             className="h-10 text-sm"
                             onKeyPress={handleChatKeyPress}
                         />
-                        <Button onClick={handleSendChatMessage} className="h-10 px-3">
-                            <SendHorizonal className="h-4 w-4" />
-                            <span className="sr-only">Send</span>
-                        </Button>
                     </div>
                     {/* Placeholder for chat messages display later - you can uncomment and style this when ready
                     <div className="mt-3 h-32 border rounded p-2 overflow-y-auto bg-muted/50">
@@ -684,5 +685,7 @@ export default function Home() {
     </DndContext>
   );
 }
+
+    
 
     
