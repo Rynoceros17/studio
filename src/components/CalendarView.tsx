@@ -123,25 +123,27 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
         descColorClass = 'text-muted-foreground';
         cardBorderStyle = 'border-transparent';
     } else {
-        cardBgClass = 'bg-card'; // Default to white
-        textColorClass = 'text-card-foreground';
-        descColorClass = 'text-muted-foreground';
-        cardBorderStyle = 'border-border';
+        cardBgClass = task.color || 'bg-card'; 
+        textColorClass = 'text-card-foreground'; // This could be dynamic based on cardBgClass contrast
+        descColorClass = 'text-muted-foreground'; // This could be dynamic based on cardBgClass contrast
 
         if (task.highPriority) {
-             cardBorderStyle = 'border-accent border-2'; // Gold border for high priority
+             cardBorderStyle = 'border-accent border-2'; 
+        } else {
+             cardBorderStyle = 'border-border';
         }
     }
+
 
     return (
         <Card
           className={cn(
             "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
-            cardBgClass,
             cardBorderStyle,
             isDragging && 'shadow-lg scale-105 animate-pulse',
             'transition-all duration-300 ease-in-out'
           )}
+          style={{ backgroundColor: isCompleted ? undefined : task.color }}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <div className={cn("pt-0.5 cursor-grab shrink-0", textColorClass)}>
@@ -174,7 +176,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
                   {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                 </div>
                <div className={cn("h-5 w-5 flex items-center justify-center", textColorClass )}>
-                 <Pencil className="h-3 w-3" />
+                 <Edit className="h-3 w-3" />
                </div>
                <div className="h-5 w-5 flex items-center justify-center text-destructive">
                   <Trash2 className="h-3 w-3" />
@@ -275,14 +277,12 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         completeIconClass = 'text-green-600';
         cardBorderStyle = 'border-transparent';
     } else {
-        cardBgClass = 'bg-card'; // Default to white
-        textColorClass = 'text-card-foreground';
-        descColorClass = 'text-muted-foreground';
-        iconButtonClass = 'text-muted-foreground hover:text-foreground';
-        completeIconClass = 'text-muted-foreground';
+        cardBgClass = task.color || 'bg-card'; // Use task color if available
+        textColorClass = 'text-card-foreground'; // TODO: Adjust for contrast with task.color
+        descColorClass = 'text-muted-foreground'; // TODO: Adjust for contrast
 
         if (task.highPriority) {
-             cardBorderStyle = 'border-accent border-2'; // Gold border for high priority
+             cardBorderStyle = 'border-accent border-2';
         } else {
             cardBorderStyle = 'border-border';
         }
@@ -324,10 +324,10 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         <Card
             className={cn(
                 "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer",
-                cardBgClass,
                 cardBorderStyle,
                 isCompletedAnim && 'animate-task-complete'
             )}
+            style={{ backgroundColor: isCompleted ? undefined : task.color }}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <button
@@ -769,7 +769,7 @@ export function CalendarView({
                       )}>
                     {format(day, 'd')}
                   </CardDescription>
-                  {isActualToday && <Badge variant="outline" className="border-accent text-accent mt-0.5 px-1 py-0 text-[9px]">Today</Badge>}
+                  
                 </CardHeader>
                 <Separator className="shrink-0 my-0.5"/>
                 <ScrollArea className="flex-grow">
