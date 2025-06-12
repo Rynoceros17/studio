@@ -57,7 +57,7 @@ body {
     --muted: 220 15% 18%; /* Subtler version of secondary, darker cool grey */
     --muted-foreground: 210 15% 60%; /* Softer grey for muted text */
     --accent: 180 70% 55%; /* Vibrant Teal/Cyan */
-    --accent-foreground: 220 20% 10%; /* Dark text for contrast on accent */
+    --accent-foreground: 210 20% 90%; /* Light text, same as main foreground, for use on accent or as hover text color */
     --destructive: 0 70% 50%; /* Brighter red for dark mode */
     --destructive-foreground: 0 0% 98%; /* White text on destructive */
     --border: 220 15% 25%; /* Subtle cool dark gray border */
