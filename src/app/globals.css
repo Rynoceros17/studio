@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,38 +44,38 @@ body {
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
   .dark {
-    --background: 240 6% 12%; /* Very Dark Desaturated Blue/Grey */
-    --foreground: 220 15% 88%; /* Light, slightly cool Gray */
-    --card: 240 6% 16%; /* Darker Desaturated Blue/Grey (slightly lighter than main bg) */
-    --card-foreground: 220 15% 88%; /* Match main foreground */
-    --popover: 240 6% 16%; /* Similar to card */
-    --popover-foreground: 220 15% 88%; /* Match main foreground */
-    --primary: 259 43% 71%; /* Light Purple #A892D6 - Kept same */
+    --background: 220 15% 10%; /* Darker, cooler deep blue-grey */
+    --foreground: 210 20% 90%; /* Very light, slightly cool grey for high contrast */
+    --card: 220 15% 15%; /* Slightly lighter than main background, cool */
+    --card-foreground: 210 20% 90%; /* Match main foreground */
+    --popover: 220 15% 15%; /* Similar to card */
+    --popover-foreground: 210 20% 90%; /* Match main foreground */
+    --primary: 259 43% 71%; /* Light Purple #A892D6 - Kept same as light for buttons */
     --primary-foreground: 240 10% 10%; /* Dark Grey for text on primary buttons - Kept same */
-    --secondary: 259 25% 22%; /* Darker, more desaturated purple */
-    --secondary-foreground: 220 15% 88%; /* Match main foreground */
-    --muted: 240 6% 20%; /* Slightly lighter gray than card for muted elements */
-    --muted-foreground: 220 10% 65%; /* Softer gray for muted text */
-    --accent: 51 100% 50%; /* Gold #FFD700 - Kept same */
-    --accent-foreground: 240 10% 10%; /* Dark Grey for text on accent - Kept same */
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 6% 25%; /* Subtle dark gray border */
-    --input: 240 6% 25%; /* Subtle dark gray input border */
-    --ring: 259 43% 71%; /* Primary - Kept same for focus rings */
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --secondary: 220 15% 22%; /* Darker, cool grey */
+    --secondary-foreground: 210 20% 85%; /* Light grey for secondary text */
+    --muted: 220 15% 18%; /* Subtler version of secondary, darker cool grey */
+    --muted-foreground: 210 15% 60%; /* Softer grey for muted text */
+    --accent: 180 70% 55%; /* Vibrant Teal/Cyan */
+    --accent-foreground: 220 20% 10%; /* Dark text for contrast on accent */
+    --destructive: 0 70% 50%; /* Brighter red for dark mode */
+    --destructive-foreground: 0 0% 98%; /* White text on destructive */
+    --border: 220 15% 25%; /* Subtle cool dark gray border */
+    --input: 220 15% 25%; /* Subtle cool dark gray input border */
+    --ring: 180 70% 60%; /* Use new accent color for focus rings */
+    --chart-1: 190 70% 60%; /* Cyan/Blue */
+    --chart-2: 270 60% 65%; /* Purple */
+    --chart-3: 30 80% 60%;  /* Orange */
+    --chart-4: 120 50% 55%; /* Green */
+    --chart-5: 330 70% 65%; /* Pink/Magenta */
+    --sidebar-background: 220 15% 8%; /* Even darker, cooler sidebar background */
+    --sidebar-foreground: 210 20% 80%; /* Slightly dimmer main text for sidebar */
+    --sidebar-primary: 180 70% 55%; /* Use new accent (Teal/Cyan) for sidebar primary actions */
+    --sidebar-primary-foreground: 220 20% 10%; /* Dark text on sidebar primary (accent) */
+    --sidebar-accent: 220 15% 18%; /* Hover/active states, similar to muted background */
+    --sidebar-accent-foreground: 210 20% 90%; /* Bright text on sidebar accent */
+    --sidebar-border: 220 15% 20%; /* Border for sidebar elements */
+    --sidebar-ring: 180 70% 60%; /* New accent for ring in sidebar context */
   }
 }
 
