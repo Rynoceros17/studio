@@ -68,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (currentUser) {
           if (db && typeof (db as any).collection === 'function') {
             const userRef = doc(db, "users", currentUser.uid);
+            console.log(`AuthProvider: Checking/creating Firestore document for user ${currentUser.uid}`);
             try {
               const userDoc = await getDoc(userRef);
               const userData = {
@@ -78,21 +79,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 lastLogin: serverTimestamp(),
               };
               if (!userDoc.exists()) {
-                // console.log(`AuthProvider: User document for ${currentUser.uid} does not exist. Creating...`);
+                console.log(`AuthProvider: User document for ${currentUser.uid} does not exist. Creating...`);
                 await setDoc(userRef, {
                   ...userData,
                   createdAt: serverTimestamp(),
                 });
+                console.log(`AuthProvider: User document for ${currentUser.uid} created successfully.`);
               } else {
-                // console.log(`AuthProvider: Updating lastLogin for user ${currentUser.uid}.`);
+                console.log(`AuthProvider: User document for ${currentUser.uid} exists. Updating lastLogin.`);
                 await updateDoc(userRef, { lastLogin: serverTimestamp() });
+                console.log(`AuthProvider: User document for ${currentUser.uid} updated successfully.`);
               }
             } catch (error) {
-              console.error("AuthProvider: Error creating/updating user document in Firestore:", error);
+              console.error(`AuthProvider: Error creating/updating user document for ${currentUser.uid} in Firestore:`, error);
               setFirebaseError(error as AuthError); // This could be a Firestore error, not strictly AuthError
             }
           } else {
-            console.warn("AuthProvider: Firestore (db) not available for user document creation.");
+            console.warn("AuthProvider: Firestore (db) not available. Cannot create/update user document.");
             // setFirebaseError({ code: "auth/internal-error", message: "Firestore not available for user profile." } as AuthError);
           }
         }
