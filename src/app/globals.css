@@ -57,7 +57,7 @@ body {
     --muted: 220 15% 18%; /* Subtler version of secondary, darker cool grey */
     --muted-foreground: 210 15% 60%; /* Softer grey for muted text */
     --accent: 48 96% 57%; /* Gold */
-    --accent-foreground: 240 10% 10%; /* Dark Grey for contrast on gold */
+    --accent-foreground: 0 0% 98%; /* White, for better contrast on gold AND max visibility if on dark */
     --destructive: 0 70% 50%; /* Brighter red for dark mode */
     --destructive-foreground: 0 0% 98%; /* White text on destructive */
     --border: 220 15% 25%; /* Subtle cool dark gray border */
@@ -71,7 +71,7 @@ body {
     --sidebar-background: 220 15% 8%; /* Even darker, cooler sidebar background */
     --sidebar-foreground: 210 20% 80%; /* Slightly dimmer main text for sidebar */
     --sidebar-primary: 48 96% 57%; /* Gold for sidebar primary actions */
-    --sidebar-primary-foreground: 240 10% 10%; /* Dark text on sidebar primary (gold) */
+    --sidebar-primary-foreground: 0 0% 98%; /* White text on sidebar primary (gold) */
     --sidebar-accent: 220 15% 18%; /* Hover/active states, similar to muted background */
     --sidebar-accent-foreground: 210 20% 90%; /* Bright text on sidebar accent */
     --sidebar-border: 220 15% 20%; /* Border for sidebar elements */
@@ -87,3 +87,4 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
