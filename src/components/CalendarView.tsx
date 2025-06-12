@@ -128,15 +128,20 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
         descColorClass = 'text-muted-foreground';
         cardBorderStyle = 'border-transparent';
     } else if (isGoldColor) {
-        cardBgClass = task.color || 'bg-card';
+        cardBgClass = ''; // Handled by style prop for gold
         textColorClass = 'text-neutral-800';
         descColorClass = 'text-neutral-700';
         cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
     } else {
-        cardBgClass = task.color || 'bg-card';
+        cardBgClass = task.color ? '' : 'bg-card'; // Use empty if color is set, otherwise default
         textColorClass = 'text-card-foreground';
         descColorClass = 'text-muted-foreground';
         cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
+    }
+
+    const cardCustomStyle: React.CSSProperties = {};
+    if (!isCompleted && task.color) {
+        cardCustomStyle.backgroundColor = task.color;
     }
 
 
@@ -145,10 +150,11 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
           className={cn(
             "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
             cardBorderStyle,
+            cardBgClass,
             isDragging && 'shadow-lg scale-105 animate-pulse',
             'transition-all duration-300 ease-in-out'
           )}
-          style={{ backgroundColor: isCompleted ? undefined : (isGoldColor ? task.color : undefined) }}
+          style={cardCustomStyle}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
              <div className={cn("pt-0.5 cursor-grab shrink-0", textColorClass)}>
@@ -283,7 +289,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         completeIconClass = 'text-green-600';
         cardBorderStyle = 'border-transparent';
     } else if (isGoldColor) {
-        cardBgClass = task.color || 'bg-card'; // This class will be overridden by style prop for gold
+        cardBgClass = ''; // Handled by style prop for gold
         textColorClass = 'text-neutral-800';
         descColorClass = 'text-neutral-700';
         iconButtonClass = 'text-neutral-600 hover:text-neutral-800';
@@ -775,7 +781,7 @@ export function CalendarView({
             return (
               <Card key={dateStr} className={cn(
                   "flex flex-col h-[700px] md:h-[700px] overflow-hidden",
-                  isActualToday ? 'border-accent border-2 shadow-md bg-muted' :
+                  isActualToday ? 'border-accent border-2 shadow-md bg-card dark:bg-muted' :
                   viewMode === 'today' && !isActualToday ? 'bg-card border-border shadow-sm' :
                   'bg-secondary/30 border-transparent'
                   )}>
