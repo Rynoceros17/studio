@@ -14,7 +14,7 @@ import {
   startOfDay,
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, ArrowLeftCircle, ArrowRightCircle, Edit } from 'lucide-react';
-import { useTheme } from 'next-themes'; // Import useTheme
+import { useTheme } from 'next-themes';
 
 import {
   DndContext,
@@ -90,6 +90,11 @@ interface SortableTaskProps {
   onMoveTask: (taskId: string, dateStr: string, direction: 'prev' | 'next') => void;
 }
 
+const goldTaskColors = [
+  'hsl(50, 100%, 90%)', // Pale Gold
+  'hsl(45, 90%, 85%)',  // Soft Gold
+  'hsl(55, 80%, 80%)',  // Light Goldenrod
+];
 
 function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     const [titleLimit, setTitleLimit] = useState(getMaxLength('title', 'calendar'));
@@ -115,23 +120,23 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     let textColorClass = 'text-card-foreground';
     let descColorClass = 'text-muted-foreground';
     let cardBorderStyle = 'border-border';
-
+    const isGoldColor = task.color && goldTaskColors.includes(task.color);
 
     if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
         cardBorderStyle = 'border-transparent';
+    } else if (isGoldColor) {
+        cardBgClass = task.color || 'bg-card';
+        textColorClass = 'text-neutral-800'; // Ensure dark text on gold
+        descColorClass = 'text-neutral-700'; // Ensure dark description on gold
+        cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
     } else {
-        cardBgClass = task.color || 'bg-card'; 
-        textColorClass = 'text-card-foreground'; // This could be dynamic based on cardBgClass contrast
-        descColorClass = 'text-muted-foreground'; // This could be dynamic based on cardBgClass contrast
-
-        if (task.highPriority) {
-             cardBorderStyle = 'border-accent border-2'; 
-        } else {
-             cardBorderStyle = 'border-border';
-        }
+        cardBgClass = task.color || 'bg-card';
+        textColorClass = 'text-card-foreground';
+        descColorClass = 'text-muted-foreground';
+        cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
     }
 
 
@@ -267,6 +272,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
     let iconButtonClass = 'text-muted-foreground hover:text-foreground';
     let completeIconClass = 'text-muted-foreground';
     let cardBorderStyle = 'border-border';
+    const isGoldColor = task.color && goldTaskColors.includes(task.color);
 
 
     if (isCompleted) {
@@ -276,11 +282,20 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         iconButtonClass = 'text-muted-foreground';
         completeIconClass = 'text-green-600';
         cardBorderStyle = 'border-transparent';
-    } else {
-        cardBgClass = task.color || 'bg-card'; // Use task color if available
-        textColorClass = 'text-card-foreground'; // TODO: Adjust for contrast with task.color
-        descColorClass = 'text-muted-foreground'; // TODO: Adjust for contrast
-
+    } else if (isGoldColor) {
+        cardBgClass = task.color || 'bg-card';
+        textColorClass = 'text-neutral-800';
+        descColorClass = 'text-neutral-700';
+        iconButtonClass = 'text-neutral-600 hover:text-neutral-800';
+        completeIconClass = 'text-neutral-600';
+        cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
+    }
+     else {
+        cardBgClass = task.color || 'bg-card';
+        textColorClass = 'text-card-foreground';
+        descColorClass = 'text-muted-foreground';
+        iconButtonClass = 'text-muted-foreground hover:text-foreground';
+        completeIconClass = 'text-muted-foreground';
         if (task.highPriority) {
              cardBorderStyle = 'border-accent border-2';
         } else {
@@ -370,7 +385,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("h-5 w-5 focus-visible:ring-1 focus-visible:ring-ring rounded", completeIconClass, isCompleted && 'hover:text-green-700')}
+                className={cn("h-5 w-5 focus-visible:ring-1 focus-visible:ring-ring rounded", completeIconClass, isCompleted && 'hover:text-green-700', !isCompleted && !isGoldColor && 'hover:text-foreground')}
                 onClick={handleToggleCompletion}
                 aria-label={isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
               >
@@ -383,7 +398,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 onClick={handleEditClickInternal}
                 aria-label="Edit task details"
                >
-                 <Edit className="h-3 w-3" /> {/* Updated from Pencil to Edit */}
+                 <Edit className="h-3 w-3" />
                </Button>
               <Button
                 variant="ghost"
@@ -435,7 +450,7 @@ export function CalendarView({
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme(); // For dark/light mode toggle
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
       setIsClient(true);
@@ -451,7 +466,6 @@ export function CalendarView({
                 if (newViewMode === 'today') {
                     setCurrentDisplayDate(startOfDay(new Date()));
                 } else {
-                    // When switching to week view, ensure currentDisplayDate is start of its week
                     setCurrentDisplayDate(prevDate => startOfWeek(prevDate, { weekStartsOn: 1 }));
                 }
             }
@@ -531,7 +545,7 @@ export function CalendarView({
             });
        });
        return groupedTasks;
-     }, [tasks, days, completedTasks, parseISOStrict]);
+     }, [tasks, days, completedTasks]);
 
 
     const activeTask = useMemo(() => {
@@ -691,7 +705,7 @@ export function CalendarView({
              message = `"${taskToMove.name}" moved to ${format(targetDate, 'PPP')}.`;
         }
          toast({ title, description: message });
-     }, [tasks, updateTask, parseISOStrict, toast, completedTasks, toggleTaskCompletion]);
+     }, [tasks, updateTask, toast, completedTasks, toggleTaskCompletion]);
 
   const headerTitle = useMemo(() => {
     if (!isClient) return "Loading...";
@@ -845,3 +859,4 @@ export function CalendarView({
     </DndContext>
   );
 }
+
