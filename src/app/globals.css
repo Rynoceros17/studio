@@ -56,13 +56,13 @@ body {
     --secondary-foreground: 210 20% 85%; /* Light grey for secondary text */
     --muted: 220 15% 18%; /* Subtler version of secondary, darker cool grey */
     --muted-foreground: 210 15% 60%; /* Softer grey for muted text */
-    --accent: 180 70% 55%; /* Vibrant Teal/Cyan */
-    --accent-foreground: 210 20% 90%; /* Light text, same as main foreground, for use on accent or as hover text color */
+    --accent: 48 96% 57%; /* Gold */
+    --accent-foreground: 240 10% 10%; /* Dark Grey for contrast on gold */
     --destructive: 0 70% 50%; /* Brighter red for dark mode */
     --destructive-foreground: 0 0% 98%; /* White text on destructive */
     --border: 220 15% 25%; /* Subtle cool dark gray border */
     --input: 220 15% 25%; /* Subtle cool dark gray input border */
-    --ring: 180 70% 60%; /* Use new accent color for focus rings */
+    --ring: 48 96% 60%; /* Gold for focus rings */
     --chart-1: 190 70% 60%; /* Cyan/Blue */
     --chart-2: 270 60% 65%; /* Purple */
     --chart-3: 30 80% 60%;  /* Orange */
@@ -70,12 +70,12 @@ body {
     --chart-5: 330 70% 65%; /* Pink/Magenta */
     --sidebar-background: 220 15% 8%; /* Even darker, cooler sidebar background */
     --sidebar-foreground: 210 20% 80%; /* Slightly dimmer main text for sidebar */
-    --sidebar-primary: 180 70% 55%; /* Use new accent (Teal/Cyan) for sidebar primary actions */
-    --sidebar-primary-foreground: 220 20% 10%; /* Dark text on sidebar primary (accent) */
+    --sidebar-primary: 48 96% 57%; /* Gold for sidebar primary actions */
+    --sidebar-primary-foreground: 240 10% 10%; /* Dark text on sidebar primary (gold) */
     --sidebar-accent: 220 15% 18%; /* Hover/active states, similar to muted background */
     --sidebar-accent-foreground: 210 20% 90%; /* Bright text on sidebar accent */
     --sidebar-border: 220 15% 20%; /* Border for sidebar elements */
-    --sidebar-ring: 180 70% 60%; /* New accent for ring in sidebar context */
+    --sidebar-ring: 48 96% 60%; /* Gold for ring in sidebar context */
   }
 }
 
