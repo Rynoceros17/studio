@@ -12,7 +12,14 @@ export interface Task {
   color?: string; // Optional: Stores HSL string for task background
 };
 
-// Goal and Subtask types
+export interface Goal {
+    id: string;
+    name: string;
+    subtasks: Subtask[];
+    dueDate?: string; 
+    highPriority?: boolean; 
+}
+
 export interface Subtask {
     id: string;
     name: string;
@@ -20,26 +27,17 @@ export interface Subtask {
     subtasks?: Subtask[];
 }
 
-export interface Goal {
-    id: string;
-    name: string;
-    subtasks: Subtask[];
-    dueDate?: string; // Optional due date for the goal
-    highPriority?: boolean; // Added for goal priority
-}
-
-// Item type for the "Upcoming Deadlines" bar
 export interface UpcomingItem {
   id: string;
   name: string;
-  dueDate: string; // yyyy-MM-dd
+  dueDate: string; 
   type: 'task' | 'goal';
-  originalDate?: string; // For tasks, the date it's scheduled on
-  description?: string; // For tasks
-  taskHighPriority?: boolean; // For tasks (renamed to avoid conflict)
-  goalHighPriority?: boolean; // For goals
-  color?: string; // For tasks
-  progress?: number; // For goals
+  originalDate?: string; 
+  description?: string; 
+  taskHighPriority?: boolean; 
+  goalHighPriority?: boolean; 
+  color?: string; 
+  progress?: number; 
 }
 
 export interface TimeLeft {
@@ -65,3 +63,9 @@ export interface TimeLeft {
   isDueToday: boolean;
 }
 
+export interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'ai';
+  timestamp: number;
+}

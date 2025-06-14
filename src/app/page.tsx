@@ -2,7 +2,7 @@
 "use client";
 
 import type * as React from 'react';
-import { useCallback, useState, useMemo, useEffect } from 'react';
+import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   DndContext,
@@ -14,17 +14,17 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Goal, UpcomingItem } from '@/lib/types';
+import type { Task, Goal, UpcomingItem, ChatMessage } from '@/lib/types';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle as FormDialogTitle, // Aliased to avoid conflict
+  DialogTitle as FormDialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -35,24 +35,27 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle as AlertTitle, // Aliased
+    AlertDialogTitle as AlertTitle,
 } from "@/components/ui/alert-dialog"
 import {
   Sheet,
   SheetContent,
   SheetHeader,
-  SheetTitle as SheetDialogTitle, // Aliased
+  SheetTitle as SheetDialogTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
-import { SyncStatusIndicator } from '@/components/SyncStatusIndicator'; // Added import
+import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal } from 'lucide-react';
-import { format, parseISO, startOfDay, addDays, subDays } from 'date-fns';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, MessageSquare } from 'lucide-react';
+import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button';
+import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 export default function Home() {
@@ -75,14 +78,17 @@ export default function Home() {
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
+
   const [chatInput, setChatInput] = useState('');
+  const [isParsingTask, setIsParsingTask] = useState(false);
+  const [taskFormInitialData, setTaskFormInitialData] = useState<Partial<Task> | null>(null);
 
 
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-        const initialX = window.innerWidth - 300 - 24; // Timer width + padding
-        const initialY = 24; // Padding from top
+        const initialX = window.innerWidth - 300 - 24;
+        const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
     }
   }, []);
@@ -90,7 +96,7 @@ export default function Home() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10, // Only start dragging after 10px movement
+        distance: 10,
       },
     })
   );
@@ -111,38 +117,33 @@ export default function Home() {
          id: crypto.randomUUID(),
          recurring: newTaskData.recurring ?? false,
          highPriority: newTaskData.highPriority ?? false,
-         exceptions: [], // Initialize exceptions array
-         details: newTaskData.details || '', // Ensure details is a string
-         dueDate: newTaskData.dueDate || undefined, // Ensure dueDate is string or undefined
+         exceptions: [],
+         details: newTaskData.details || '',
+         dueDate: newTaskData.dueDate || undefined,
      };
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
-         // Sort tasks: by date, then by highPriority, then by original order for stability
          updatedTasks.sort((a, b) => {
              const dateA = parseISOStrict(a.date);
              const dateB = parseISOStrict(b.date);
 
-             // Handle cases where dates might be null (shouldn't happen with validation but good for safety)
              if (!dateA && !dateB) return 0;
-             if (!dateA) return 1; // Null dates go to the end
+             if (!dateA) return 1;
              if (!dateB) return -1;
 
              const dateComparison = dateA.getTime() - dateB.getTime();
              if (dateComparison !== 0) return dateComparison;
 
-             // If dates are the same, sort by highPriority (true comes first)
              if (a.highPriority !== b.highPriority) {
                   return a.highPriority ? -1 : 1;
              }
-             
-             // Preserve original order for tasks on the same day with same priority
+
              const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
              const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
 
-             // Handle new items correctly in relation to existing items if sort is complex
-             if (originalAIndex === -1 && originalBIndex !== -1) return 1; // New items after existing
+             if (originalAIndex === -1 && originalBIndex !== -1) return 1;
              if (originalAIndex !== -1 && originalBIndex === -1) return -1;
-             if (originalAIndex === -1 && originalBIndex === -1) return 0; // Both new, order doesn't matter relative to each other yet
+             if (originalAIndex === -1 && originalBIndex === -1) return 0;
              return originalAIndex - originalBIndex;
 
          });
@@ -153,14 +154,14 @@ export default function Home() {
          title: "Task Added",
          description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
      });
-     setIsFormOpen(false); // Close the form
+     setIsFormOpen(false);
+     setTaskFormInitialData(null); // Clear initial data after adding
   }, [setTasks, toast]);
 
 
   const deleteAllOccurrences = useCallback((id: string) => {
       const taskToDelete = tasks.find(task => task.id === id);
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
-      // Remove all completions related to this task ID
       setCompletedTaskIds(prevIds => prevIds.filter(completionKey => !completionKey.startsWith(`${id}_`)));
       if (taskToDelete) {
           toast({
@@ -169,7 +170,7 @@ export default function Home() {
               variant: "destructive",
           });
       }
-       setDeleteConfirmation(null); // Close confirmation dialog
+       setDeleteConfirmation(null);
   }, [tasks, setTasks, setCompletedTaskIds, toast]);
 
 
@@ -182,7 +183,6 @@ export default function Home() {
           }
           return task;
       }));
-      // Remove specific completion for this instance
       setCompletedTaskIds(prevIds => prevIds.filter(completionKey => completionKey !== `${taskId}_${dateStr}`));
       if (taskToModify) {
           toast({
@@ -190,7 +190,7 @@ export default function Home() {
               description: `"${taskToModify.name}" for ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} will be skipped.`,
           });
       }
-      setDeleteConfirmation(null); // Close confirmation dialog
+      setDeleteConfirmation(null);
   }, [tasks, setTasks, setCompletedTaskIds, toast]);
 
 
@@ -209,7 +209,6 @@ export default function Home() {
           const updatedTasks = prevTasks.map(task => {
               if (task.id === id) {
                   const updatedTask = { ...task, ...updates };
-                  // Check if date or highPriority changed, as these affect sorting
                   if ((updates.date && updates.date !== task.date) ||
                       (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)
                     ) {
@@ -230,11 +229,10 @@ export default function Home() {
                   const dateComparison = dateA.getTime() - dateB.getTime();
                   if (dateComparison !== 0) return dateComparison;
 
-                  // If dates are the same, sort by highPriority (true comes first)
                   if (a.highPriority !== b.highPriority) {
                       return a.highPriority ? -1 : 1;
                   }
-                  return 0; // Maintain relative order for other cases or use original index
+                  return 0;
               });
           }
           return updatedTasks;
@@ -248,33 +246,29 @@ export default function Home() {
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
     setTasks(prevTasks => {
-        // Separate tasks for the specific date from all other tasks
         const tasksForDate = prevTasks.filter(task => {
             const taskDateObj = parseISOStrict(task.date);
-             const currentDay = parseISOStrict(date); // The date for which we are reordering
-             if (!taskDateObj || !currentDay) return false; // Skip if dates are invalid
+             const currentDay = parseISOStrict(date);
+             if (!taskDateObj || !currentDay) return false;
 
-             if (task.exceptions?.includes(date)) return false; // Skip if excepted
+             if (task.exceptions?.includes(date)) return false;
 
              if (task.recurring) {
-                 const taskStartDayOfWeek = taskDateObj.getDay(); // 0 (Sun) - 6 (Sat)
+                 const taskStartDayOfWeek = taskDateObj.getDay();
                  const currentDayOfWeek = currentDay.getDay();
-                 // Task is recurring, on the same day of the week, and currentDay is on or after task's start date
                  return taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj;
              } else {
-                  // Non-recurring task, check if its date matches the currentDay
                   return format(taskDateObj, 'yyyy-MM-dd') === date;
              }
         });
 
-        // Tasks not for the specific date
         const otherTasks = prevTasks.filter(task => {
            const taskDateObj = parseISOStrict(task.date);
-           if (!taskDateObj) return true; // Keep if date is invalid (should be handled elsewhere)
+           if (!taskDateObj) return true;
            const currentDay = parseISOStrict(date);
            if (!currentDay) return true;
 
-           if (task.exceptions?.includes(date)) return true; // Keep if excepted (it's not for this day)
+           if (task.exceptions?.includes(date)) return true;
 
            if (task.recurring) {
                const taskStartDayOfWeek = taskDateObj.getDay();
@@ -285,16 +279,12 @@ export default function Home() {
            }
         });
 
-        // Create a map for quick lookup of tasks for the specific date
         const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
-        
-        // Create the reordered list for the specific date
+
         const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
 
-        // Combine other tasks with the reordered tasks for the specific date
         const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
 
-        // Re-sort the entire list to maintain overall sort order (date, priority)
          combinedTasks.sort((a, b) => {
              const dateA = parseISOStrict(a.date);
              const dateB = parseISOStrict(b.date);
@@ -305,24 +295,21 @@ export default function Home() {
              const dateComparison = dateA.getTime() - dateB.getTime();
              if (dateComparison !== 0) return dateComparison;
 
-             // If tasks are on the target reorder date, use the provided order
              const aIsForTargetDate = tasksForDate.some(t => t.id === a.id);
              const bIsForTargetDate = tasksForDate.some(t => t.id === b.id);
 
              if (aIsForTargetDate && bIsForTargetDate) {
                  const aIndex = orderedTaskIds.indexOf(a.id);
                  const bIndex = orderedTaskIds.indexOf(b.id);
-                 if (aIndex !== -1 && bIndex !== -1) { // Both tasks are in the ordered list
+                 if (aIndex !== -1 && bIndex !== -1) {
                      return aIndex - bIndex;
                  }
              }
-             
-              // Fallback for tasks not on the reorder date or if one is new
+
               if (a.highPriority !== b.highPriority) {
                   return a.highPriority ? -1 : 1;
               }
-             
-             // Fallback to original order if all else is equal
+
              const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
              const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
               if (originalAIndex === -1 && originalBIndex === -1) return 0;
@@ -364,7 +351,6 @@ export default function Home() {
        if (task.id === id) {
            const updatedTask = { ...task, ...updates };
             if (updates.dueDate && updates.dueDate !== task.dueDate) {
-                // If due date changes, we might need to re-sort if sort logic includes due dates
                 needsResort = true;
             }
          return updatedTask;
@@ -373,7 +359,6 @@ export default function Home() {
      });
 
       if (needsResort) {
-           // If sorting depends on dueDate, re-sort here
            updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
@@ -387,13 +372,12 @@ export default function Home() {
                    return a.highPriority ? -1 : 1;
                }
 
-               // Optional: Sort by due date if primary dates are the same
                const dueDateA = parseISOStrict(a.dueDate);
                const dueDateB = parseISOStrict(b.dueDate);
                if (dueDateA && dueDateB) {
                    return dueDateA.getTime() - dueDateB.getTime();
                }
-               if (dueDateA) return -1; // Tasks with due dates first
+               if (dueDateA) return -1;
                if (dueDateB) return 1;
                return 0;
            });
@@ -423,8 +407,8 @@ export default function Home() {
 
 
   const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
-    if (!isClient) return []; // Don't run on server or before client hydration
-    
+    if (!isClient) return [];
+
     const today = startOfDay(new Date());
 
     const mappedTasks: UpcomingItem[] = tasks
@@ -438,13 +422,12 @@ export default function Home() {
       .map(task => ({
         id: task.id,
         name: task.name,
-        dueDate: task.dueDate!, // Already confirmed not null
+        dueDate: task.dueDate!,
         type: 'task' as 'task',
-        originalDate: task.date, // Keep original scheduled date
+        originalDate: task.date,
         description: task.description,
-        taskHighPriority: task.highPriority, // Use specific name
+        taskHighPriority: task.highPriority,
         color: task.color,
-        timeLeftDetails: calculateTimeLeft(task.dueDate), // Calculate once
       }));
 
     const mappedGoals: UpcomingItem[] = goals
@@ -453,48 +436,78 @@ export default function Home() {
         const goalDueDate = parseISOStrict(goal.dueDate);
         if (!goalDueDate) return false;
         const timeLeftDetails = calculateTimeLeft(goal.dueDate);
-        if (!timeLeftDetails || timeLeftDetails.isPastDue) return false; // Skip past due goals
-        if (calculateGoalProgress(goal) >= 100) return false; // Skip completed goals
+        if (!timeLeftDetails || timeLeftDetails.isPastDue) return false;
+        if (calculateGoalProgress(goal) >= 100) return false;
         return true;
       })
       .map(goal => ({
         id: goal.id,
         name: goal.name,
-        dueDate: goal.dueDate!, // Already confirmed not null
+        dueDate: goal.dueDate!,
         type: 'goal' as 'goal',
-        goalHighPriority: goal.highPriority, // Use specific name
+        goalHighPriority: goal.highPriority,
         progress: calculateGoalProgress(goal),
-        timeLeftDetails: calculateTimeLeft(goal.dueDate), // Calculate once
       }));
 
     const combinedItems = [...mappedTasks, ...mappedGoals];
 
     return combinedItems.sort((a, b) => {
-      // Prioritize high-priority items
       const aIsHighPriority = a.type === 'goal' ? a.goalHighPriority : a.taskHighPriority;
       const bIsHighPriority = b.type === 'goal' ? b.goalHighPriority : b.taskHighPriority;
 
       if (aIsHighPriority && !bIsHighPriority) return -1;
       if (!aIsHighPriority && bIsHighPriority) return 1;
 
-      // Then sort by due date (earliest first)
-      const dueDateA = parseISOStrict(a.dueDate)!; // Assert not null as filtered
-      const dueDateB = parseISOStrict(b.dueDate)!; // Assert not null as filtered
+      const dueDateA = parseISOStrict(a.dueDate)!;
+      const dueDateB = parseISOStrict(b.dueDate)!;
       return dueDateA.getTime() - dueDateB.getTime();
     });
-  }, [tasks, goals, isClient]); // Ensure isClient dependency
+  }, [tasks, goals, isClient]);
 
-  const handleSendChatMessage = () => {
-    if (chatInput.trim()) {
-      console.log("Chat message sent:", chatInput);
-      // Future AI integration point
-      setChatInput('');
+  const handleSendChatMessage = async () => {
+    if (chatInput.trim() && !isParsingTask) {
+      setIsParsingTask(true);
+      try {
+        const parsedTask = await parseNaturalLanguageTask({ query: chatInput.trim() });
+
+        let descriptionWithTime = parsedTask.description || "";
+        if (parsedTask.parsedTime) {
+            descriptionWithTime = `${descriptionWithTime}${descriptionWithTime ? " " : ""}Originally mentioned time: ${parsedTask.parsedTime}.`.trim();
+        }
+
+        const taskDate = parseISOStrict(parsedTask.date);
+        if (!taskDate || !isValid(taskDate)) {
+            throw new Error("AI returned an invalid date. Please try again.");
+        }
+
+        setTaskFormInitialData({
+          name: parsedTask.name,
+          date: parsedTask.date, // Already in YYYY-MM-DD
+          description: descriptionWithTime,
+        });
+        setIsFormOpen(true);
+        setChatInput('');
+        toast({
+            title: "Task Processed by AI",
+            description: "Review the details below and save the task.",
+        });
+
+      } catch (error: any) {
+        console.error("Error parsing task with AI:", error);
+        toast({
+          title: "AI Parsing Failed",
+          description: error.message || "Could not understand the task. Please try rephrasing or add manually.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsParsingTask(false);
+      }
     }
   };
 
   const handleChatKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault(); // Prevent newline on Enter
+      event.preventDefault();
       handleSendChatMessage();
     }
   };
@@ -506,10 +519,9 @@ export default function Home() {
       <header
         className={cn(
           "bg-background border-b shadow-sm w-full",
-          "flex flex-col" // Ensure header itself is a flex column
+          "flex flex-col"
         )}
       >
-        {/* Top Row: Title and Auth */}
         <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
           <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">
             WeekWise
@@ -519,25 +531,27 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Bottom Row: Navigation Icons */}
         <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
-            <Link href="/timetable" passHref legacyBehavior>
-                <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to timetable">
-                    <LayoutDashboard className="h-5 w-5" />
-                    <span className="ml-2 hidden md:inline">Timetable</span>
-                </Button>
+            <Link href="/timetable"
+              className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
+              aria-label="Go to timetable"
+            >
+                <LayoutDashboard className="h-5 w-5" />
+                <span className="ml-2 hidden md:inline">Timetable</span>
             </Link>
-            <Link href="/study-tracker" passHref legacyBehavior>
-                <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="Go to study tracker">
-                    <BookOpen className="h-5 w-5" />
-                    <span className="ml-2 hidden md:inline">Study</span>
-                </Button>
+            <Link href="/study-tracker"
+               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
+               aria-label="Go to study tracker"
+            >
+                <BookOpen className="h-5 w-5" />
+                <span className="ml-2 hidden md:inline">Study</span>
             </Link>
-            <Link href="/goals" passHref legacyBehavior>
-                <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" aria-label="View goals">
-                    <Target className="h-5 w-5" />
-                    <span className="ml-2 hidden md:inline">Goals</span>
-                </Button>
+            <Link href="/goals"
+              className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
+              aria-label="View goals"
+            >
+                <Target className="h-5 w-5" />
+                <span className="ml-2 hidden md:inline">Goals</span>
             </Link>
             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                 <SheetTrigger asChild>
@@ -580,7 +594,7 @@ export default function Home() {
       </header>
 
       <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
-        
+
         <div className="w-full max-w-7xl space-y-4">
           {isClient && (
               <CalendarView
@@ -595,7 +609,7 @@ export default function Home() {
               />
           )}
         </div>
-        
+
         <div className="w-full mt-4">
            <TopTaskBar
              items={upcomingItemsForBar}
@@ -603,65 +617,72 @@ export default function Home() {
            />
          </div>
 
-        {/* Chatbot Input Area */}
         <div className="w-full max-w-7xl mt-4">
             <Card className="shadow-md border-border">
                 <CardHeader className="p-3 border-b">
-                    <CardTitle className="text-base text-primary">AI Assistant (Coming Soon)</CardTitle>
+                    <CardTitle className="text-base text-primary flex items-center">
+                        <MessageSquare className="h-5 w-5 mr-2" />
+                        Add Task with AI
+                    </CardTitle>
                 </CardHeader>
-                <CardContent className="p-3">
+                <CardContent className="p-3 space-y-2">
                     <div className="flex space-x-2">
-                        <Button onClick={handleSendChatMessage} className="h-10 px-3">
-                            <SendHorizonal className="h-4 w-4" />
+                        <Button onClick={handleSendChatMessage} className="h-10 px-3" disabled={isParsingTask || !chatInput.trim()}>
+                            {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
                             <span className="sr-only">Send Chat Message</span>
                         </Button>
                         <Input
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="Ask WeekWise AI anything..."
+                            placeholder="e.g., 'Schedule doctor appointment next Friday at 10am' or 'Finish report by tomorrow'"
                             className="h-10 text-sm"
                             onKeyPress={handleChatKeyPress}
+                            disabled={isParsingTask}
                         />
                     </div>
-                    {/* Placeholder for chat messages display later - you can uncomment and style this when ready
-                    <div className="mt-3 h-32 border rounded p-2 overflow-y-auto bg-muted/50">
-                        <p className="text-xs text-muted-foreground italic">Chat history will appear here...</p>
-                    </div>
-                    */}
+                    <p className="text-xs text-muted-foreground">
+                        Type your task in natural language. The AI will parse it and pre-fill the task form for you to confirm.
+                    </p>
                 </CardContent>
             </Card>
         </div>
-        
-        {/* Floating Action Buttons */}
+
         <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <Dialog open={isFormOpen} onOpenChange={(open) => {
+                setIsFormOpen(open);
+                if (!open) setTaskFormInitialData(null); // Clear initial data when dialog closes
+            }}>
               <DialogTrigger asChild>
                 <Button
                   variant="default"
                   size="icon"
                   className="h-12 w-12 rounded-full shadow-lg"
-                  aria-label="Add new task"
+                  aria-label="Add new task manually"
                 >
                   <Plus className="h-6 w-6" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                   <FormDialogTitle className="text-primary">Add New Task</FormDialogTitle>
+                   <FormDialogTitle className="text-primary">
+                    {taskFormInitialData ? "Confirm AI Task" : "Add New Task"}
+                   </FormDialogTitle>
                 </DialogHeader>
                 <TaskForm
                    addTask={addTask}
-                   onTaskAdded={() => setIsFormOpen(false)}
-                   initialData={null} // For new tasks
+                   onTaskAdded={() => {
+                       setIsFormOpen(false);
+                       setTaskFormInitialData(null);
+                   }}
+                   initialData={taskFormInitialData}
                 />
               </DialogContent>
             </Dialog>
         </div>
 
-        {/* Conditional Login Button - Bottom Left */}
         {!authLoading && !user && (
           <div className="fixed bottom-4 left-4 z-50">
-            <Link href="/login" passHref legacyBehavior>
+            <Link href="/login" asChild>
               <Button
                 variant="default"
                 size="icon"
@@ -694,7 +715,7 @@ export default function Home() {
                     <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
-                         className={cn("text-foreground")} // Basic styling for this option
+                         className={cn("text-foreground")}
                     >
                         Delete This Occurrence Only
                     </AlertDialogAction>
@@ -712,6 +733,3 @@ export default function Home() {
   );
 }
 
-    
-
-    
