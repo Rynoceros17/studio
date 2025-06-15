@@ -640,7 +640,7 @@ export default function Home() {
       <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
 
         <div className="w-full max-w-7xl mb-4">
-            <Card className="shadow-sm border-border bg-transparent">
+            <Card className="shadow-sm bg-transparent border-none">
                 <CardContent className="p-3 flex items-center space-x-2">
                     <Button onClick={handleSendChatMessage} className="h-10 px-3 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isParsingTask || !chatInput.trim()}>
                         {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
