@@ -51,14 +51,15 @@ const parseTaskPrompt = ai.definePrompt({
   output: {schema: ParseNaturalLanguageTaskOutputSchema}, // Expecting an array of tasks
   prompt: `You are an intelligent assistant that helps parse user requests to create calendar tasks from a single query which might contain multiple distinct tasks.
 The current date is {{{currentDate}}}.
-Convert the user's query into an array of JSON objects. Each object in the array should represent a distinct task and have the following fields:
-- "name": A concise name for the task. This should be the main action or event.
-- "date": The date for the task in "YYYY-MM-DD" format. Infer this from terms like "today", "tomorrow", "next Monday", or specific dates.
-- "description": Only include additional details if explicitly provided in the request beyond the task name and date/time. If the user mentions a specific time, include it clearly in the description (e.g., "Time: 3:00 PM"). If no extra details or time, this field should be an empty string or null.
-- "parsedTime": If a specific time is mentioned (e.g., "3pm", "15:00"), extract it as "HH:MM AM/PM" or "HH:MM" (24-hour). If no time, this field should be null.
-- "recurring": Set to true if the task is described as weekly (e.g., "every Monday", "weekly meeting"). Otherwise, set to false or omit.
-- "highPriority": Set to true if the task is explicitly described as important, priority, or urgent (e.g., "Important: Call John", "priority review"). Otherwise, set to false or omit.
-- "color": If one of the following color tags is specified for the task (#col1, #col2, #col3, #col4, #col5), include the tag itself (e.g., if user says "task with #col1", output "#col1"). Otherwise, set to null or omit.
+Convert the user's query into an array of JSON objects. Each object in the array should represent a distinct task and MUST have the following fields: "name", "date", "description", "parsedTime", "recurring", "highPriority", and "color".
+
+- "name": (String) A concise name for the task. This should be the main action or event.
+- "date": (String) The date for the task in "YYYY-MM-DD" format. Infer this from terms like "today", "tomorrow", "next Monday", or specific dates.
+- "description": (String or Null) Only include additional details if explicitly provided in the request beyond the task name and date/time. If the user mentions a specific time, include it clearly in the description (e.g., "Time: 3:00 PM"). If no extra details or time, this field should be an empty string or null.
+- "parsedTime": (String or Null) If a specific time is mentioned (e.g., "3pm", "15:00"), extract it as "HH:MM AM/PM" or "HH:MM" (24-hour). If no time, this field should be null.
+- "recurring": (Boolean) Set to true if the task is described as weekly (e.g., "every Monday", "weekly meeting"). Otherwise, set to false. This field must always be present.
+- "highPriority": (Boolean) Set to true if the task is explicitly described as important, priority, or urgent (e.g., "Important: Call John", "priority review"). Otherwise, set to false. This field must always be present.
+- "color": (String - tag like '#colX' or Null) If one of the following color tags is specified for the task (${availableColorTags.join(', ')}), include the tag itself (e.g., if user says "task with #col1", output "#col1"). Otherwise, set to null. This field must always be present.
 
 If the query contains multiple tasks, create a separate JSON object for each task in the array.
 If the query contains only one task, return an array with a single JSON object.
@@ -68,11 +69,11 @@ Strictly adhere to the JSON output format specified. Do not add any extra explan
 
 Example 1 (Single Task with color tag and priority):
 User Input: "Important: Remind me to call John tomorrow at 3pm with #col1"
-Output:
+Output (assuming today is 2023-10-26):
 [
   {
     "name": "Call John",
-    "date": "{{currentDate}}", // This will be replaced by the actual next day based on currentDate
+    "date": "2023-10-27",
     "description": "Time: 3:00 PM",
     "parsedTime": "3:00 PM",
     "recurring": false,
@@ -80,15 +81,14 @@ Output:
     "color": "#col1"
   }
 ]
-(Note: Replace "{{currentDate}}" with the actual date for 'tomorrow' based on the provided currentDate in the examples below)
 
 Example 2 (Multiple Tasks, one recurring, one with priority and color tag):
 User Input: "Dentist appointment next Tuesday and then Urgent: Weekly grocery shopping on Saturday at 10am use #col2"
-Output (assuming today is Thursday, Oct 26, so next Tuesday is Oct 31, Saturday is Oct 28):
+Output (assuming today is 2023-10-26, so next Tuesday is 2023-10-31, Saturday is 2023-10-28):
 [
   {
     "name": "Dentist appointment",
-    "date": "YYYY-MM-DD", // Actual date for next Tuesday
+    "date": "2023-10-31",
     "description": "",
     "parsedTime": null,
     "recurring": false,
@@ -97,7 +97,7 @@ Output (assuming today is Thursday, Oct 26, so next Tuesday is Oct 31, Saturday 
   },
   {
     "name": "Grocery shopping",
-    "date": "YYYY-MM-DD", // Actual date for Saturday
+    "date": "2023-10-28",
     "description": "Time: 10:00 AM",
     "parsedTime": "10:00 AM",
     "recurring": true,
@@ -108,11 +108,11 @@ Output (assuming today is Thursday, Oct 26, so next Tuesday is Oct 31, Saturday 
 
 Example 3 (Single Task, No Time, Minimal Description, no priority/color):
 User Input: "Submit report by November 5th"
-Output:
+Output (assuming today is 2023-10-26, so November 5th is 2023-11-05):
 [
   {
     "name": "Submit report",
-    "date": "YYYY-11-05", // Actual year
+    "date": "2023-11-05",
     "description": "",
     "parsedTime": null,
     "recurring": false,
@@ -138,15 +138,16 @@ const parseNaturalLanguageTaskFlow = ai.defineFlow(
       console.warn("AI failed to parse tasks or returned undefined output. Returning empty array.");
       return [];
     }
-    // Ensure each task in the array has the necessary fields, providing defaults for optional ones.
+    // Ensure each task in the array has the necessary fields, providing defaults for optional ones if AI still misses them.
     return output.map(task => ({
         name: task.name || "Unnamed Task",
         date: task.date, // This is required by schema, should always be there
         description: task.description || "",
         parsedTime: task.parsedTime || null,
-        recurring: task.recurring || false,
-        highPriority: task.highPriority || false,
-        color: task.color || null, // AI will output the tag like "#col1" or null
+        recurring: task.recurring ?? false, // Default to false if undefined/null
+        highPriority: task.highPriority ?? false, // Default to false if undefined/null
+        color: task.color || null, // Default to null if undefined/null
     }));
   }
 );
+
