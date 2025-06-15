@@ -4,11 +4,10 @@
 import type * as React from 'react';
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Star } from 'lucide-react'; // Removed Paperclip, Trash2
+import { Calendar as CalendarIcon, Star, X } from 'lucide-react'; // Added X icon
 
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-// Removed: import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,13 +20,13 @@ import {
   DialogDescription as ShadDialogDesc,
   DialogFooter as ShadDialogFooter,
 } from "@/components/ui/dialog";
-import type { Task } from '@/lib/types'; // FileMetaData no longer imported
+import type { Task } from '@/lib/types';
 import { cn, truncateText, getMaxLength } from '@/lib/utils';
 
 interface TaskDetailsDisplayDialogProps {
   task: Task | null;
   onClose: () => void;
-  updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => void; // Removed 'files'
+  updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => void;
 }
 
 export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: TaskDetailsDisplayDialogProps) {
@@ -36,33 +35,25 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
       task?.dueDate ? parseISO(task.dueDate + 'T00:00:00') : undefined
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  // Removed: const [uploadedFiles, setUploadedFiles] = useState<FileMetaData[]>(task?.files || []);
 
   useEffect(() => {
       if (task) {
           setTaskDetails(task.details || '');
           setDueDate(task.dueDate ? parseISO(task.dueDate + 'T00:00:00') : undefined);
-          // Removed: setUploadedFiles(task.files || []);
       } else {
           setTaskDetails('');
           setDueDate(undefined);
-          // Removed: setUploadedFiles([]);
       }
   }, [task]);
 
-  // Removed: handleFileChange
-  // Removed: removeFile
-
   const handleSave = () => {
     if (task) {
-      const updates: Partial<Pick<Task, 'details' | 'dueDate'>> = { // Removed 'files'
+      const updates: Partial<Pick<Task, 'details' | 'dueDate'>> = {
           details: taskDetails,
           dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
-          // Removed: files: uploadedFiles,
       };
       if (updates.details !== task.details ||
           updates.dueDate !== task.dueDate
-          // Removed: JSON.stringify(updates.files) !== JSON.stringify(task.files)
         )
         {
         updateTaskDetails(task.id, updates);
@@ -87,7 +78,6 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                     </ShadDialogTitle>
                      {task?.description && (
                         <ShadDialogDesc className="pt-1 truncate" title={task.description}>
-                            {/* Apply line-clamp-2 to the description */}
                             <span className="line-clamp-2 break-all whitespace-normal">
                                 {truncatedDescription}
                             </span>
@@ -106,17 +96,17 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
         {task ? (
           <div className="grid gap-4 py-4">
                <div className="grid grid-cols-4 items-center gap-4">
-                   <Label htmlFor="dueDateDisplay" className="text-right text-sm font-medium text-primary">
+                   <Label htmlFor="dueDateDisplayPopover" className="text-right text-sm font-medium text-primary">
                        Due Date:
                    </Label>
-                   <div className="col-span-3">
+                   <div className="col-span-3 flex items-center gap-2">
                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                            <PopoverTrigger asChild>
                                <Button
-                                   id="dueDateDisplay"
+                                   id="dueDateDisplayPopover"
                                    variant={"outline"}
                                    className={cn(
-                                       "w-full justify-start text-left font-normal h-9 truncate",
+                                       "flex-grow justify-start text-left font-normal h-9 truncate",
                                        !dueDate && "text-muted-foreground"
                                    )}
                                    >
@@ -129,13 +119,25 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
                                    mode="single"
                                    selected={dueDate}
                                    onSelect={(date) => {
-                                       setDueDate(date);
+                                       setDueDate(date); // date can be Date | undefined
                                        setIsCalendarOpen(false);
                                    }}
                                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
                                />
                            </PopoverContent>
                        </Popover>
+                        {dueDate && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDueDate(undefined)}
+                                className="h-9 w-9 flex-shrink-0"
+                                aria-label="Clear due date"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
                    </div>
                </div>
 
@@ -157,7 +159,6 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
               </div>
             </div>
 
-             {/* Removed Files Upload Section */}
           </div>
         ) : (
           <p>No task selected.</p>
