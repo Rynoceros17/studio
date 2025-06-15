@@ -18,6 +18,7 @@ import type { Task, Goal, UpcomingItem, ChatMessage } from '@/lib/types';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -53,8 +54,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, MessageSquare } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
-import { buttonVariants } from '@/components/ui/button';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
+import type { SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 
@@ -71,7 +72,7 @@ export default function Home() {
   }, [completedTaskIds]);
 
   const { toast } = useToast();
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false); // For manual task adding
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false);
   const [isTimerVisible, setIsTimerVisible] = useState(false);
@@ -81,7 +82,7 @@ export default function Home() {
 
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
-  const [taskFormInitialData, setTaskFormInitialData] = useState<Partial<Task> | null>(null);
+  // taskFormInitialData is no longer needed for AI flow, but kept for manual pre-fill if a similar feature is desired later.
 
 
   useEffect(() => {
@@ -149,14 +150,18 @@ export default function Home() {
          });
          return updatedTasks;
      });
-     const taskDate = parseISOStrict(newTaskData.date);
-     toast({
-         title: "Task Added",
-         description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
-     });
-     setIsFormOpen(false);
-     setTaskFormInitialData(null); // Clear initial data after adding
-  }, [setTasks, toast]);
+     // Toast is now handled in handleSendChatMessage for AI tasks
+     // and potentially within TaskForm for manual additions if needed.
+     // For direct AI additions, a summary toast is better.
+     if (!isParsingTask) { // Avoid double toast if addTask is called manually
+        const taskDate = parseISOStrict(newTaskData.date);
+        toast({
+            title: "Task Added Manually",
+            description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
+        });
+     }
+     setIsFormOpen(false); // Close manual form if it was open
+  }, [setTasks, toast, isParsingTask]);
 
 
   const deleteAllOccurrences = useCallback((id: string) => {
@@ -468,35 +473,65 @@ export default function Home() {
     if (chatInput.trim() && !isParsingTask) {
       setIsParsingTask(true);
       try {
-        const parsedTask = await parseNaturalLanguageTask({ query: chatInput.trim() });
+        const parsedTasksArray: SingleTaskOutput[] = await parseNaturalLanguageTask({ query: chatInput.trim() });
 
-        let descriptionWithTime = parsedTask.description || "";
-        if (parsedTask.parsedTime) {
-            descriptionWithTime = `${descriptionWithTime}${descriptionWithTime ? " " : ""}Originally mentioned time: ${parsedTask.parsedTime}.`.trim();
+        if (parsedTasksArray && parsedTasksArray.length > 0) {
+            let tasksAddedCount = 0;
+            parsedTasksArray.forEach(parsedTask => {
+                let descriptionWithTime = parsedTask.description || "";
+                if (parsedTask.parsedTime) {
+                    descriptionWithTime = `${descriptionWithTime}${descriptionWithTime ? " " : ""}Time: ${parsedTask.parsedTime}.`.trim();
+                }
+
+                const taskDate = parseISOStrict(parsedTask.date);
+                if (!taskDate || !isValid(taskDate)) {
+                    console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
+                    return; // Skip this task
+                }
+
+                addTask({
+                    name: parsedTask.name,
+                    date: parsedTask.date, // Already in YYYY-MM-DD
+                    description: descriptionWithTime,
+                    // Add other default properties for a new task from AI if needed
+                    recurring: false, // Default for AI-parsed tasks
+                    highPriority: false, // Default
+                    color: undefined, // Default
+                    details: '', // Default
+                    dueDate: undefined, // Default
+                    exceptions: [] // Default
+                });
+                tasksAddedCount++;
+            });
+
+            if (tasksAddedCount > 0) {
+                toast({
+                    title: tasksAddedCount === 1 ? "Task Added by AI" : `${tasksAddedCount} Tasks Added by AI`,
+                    description: tasksAddedCount === 1
+                        ? `Task "${parsedTasksArray[0].name}" added to your calendar.`
+                        : `${tasksAddedCount} tasks parsed and added to your calendar.`,
+                });
+            } else {
+                 toast({
+                    title: "AI Parsing Issue",
+                    description: "The AI processed your request, but no valid tasks could be added. Please check your input or try rephrasing.",
+                    variant: "destructive",
+                });
+            }
+            setChatInput(''); // Clear input after successful processing
+        } else {
+             toast({
+                title: "No Tasks Detected",
+                description: "The AI couldn't identify any tasks in your message. Try being more specific.",
+                variant: "destructive",
+            });
         }
-
-        const taskDate = parseISOStrict(parsedTask.date);
-        if (!taskDate || !isValid(taskDate)) {
-            throw new Error("AI returned an invalid date. Please try again.");
-        }
-
-        setTaskFormInitialData({
-          name: parsedTask.name,
-          date: parsedTask.date, // Already in YYYY-MM-DD
-          description: descriptionWithTime,
-        });
-        setIsFormOpen(true);
-        setChatInput('');
-        toast({
-            title: "Task Processed by AI",
-            description: "Review the details below and save the task.",
-        });
 
       } catch (error: any) {
         console.error("Error parsing task with AI:", error);
         toast({
-          title: "AI Parsing Failed",
-          description: error.message || "Could not understand the task. Please try rephrasing or add manually.",
+          title: "AI Processing Error",
+          description: error.message || "Could not process your request. Please try again or add manually.",
           variant: "destructive",
         });
       } finally {
@@ -595,7 +630,45 @@ export default function Home() {
 
       <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
 
-        <div className="w-full max-w-7xl space-y-4">
+        <div className="w-full max-w-7xl mb-4">
+            <Card className="shadow-md border-border">
+                <CardHeader className="p-3 border-b">
+                    <CardTitle className="text-base text-primary flex items-center">
+                        <MessageSquare className="h-5 w-5 mr-2" />
+                        Add Tasks with AI
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 space-y-2">
+                    <div className="flex space-x-2">
+                        <Button onClick={handleSendChatMessage} className="h-10 px-3" disabled={isParsingTask || !chatInput.trim()}>
+                            {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+                            <span className="sr-only">Send Task Query</span>
+                        </Button>
+                        <Input
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            placeholder="e.g., 'Plan dinner next Tuesday and call mom on Friday at 4pm'"
+                            className="h-10 text-sm"
+                            onKeyPress={handleChatKeyPress}
+                            disabled={isParsingTask}
+                            maxLength={250}
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Type task(s) in natural language. The AI will parse and add them to your calendar. Max 250 chars.
+                    </p>
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="w-full mt-0"> {/* Ensure TopTaskBar is directly below Add Task with AI */}
+           <TopTaskBar
+             items={upcomingItemsForBar}
+             toggleGoalPriority={toggleGoalPriority}
+           />
+         </div>
+
+        <div className="w-full max-w-7xl space-y-4 mt-4"> {/* Add margin-top to CalendarView container */}
           {isClient && (
               <CalendarView
                 tasks={tasks}
@@ -610,48 +683,9 @@ export default function Home() {
           )}
         </div>
 
-        <div className="w-full mt-4">
-           <TopTaskBar
-             items={upcomingItemsForBar}
-             toggleGoalPriority={toggleGoalPriority}
-           />
-         </div>
-
-        <div className="w-full max-w-7xl mt-4">
-            <Card className="shadow-md border-border">
-                <CardHeader className="p-3 border-b">
-                    <CardTitle className="text-base text-primary flex items-center">
-                        <MessageSquare className="h-5 w-5 mr-2" />
-                        Add Task with AI
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2">
-                    <div className="flex space-x-2">
-                        <Button onClick={handleSendChatMessage} className="h-10 px-3" disabled={isParsingTask || !chatInput.trim()}>
-                            {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
-                            <span className="sr-only">Send Chat Message</span>
-                        </Button>
-                        <Input
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="e.g., 'Schedule doctor appointment next Friday at 10am' or 'Finish report by tomorrow'"
-                            className="h-10 text-sm"
-                            onKeyPress={handleChatKeyPress}
-                            disabled={isParsingTask}
-                        />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        Type your task in natural language. The AI will parse it and pre-fill the task form for you to confirm.
-                    </p>
-                </CardContent>
-            </Card>
-        </div>
 
         <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
-            <Dialog open={isFormOpen} onOpenChange={(open) => {
-                setIsFormOpen(open);
-                if (!open) setTaskFormInitialData(null); // Clear initial data when dialog closes
-            }}>
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
               <DialogTrigger asChild>
                 <Button
                   variant="default"
@@ -664,17 +698,12 @@ export default function Home() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                   <FormDialogTitle className="text-primary">
-                    {taskFormInitialData ? "Confirm AI Task" : "Add New Task"}
-                   </FormDialogTitle>
+                   <FormDialogTitle className="text-primary">Add New Task</FormDialogTitle>
                 </DialogHeader>
                 <TaskForm
                    addTask={addTask}
-                   onTaskAdded={() => {
-                       setIsFormOpen(false);
-                       setTaskFormInitialData(null);
-                   }}
-                   initialData={taskFormInitialData}
+                   onTaskAdded={() => setIsFormOpen(false)}
+                   initialData={null} // AI flow no longer pre-fills this specific dialog
                 />
               </DialogContent>
             </Dialog>
