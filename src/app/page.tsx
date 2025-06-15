@@ -491,15 +491,18 @@ export default function Home() {
                 }
 
                 // Resolve color tag to hex
-                const finalColor = parsedTask.color ? (colorTagToHexMap[parsedTask.color] || undefined) : undefined;
+                const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
+                  ? colorTagToHexMap[parsedTask.color]
+                  : undefined;
+
 
                 addTask({
-                    name: parsedTask.name,
-                    date: parsedTask.date,
+                    name: parsedTask.name || "Unnamed Task",
+                    date: parsedTask.date, // Assuming this is always valid 'yyyy-MM-dd' from AI
                     description: descriptionWithTime,
                     recurring: parsedTask.recurring ?? false,
                     highPriority: parsedTask.highPriority ?? false,
-                    color: finalColor, // Use resolved hex color
+                    color: finalColor,
                     details: '',
                     dueDate: undefined,
                     exceptions: []
@@ -511,7 +514,7 @@ export default function Home() {
                 toast({
                     title: tasksAddedCount === 1 ? "Task Added by AI" : `${tasksAddedCount} Tasks Added by AI`,
                     description: tasksAddedCount === 1
-                        ? `Task "${parsedTasksArray[0].name}" added to your calendar.`
+                        ? `Task "${parsedTasksArray.find(pt => pt.name)?.name || 'Unnamed Task'}" added to your calendar.`
                         : `${tasksAddedCount} tasks parsed and added to your calendar.`,
                 });
             } else {
@@ -661,18 +664,11 @@ export default function Home() {
                         />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        Type task(s) with details like 'every week', 'priority', or use #col1-#col5 for color. Max 250 chars.
+                        Type task(s) with details like 'every week', 'priority', or use #col1-#col6 for color. Max 250 chars.
                     </p>
                 </CardContent>
             </Card>
         </div>
-
-        <div className="w-full mt-0">
-           <TopTaskBar
-             items={upcomingItemsForBar}
-             toggleGoalPriority={toggleGoalPriority}
-           />
-         </div>
 
         <div className="w-full max-w-7xl space-y-4 mt-4">
           {isClient && (
@@ -688,6 +684,13 @@ export default function Home() {
               />
           )}
         </div>
+
+        <div className="w-full mt-4">
+           <TopTaskBar
+             items={upcomingItemsForBar}
+             toggleGoalPriority={toggleGoalPriority}
+           />
+         </div>
 
 
         <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
@@ -767,3 +770,4 @@ export default function Home() {
     </DndContext>
   );
 }
+
