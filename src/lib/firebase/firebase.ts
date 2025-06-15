@@ -1,5 +1,5 @@
 
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
@@ -25,7 +25,8 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 
-const requiredEnvVarKeys: (keyof typeof firebaseConfig)[] = ['apiKey', 'authDomain', 'projectId', 'appId', 'storageBucket', 'messagingSenderId'];
+// Check if all required Firebase config values are present
+const requiredEnvVarKeys: (keyof typeof firebaseConfig)[] = ['apiKey', 'authDomain', 'projectId', 'appId']; // Removed storageBucket and messagingSenderId as they might not be strictly essential for core functionality for all apps.
 const missingEnvVars: string[] = [];
 
 for (const key of requiredEnvVarKeys) {
@@ -39,51 +40,18 @@ if (missingEnvVars.length > 0) {
   "Please ensure these are correctly set in your .env file (e.g., .env.local) and that you have RESTARTED your development server. Firebase will not initialize correctly.";
   console.error(errorMessage);
   // Assign dummy objects to prevent further crashes if imported elsewhere, though functionality will be broken.
-  app = {} as FirebaseApp;
-  auth = {} as Auth;
-  db = {} as Firestore;
+  app = {} as FirebaseApp; // Ensures 'app' is assigned
+  auth = {} as Auth; // Ensures 'auth' is assigned
+  db = {} as Firestore; // Ensures 'db' is assigned
 } else {
-  if (typeof window !== 'undefined' && !getApps().length) {
-    try {
-      console.log("Initializing Firebase on client with config:", firebaseConfig);
-      app = initializeApp(firebaseConfig);
-    } catch (e) {
-      console.error("Error initializing Firebase on client:", e);
-      app = {} as FirebaseApp; // Assign dummy on error
-    }
-  } else if (typeof window === 'undefined') { // Server-side
-    if (!getApps().length) {
-      try {
-        console.log("Initializing Firebase on server with config:", firebaseConfig);
-        app = initializeApp(firebaseConfig);
-      } catch (e) {
-        console.error("Error initializing Firebase on server:", e);
-        app = {} as FirebaseApp; // Assign dummy on error
-      }
-    } else {
-      app = getApp();
-    }
-  } else { // Client-side, app already initialized
-    app = getApp();
-  }
+  // Initialize Firebase
+  app = initializeApp(firebaseConfig);
 
-  // Initialize services only if app was successfully initialized
-  if (app && Object.keys(app).length > 0 && app.name) { // Check if app is a valid FirebaseApp
-    try {
-      auth = getAuth(app);
-      db = getFirestore(app);
-    } catch (e) {
-      console.error("Error getting Firebase Auth or Firestore instance:", e);
-      auth = {} as Auth;
-      db = {} as Firestore;
-    }
-  } else {
-    if (missingEnvVars.length === 0) { // Only log this specific error if env vars were present
-        console.error("Firebase app object is not valid after initialization attempt. Auth and DB will not be initialized.");
-    }
-    auth = {} as Auth;
-    db = {} as Firestore;
-  }
+  // Initialize Cloud Firestore and get a reference to the service
+  db = getFirestore(app);
+
+  // Initialize Auth
+  auth = getAuth(app);
 }
 
 export { app, auth, db };
