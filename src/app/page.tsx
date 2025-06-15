@@ -674,7 +674,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="w-full mt-4">
+        <div className="w-full max-w-7xl mt-4">
            <TopTaskBar
              items={upcomingItemsForBar}
              toggleGoalPriority={toggleGoalPriority}
