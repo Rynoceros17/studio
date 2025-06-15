@@ -16,8 +16,8 @@ export interface Goal {
     id: string;
     name: string;
     subtasks: Subtask[];
-    dueDate?: string; 
-    highPriority?: boolean; 
+    dueDate?: string;
+    highPriority?: boolean;
 }
 
 export interface Subtask {
@@ -30,14 +30,14 @@ export interface Subtask {
 export interface UpcomingItem {
   id: string;
   name: string;
-  dueDate: string; 
+  dueDate: string;
   type: 'task' | 'goal';
-  originalDate?: string; 
-  description?: string; 
-  taskHighPriority?: boolean; 
-  goalHighPriority?: boolean; 
-  color?: string; 
-  progress?: number; 
+  originalDate?: string;
+  description?: string;
+  taskHighPriority?: boolean;
+  goalHighPriority?: boolean;
+  color?: string;
+  progress?: number;
 }
 
 export interface TimeLeft {

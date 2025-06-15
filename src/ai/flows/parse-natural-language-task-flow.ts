@@ -23,8 +23,11 @@ export type ParseNaturalLanguageTaskInput = z.infer<typeof ParseNaturalLanguageT
 const SingleTaskSchema = z.object({
   name: z.string().describe("A concise name for the task."),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format.").describe("The date for the task in YYYY-MM-DD format. Infer from terms like 'today', 'tomorrow', 'next Monday', or specific dates."),
-  description: z.string().optional().describe("Only include additional details if explicitly provided beyond name and date/time. If a specific time is mentioned, include it here (e.g., 'Time: 3:00 PM'). Otherwise, empty string or omit."),
+  description: z.string().optional().nullable().describe("Only include additional details if explicitly provided beyond name and date/time. If a specific time is mentioned, include it here (e.g., 'Time: 3:00 PM'). Otherwise, empty string, null, or omit."),
   parsedTime: z.string().optional().nullable().describe("If a specific time is mentioned (e.g., '3pm', '15:00'), extract it as 'HH:MM AM/PM' or 'HH:MM' (24-hour). If no time, omit or leave null."),
+  recurring: z.boolean().optional().describe("Set to true if the task repeats weekly (e.g., 'every Monday', 'weekly meeting'). Default is false."),
+  highPriority: z.boolean().optional().describe("Set to true if the task is marked as important, priority, or urgent. Default is false."),
+  color: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/, "Color must be a valid hex code e.g. #RRGGBB or #RGB").optional().nullable().describe("A hex color code (e.g., '#A892D6') if specified in the input, otherwise null or omit.")
 });
 export type SingleTaskOutput = z.infer<typeof SingleTaskSchema>;
 
@@ -34,20 +37,27 @@ export type ParseNaturalLanguageTaskOutput = z.infer<typeof ParseNaturalLanguage
 
 
 export async function parseNaturalLanguageTask(input: ParseNaturalLanguageTaskInput): Promise<ParseNaturalLanguageTaskOutput> {
-  return parseNaturalLanguageTaskFlow(input);
+  // Dynamically set current date for the prompt
+  const currentDate = format(new Date(), 'yyyy-MM-dd');
+  const promptData = { ...input, currentDate };
+  return parseNaturalLanguageTaskFlow(promptData);
 }
 
 const parseTaskPrompt = ai.definePrompt({
   name: 'parseNaturalLanguageTaskPrompt',
-  input: {schema: ParseNaturalLanguageTaskInputSchema},
+  // The input to this prompt now includes currentDate in addition to query
+  input: {schema: ParseNaturalLanguageTaskInputSchema.extend({currentDate: z.string()})},
   output: {schema: ParseNaturalLanguageTaskOutputSchema}, // Expecting an array of tasks
   prompt: `You are an intelligent assistant that helps parse user requests to create calendar tasks from a single query which might contain multiple distinct tasks.
-The current date is ${format(new Date(), 'yyyy-MM-dd')}.
+The current date is {{{currentDate}}}.
 Convert the user's query into an array of JSON objects. Each object in the array should represent a distinct task and have the following fields:
 - "name": A concise name for the task. This should be the main action or event.
 - "date": The date for the task in "YYYY-MM-DD" format. Infer this from terms like "today", "tomorrow", "next Monday", or specific dates.
-- "description": Only include additional details if explicitly provided in the request beyond the task name and date/time. If the user mentions a specific time, include it clearly in the description (e.g., "Time: 3:00 PM"). If no extra details or time, this field should be an empty string.
+- "description": Only include additional details if explicitly provided in the request beyond the task name and date/time. If the user mentions a specific time, include it clearly in the description (e.g., "Time: 3:00 PM"). If no extra details or time, this field should be an empty string or null.
 - "parsedTime": If a specific time is mentioned (e.g., "3pm", "15:00"), extract it as "HH:MM AM/PM" or "HH:MM" (24-hour). If no time, this field should be null.
+- "recurring": Set to true if the task is described as weekly (e.g., "every Monday", "weekly meeting"). Otherwise, set to false or omit.
+- "highPriority": Set to true if the task is described as important, priority, or urgent. Otherwise, set to false or omit.
+- "color": If a hex color code (e.g., "#FF0000", "#A892D6") is specified for the task, include it. Otherwise, set to null or omit.
 
 If the query contains multiple tasks, create a separate JSON object for each task in the array.
 If the query contains only one task, return an array with a single JSON object.
@@ -55,65 +65,60 @@ If no tasks can be parsed, return an empty array.
 
 Strictly adhere to the JSON output format specified. Do not add any extra explanations or text outside the JSON array.
 
-Example 1 (Single Task):
-User Input: "Remind me to call John tomorrow at 3pm"
-Output (assuming today is 2023-10-26):
+Example 1 (Single Task with color and priority):
+User Input: "Important: Remind me to call John tomorrow at 3pm #A892D6"
+Output:
 [
   {
     "name": "Call John",
-    "date": "2023-10-27",
+    "date": "{{currentDate}}", // This will be replaced by the actual next day based on currentDate
     "description": "Time: 3:00 PM",
-    "parsedTime": "3:00 PM"
+    "parsedTime": "3:00 PM",
+    "recurring": false,
+    "highPriority": true,
+    "color": "#A892D6"
   }
 ]
+(Note: Replace "{{currentDate}}" with the actual date for 'tomorrow' based on the provided currentDate in the examples below)
 
-Example 2 (Multiple Tasks):
-User Input: "Dentist appointment next Tuesday and then Grocery shopping on Saturday at 10am"
-Output (assuming today is Thursday, 2023-10-26, so next Tuesday is 2023-10-31 and Saturday is 2023-10-28):
+Example 2 (Multiple Tasks, one recurring):
+User Input: "Dentist appointment next Tuesday and then Weekly grocery shopping on Saturday at 10am #aabbcc"
+Output (assuming today is Thursday, Oct 26, so next Tuesday is Oct 31, Saturday is Oct 28):
 [
   {
     "name": "Dentist appointment",
-    "date": "2023-10-31",
+    "date": "YYYY-MM-DD", // Actual date for next Tuesday
     "description": "",
-    "parsedTime": null
+    "parsedTime": null,
+    "recurring": false,
+    "highPriority": false,
+    "color": null
   },
   {
     "name": "Grocery shopping",
-    "date": "2023-10-28",
+    "date": "YYYY-MM-DD", // Actual date for Saturday
     "description": "Time: 10:00 AM",
-    "parsedTime": "10:00 AM"
+    "parsedTime": "10:00 AM",
+    "recurring": true,
+    "highPriority": false,
+    "color": "#aabbcc"
   }
 ]
 
-Example 3 (Single Task, No Time, Minimal Description):
+Example 3 (Single Task, No Time, Minimal Description, no priority/color):
 User Input: "Submit report by November 5th"
-Output (assuming current year is 2023):
+Output:
 [
   {
     "name": "Submit report",
-    "date": "2023-11-05",
+    "date": "YYYY-11-05", // Actual year
     "description": "",
-    "parsedTime": null
+    "parsedTime": null,
+    "recurring": false,
+    "highPriority": false,
+    "color": null
   }
 ]
-
-User Input: "Book flight for next week Monday and also prepare presentation for Friday"
-Output (assuming today is 2023-10-26, next Monday is 2023-10-30, Friday is 2023-10-27):
-[
-    {
-        "name": "Book flight",
-        "date": "2023-10-30",
-        "description": "",
-        "parsedTime": null
-    },
-    {
-        "name": "Prepare presentation",
-        "date": "2023-10-27",
-        "description": "",
-        "parsedTime": null
-    }
-]
-
 
 User Input: {{{query}}}
 Ensure your entire response is ONLY the JSON array.
@@ -123,14 +128,12 @@ Ensure your entire response is ONLY the JSON array.
 const parseNaturalLanguageTaskFlow = ai.defineFlow(
   {
     name: 'parseNaturalLanguageTaskFlow',
-    inputSchema: ParseNaturalLanguageTaskInputSchema,
-    outputSchema: ParseNaturalLanguageTaskOutputSchema, // Expecting an array
+    inputSchema: ParseNaturalLanguageTaskInputSchema.extend({currentDate: z.string()}),
+    outputSchema: ParseNaturalLanguageTaskOutputSchema,
   },
-  async (input) => {
-    const {output} = await parseTaskPrompt(input);
+  async (promptData) => { // promptData now includes currentDate
+    const {output} = await parseTaskPrompt(promptData);
     if (!output) {
-      // This case should ideally be handled by the prompt ensuring an empty array for no tasks.
-      // If AI returns nothing or malformed, this could be a fallback.
       console.warn("AI failed to parse tasks or returned undefined output. Returning empty array.");
       return [];
     }
@@ -138,9 +141,11 @@ const parseNaturalLanguageTaskFlow = ai.defineFlow(
     return output.map(task => ({
         name: task.name || "Unnamed Task",
         date: task.date, // This is required by schema, should always be there
-        description: task.description || "", // Default to empty string if not provided
+        description: task.description || "",
         parsedTime: task.parsedTime || null,
+        recurring: task.recurring || false,
+        highPriority: task.highPriority || false,
+        color: task.color || null, // Default to null if not provided by AI
     }));
   }
 );
-

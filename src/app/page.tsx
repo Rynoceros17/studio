@@ -17,8 +17,7 @@ import { PomodoroTimer } from '@/components/PomodoroTimer';
 import type { Task, Goal, UpcomingItem, ChatMessage } from '@/lib/types';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
-import { Button } from '@/components/ui/button';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -51,7 +50,7 @@ import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, MessageSquare } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, MessageSquare } from 'lucide-react'; // Added Loader2, MessageSquare
 import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
@@ -82,7 +81,6 @@ export default function Home() {
 
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
-  // taskFormInitialData is no longer needed for AI flow, but kept for manual pre-fill if a similar feature is desired later.
 
 
   useEffect(() => {
@@ -118,7 +116,8 @@ export default function Home() {
          id: crypto.randomUUID(),
          recurring: newTaskData.recurring ?? false,
          highPriority: newTaskData.highPriority ?? false,
-         exceptions: [],
+         color: newTaskData.color ?? undefined, // Ensure color is passed or defaults to undefined
+         exceptions: newTaskData.exceptions || [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
      };
@@ -215,7 +214,8 @@ export default function Home() {
               if (task.id === id) {
                   const updatedTask = { ...task, ...updates };
                   if ((updates.date && updates.date !== task.date) ||
-                      (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)
+                      (updates.highPriority !== undefined && updates.highPriority !== task.highPriority) ||
+                      (updates.color !== undefined && updates.color !== task.color) // Check for color change
                     ) {
                       needsResort = true;
                   }
@@ -491,15 +491,14 @@ export default function Home() {
 
                 addTask({
                     name: parsedTask.name,
-                    date: parsedTask.date, // Already in YYYY-MM-DD
+                    date: parsedTask.date,
                     description: descriptionWithTime,
-                    // Add other default properties for a new task from AI if needed
-                    recurring: false, // Default for AI-parsed tasks
-                    highPriority: false, // Default
-                    color: undefined, // Default
-                    details: '', // Default
-                    dueDate: undefined, // Default
-                    exceptions: [] // Default
+                    recurring: parsedTask.recurring ?? false,
+                    highPriority: parsedTask.highPriority ?? false,
+                    color: parsedTask.color ?? undefined, // Pass color to addTask
+                    details: '',
+                    dueDate: undefined,
+                    exceptions: []
                 });
                 tasksAddedCount++;
             });
@@ -518,7 +517,7 @@ export default function Home() {
                     variant: "destructive",
                 });
             }
-            setChatInput(''); // Clear input after successful processing
+            setChatInput('');
         } else {
              toast({
                 title: "No Tasks Detected",
@@ -567,21 +566,24 @@ export default function Home() {
         </div>
 
         <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
-            <Link href="/timetable"
+            <Link
+              href="/timetable"
               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
               aria-label="Go to timetable"
             >
                 <LayoutDashboard className="h-5 w-5" />
                 <span className="ml-2 hidden md:inline">Timetable</span>
             </Link>
-            <Link href="/study-tracker"
+            <Link
+               href="/study-tracker"
                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
                aria-label="Go to study tracker"
             >
                 <BookOpen className="h-5 w-5" />
                 <span className="ml-2 hidden md:inline">Study</span>
             </Link>
-            <Link href="/goals"
+            <Link
+              href="/goals"
               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
               aria-label="View goals"
             >
@@ -647,7 +649,7 @@ export default function Home() {
                         <Input
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="e.g., 'Plan dinner next Tuesday and call mom on Friday at 4pm'"
+                            placeholder="e.g., 'Important: Plan dinner next Tuesday and call mom weekly on Friday at 4pm #A892D6'"
                             className="h-10 text-sm"
                             onKeyPress={handleChatKeyPress}
                             disabled={isParsingTask}
@@ -655,20 +657,20 @@ export default function Home() {
                         />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        Type task(s) in natural language. The AI will parse and add them to your calendar. Max 250 chars.
+                        Type task(s) with details like 'every week', 'priority', or '#hexcolor'. Max 250 chars.
                     </p>
                 </CardContent>
             </Card>
         </div>
 
-        <div className="w-full mt-0"> {/* Ensure TopTaskBar is directly below Add Task with AI */}
+        <div className="w-full mt-0">
            <TopTaskBar
              items={upcomingItemsForBar}
              toggleGoalPriority={toggleGoalPriority}
            />
          </div>
 
-        <div className="w-full max-w-7xl space-y-4 mt-4"> {/* Add margin-top to CalendarView container */}
+        <div className="w-full max-w-7xl space-y-4 mt-4">
           {isClient && (
               <CalendarView
                 tasks={tasks}
@@ -703,7 +705,7 @@ export default function Home() {
                 <TaskForm
                    addTask={addTask}
                    onTaskAdded={() => setIsFormOpen(false)}
-                   initialData={null} // AI flow no longer pre-fills this specific dialog
+                   initialData={null}
                 />
               </DialogContent>
             </Dialog>
@@ -761,4 +763,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
