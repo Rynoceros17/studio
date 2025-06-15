@@ -642,7 +642,7 @@ export default function Home() {
         <div className="w-full max-w-7xl mb-4">
             <Card className="shadow-sm border-border bg-transparent">
                 <CardContent className="p-3 flex items-center space-x-2">
-                    <Button onClick={handleSendChatMessage} className="h-10 px-3 bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isParsingTask || !chatInput.trim()}>
+                    <Button onClick={handleSendChatMessage} className="h-10 px-3 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isParsingTask || !chatInput.trim()}>
                         {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
                         <span className="sr-only">Send Task Query</span>
                     </Button>
@@ -659,7 +659,7 @@ export default function Home() {
             </Card>
         </div>
 
-        <div className="w-full max-w-7xl space-y-4 mt-4">
+        <div className="w-full max-w-7xl space-y-4">
           {isClient && (
               <CalendarView
                 tasks={tasks}
