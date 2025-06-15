@@ -16,7 +16,7 @@ import {format} from 'date-fns';
 import { availableColorTags, colorTagDescriptions } from '@/lib/color-map'; // Import available color tags
 
 const ParseNaturalLanguageTaskInputSchema = z.object({
-  query: z.string().min(1, "Query cannot be empty.").max(250, "Query is too long.").describe("The natural language query from the user describing one or more tasks."),
+  query: z.string().min(1, "Query cannot be empty.").max(100, "Query is too long.").describe("The natural language query from the user describing one or more tasks."),
 });
 export type ParseNaturalLanguageTaskInput = z.infer<typeof ParseNaturalLanguageTaskInputSchema>;
 
@@ -28,7 +28,7 @@ const SingleTaskSchema = z.object({
   parsedTime: z.string().optional().nullable().describe("If a specific time is mentioned (e.g., '3pm', '15:00'), extract it as 'HH:MM AM/PM' or 'HH:MM' (24-hour). If no time, this field MUST be null."),
   recurring: z.boolean().describe("Set to `true` if the user's input for this task explicitly uses words like 'every week' or 'weekly'. Otherwise, this MUST be `false`. This field MUST always be present."),
   highPriority: z.boolean().describe("Set to `true` if the user's input for this task explicitly uses words like 'important', 'priority', or 'urgent'. Otherwise, this MUST be `false`. This field MUST always be present."),
-  color: z.string().regex(/^#col[1-6]$/).optional().nullable().describe(`If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (which correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1'). Otherwise, this field MUST be null. This field MUST always be present.`)
+  color: z.string().regex(/^#col[1-6]$/).optional().nullable().describe(`If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (these correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1'). Otherwise, this field MUST be null. This field MUST always be present.`)
 });
 export type SingleTaskOutput = z.infer<typeof SingleTaskSchema>;
 

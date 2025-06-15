@@ -640,32 +640,21 @@ export default function Home() {
       <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
 
         <div className="w-full max-w-7xl mb-4">
-            <Card className="shadow-md border-border">
-                <CardHeader className="p-3 border-b">
-                    <CardTitle className="text-base text-primary flex items-center">
-                        <MessageSquare className="h-5 w-5 mr-2" />
-                        Add Tasks with AI
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2">
-                    <div className="flex space-x-2">
-                        <Button onClick={handleSendChatMessage} className="h-10 px-3" disabled={isParsingTask || !chatInput.trim()}>
-                            {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
-                            <span className="sr-only">Send Task Query</span>
-                        </Button>
-                        <Input
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="e.g., 'Important: Meeting next Tue, #col1. Call mom Fri 4pm #col2'"
-                            className="h-10 text-sm"
-                            onKeyPress={handleChatKeyPress}
-                            disabled={isParsingTask}
-                            maxLength={250}
-                        />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        Type task(s) with details like 'every week', 'priority', or use #col1-#col6 for color. Max 250 chars.
-                    </p>
+            <Card className="shadow-sm border-border bg-transparent">
+                <CardContent className="p-3 flex items-center space-x-2">
+                    <Button onClick={handleSendChatMessage} className="h-10 px-3 bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isParsingTask || !chatInput.trim()}>
+                        {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+                        <span className="sr-only">Send Task Query</span>
+                    </Button>
+                    <Input
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="AI Task Entry: e.g., 'Important meeting #col1, Weekly review #col3' (Max 100 chars)"
+                        className="h-10 text-sm flex-grow"
+                        onKeyPress={handleChatKeyPress}
+                        disabled={isParsingTask}
+                        maxLength={100}
+                    />
                 </CardContent>
             </Card>
         </div>
