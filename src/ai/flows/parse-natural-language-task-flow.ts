@@ -13,6 +13,7 @@
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
 import {format} from 'date-fns';
+import { availableColorTags } from '@/lib/color-map'; // Import available color tags
 
 const ParseNaturalLanguageTaskInputSchema = z.object({
   query: z.string().min(1, "Query cannot be empty.").max(250, "Query is too long.").describe("The natural language query from the user describing one or more tasks."),
@@ -27,7 +28,7 @@ const SingleTaskSchema = z.object({
   parsedTime: z.string().optional().nullable().describe("If a specific time is mentioned (e.g., '3pm', '15:00'), extract it as 'HH:MM AM/PM' or 'HH:MM' (24-hour). If no time, omit or leave null."),
   recurring: z.boolean().optional().describe("Set to true if the task repeats weekly (e.g., 'every Monday', 'weekly meeting'). Default is false."),
   highPriority: z.boolean().optional().describe("Set to true if the task is marked as important, priority, or urgent. Default is false."),
-  color: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/, "Color must be a valid hex code e.g. #RRGGBB or #RGB").optional().nullable().describe("A hex color code (e.g., '#A892D6') if specified in the input, otherwise null or omit.")
+  color: z.string().regex(/^#col[1-5]$/).optional().nullable().describe(`A color tag like '#col1', '#col2', '#col3', '#col4', or '#col5' if specified (e.g., "task with #col1"). Default is null. Available tags: ${availableColorTags.join(', ')}.`)
 });
 export type SingleTaskOutput = z.infer<typeof SingleTaskSchema>;
 
@@ -56,8 +57,8 @@ Convert the user's query into an array of JSON objects. Each object in the array
 - "description": Only include additional details if explicitly provided in the request beyond the task name and date/time. If the user mentions a specific time, include it clearly in the description (e.g., "Time: 3:00 PM"). If no extra details or time, this field should be an empty string or null.
 - "parsedTime": If a specific time is mentioned (e.g., "3pm", "15:00"), extract it as "HH:MM AM/PM" or "HH:MM" (24-hour). If no time, this field should be null.
 - "recurring": Set to true if the task is described as weekly (e.g., "every Monday", "weekly meeting"). Otherwise, set to false or omit.
-- "highPriority": Set to true if the task is described as important, priority, or urgent. Otherwise, set to false or omit.
-- "color": If a hex color code (e.g., "#FF0000", "#A892D6") is specified for the task, include it. Otherwise, set to null or omit.
+- "highPriority": Set to true if the task is explicitly described as important, priority, or urgent (e.g., "Important: Call John", "priority review"). Otherwise, set to false or omit.
+- "color": If one of the following color tags is specified for the task (#col1, #col2, #col3, #col4, #col5), include the tag itself (e.g., if user says "task with #col1", output "#col1"). Otherwise, set to null or omit.
 
 If the query contains multiple tasks, create a separate JSON object for each task in the array.
 If the query contains only one task, return an array with a single JSON object.
@@ -65,8 +66,8 @@ If no tasks can be parsed, return an empty array.
 
 Strictly adhere to the JSON output format specified. Do not add any extra explanations or text outside the JSON array.
 
-Example 1 (Single Task with color and priority):
-User Input: "Important: Remind me to call John tomorrow at 3pm #A892D6"
+Example 1 (Single Task with color tag and priority):
+User Input: "Important: Remind me to call John tomorrow at 3pm with #col1"
 Output:
 [
   {
@@ -76,13 +77,13 @@ Output:
     "parsedTime": "3:00 PM",
     "recurring": false,
     "highPriority": true,
-    "color": "#A892D6"
+    "color": "#col1"
   }
 ]
 (Note: Replace "{{currentDate}}" with the actual date for 'tomorrow' based on the provided currentDate in the examples below)
 
-Example 2 (Multiple Tasks, one recurring):
-User Input: "Dentist appointment next Tuesday and then Weekly grocery shopping on Saturday at 10am #aabbcc"
+Example 2 (Multiple Tasks, one recurring, one with priority and color tag):
+User Input: "Dentist appointment next Tuesday and then Urgent: Weekly grocery shopping on Saturday at 10am use #col2"
 Output (assuming today is Thursday, Oct 26, so next Tuesday is Oct 31, Saturday is Oct 28):
 [
   {
@@ -100,8 +101,8 @@ Output (assuming today is Thursday, Oct 26, so next Tuesday is Oct 31, Saturday 
     "description": "Time: 10:00 AM",
     "parsedTime": "10:00 AM",
     "recurring": true,
-    "highPriority": false,
-    "color": "#aabbcc"
+    "highPriority": true,
+    "color": "#col2"
   }
 ]
 
@@ -145,7 +146,7 @@ const parseNaturalLanguageTaskFlow = ai.defineFlow(
         parsedTime: task.parsedTime || null,
         recurring: task.recurring || false,
         highPriority: task.highPriority || false,
-        color: task.color || null, // Default to null if not provided by AI
+        color: task.color || null, // AI will output the tag like "#col1" or null
     }));
   }
 );

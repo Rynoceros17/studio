@@ -14,7 +14,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Goal, UpcomingItem, ChatMessage } from '@/lib/types';
+import type { Task, Goal, UpcomingItem } from '@/lib/types';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -50,12 +50,13 @@ import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, MessageSquare } from 'lucide-react'; // Added Loader2, MessageSquare
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, MessageSquare } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
 import type { SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { colorTagToHexMap } from '@/lib/color-map';
 
 
 export default function Home() {
@@ -116,7 +117,7 @@ export default function Home() {
          id: crypto.randomUUID(),
          recurring: newTaskData.recurring ?? false,
          highPriority: newTaskData.highPriority ?? false,
-         color: newTaskData.color ?? undefined, // Ensure color is passed or defaults to undefined
+         color: newTaskData.color ?? undefined,
          exceptions: newTaskData.exceptions || [],
          details: newTaskData.details || '',
          dueDate: newTaskData.dueDate || undefined,
@@ -152,7 +153,7 @@ export default function Home() {
      // Toast is now handled in handleSendChatMessage for AI tasks
      // and potentially within TaskForm for manual additions if needed.
      // For direct AI additions, a summary toast is better.
-     if (!isParsingTask) { // Avoid double toast if addTask is called manually
+     if (!isParsingTask) { // Avoid double toast if addTask is called manually (now less likely as AI adds directly)
         const taskDate = parseISOStrict(newTaskData.date);
         toast({
             title: "Task Added Manually",
@@ -489,13 +490,16 @@ export default function Home() {
                     return; // Skip this task
                 }
 
+                // Resolve color tag to hex
+                const finalColor = parsedTask.color ? (colorTagToHexMap[parsedTask.color] || undefined) : undefined;
+
                 addTask({
                     name: parsedTask.name,
                     date: parsedTask.date,
                     description: descriptionWithTime,
                     recurring: parsedTask.recurring ?? false,
                     highPriority: parsedTask.highPriority ?? false,
-                    color: parsedTask.color ?? undefined, // Pass color to addTask
+                    color: finalColor, // Use resolved hex color
                     details: '',
                     dueDate: undefined,
                     exceptions: []
@@ -649,7 +653,7 @@ export default function Home() {
                         <Input
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="e.g., 'Important: Plan dinner next Tuesday and call mom weekly on Friday at 4pm #A892D6'"
+                            placeholder="e.g., 'Important: Meeting next Tue, #col1. Call mom Fri 4pm #col2'"
                             className="h-10 text-sm"
                             onKeyPress={handleChatKeyPress}
                             disabled={isParsingTask}
@@ -657,7 +661,7 @@ export default function Home() {
                         />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        Type task(s) with details like 'every week', 'priority', or '#hexcolor'. Max 250 chars.
+                        Type task(s) with details like 'every week', 'priority', or use #col1-#col5 for color. Max 250 chars.
                     </p>
                 </CardContent>
             </Card>
@@ -713,7 +717,7 @@ export default function Home() {
 
         {!authLoading && !user && (
           <div className="fixed bottom-4 left-4 z-50">
-            <Link href="/login" asChild>
+            <Link href="/login">
               <Button
                 variant="default"
                 size="icon"
