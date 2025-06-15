@@ -1,4 +1,3 @@
-
 "use client";
 
 import type * as React from 'react';
@@ -66,7 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
         setFirebaseError(null); // Clear previous auth errors on successful state change
         if (currentUser) {
-          if (db && typeof (db as any).collection === 'function') {
+          // Check if db is available (not null)
+          if (db) {
             const userRef = doc(db, "users", currentUser.uid);
             console.log(`AuthProvider: Checking/creating Firestore document for user ${currentUser.uid}`);
             try {

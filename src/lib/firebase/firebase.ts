@@ -1,16 +1,6 @@
-
-import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
-
-// Log environment variables during server-side build or initial server run
-if (typeof window === 'undefined') {
-  console.log("Firebase Config Check (Server-side):");
-  console.log("NEXT_PUBLIC_FIREBASE_API_KEY:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'Loaded' : 'MISSING or UNDEFINED');
-  console.log("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ? 'Loaded' : 'MISSING or UNDEFINED');
-  console.log("NEXT_PUBLIC_FIREBASE_PROJECT_ID:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? 'Loaded' : 'MISSING or UNDEFINED');
-}
-
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -21,12 +11,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-
-// Check if all required Firebase config values are present
-const requiredEnvVarKeys: (keyof typeof firebaseConfig)[] = ['apiKey', 'authDomain', 'projectId', 'appId']; // Removed storageBucket and messagingSenderId as they might not be strictly essential for core functionality for all apps.
+const requiredEnvVarKeys: (keyof typeof firebaseConfig)[] = ['apiKey', 'authDomain', 'projectId', 'appId'];
 const missingEnvVars: string[] = [];
 
 for (const key of requiredEnvVarKeys) {
@@ -36,22 +21,27 @@ for (const key of requiredEnvVarKeys) {
 }
 
 if (missingEnvVars.length > 0) {
-  const errorMessage = `Firebase Critical Configuration Error: The following environment variable(s) are missing or undefined: ${missingEnvVars.join(', ')}. ` +
-  "Please ensure these are correctly set in your .env file (e.g., .env.local) and that you have RESTARTED your development server. Firebase will not initialize correctly.";
-  console.error(errorMessage);
-  // Assign dummy objects to prevent further crashes if imported elsewhere, though functionality will be broken.
-  app = {} as FirebaseApp; // Ensures 'app' is assigned
-  auth = {} as Auth; // Ensures 'auth' is assigned
-  db = {} as Firestore; // Ensures 'db' is assigned
-} else {
-  // Initialize Firebase
-  app = initializeApp(firebaseConfig);
+  throw new Error(`Firebase Critical Configuration Error: Missing environment variable(s): ${missingEnvVars.join(', ')}. Please set them and restart.`);
+}
 
-  // Initialize Cloud Firestore and get a reference to the service
+let app: FirebaseApp;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
+
+try {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
+  
   db = getFirestore(app);
-
-  // Initialize Auth
   auth = getAuth(app);
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+  // Set to null to indicate initialization failure
+  auth = null;
+  db = null;
 }
 
 export { app, auth, db };

@@ -23,7 +23,7 @@ export type ParseNaturalLanguageTaskInput = z.infer<typeof ParseNaturalLanguageT
 // Schema for a single task
 const SingleTaskSchema = z.object({
   name: z.string().describe("A concise name for the task."),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format.").describe("The date for the task in YYYY-MM-DD format. Infer from terms like 'today', 'tomorrow', 'next Monday', or specific dates."),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format.").describe("The date for the task in YYYY-MM-DD format. When 'today' is mentioned, this MUST be the value of `currentDate`. Infer from other terms like 'tomorrow', 'next Monday', or specific dates."),
   description: z.string().optional().nullable().describe("Only include additional details if explicitly provided beyond name and date/time. If a specific time is mentioned, include it here (e.g., 'Time: 3:00 PM'). Otherwise, this field can be an empty string or null."),
   parsedTime: z.string().optional().nullable().describe("If a specific time is mentioned (e.g., '3pm', '15:00'), extract it as 'HH:MM AM/PM' or 'HH:MM' (24-hour). If no time, this field MUST be null."),
   recurring: z.boolean().describe("Set to `true` if the user's input for this task explicitly uses words like 'every week' or 'weekly'. Otherwise, this MUST be `false`. This field MUST always be present."),
@@ -52,13 +52,17 @@ const parseTaskPrompt = ai.definePrompt({
 The current date is {{{currentDate}}}.
 Convert the user's query into an array of JSON objects. Each object in the array MUST represent a distinct task and MUST have the following fields: "name", "date", "description", "parsedTime", "recurring", "highPriority", and "color".
 
+**Crucially, when the user says 'today', the 'date' field in the output JSON MUST be exactly the value of \`{{{currentDate}}}\`.**
+For 'tomorrow', it should be the day after \`{{{currentDate}}}\`.
+For 'yesterday', it should be the day before \`{{{currentDate}}}\`.
+
 - "name": (String) A concise name for the task. This should be the main action or event.
-- "date": (String) The date for the task in "YYYY-MM-DD" format. Infer this from terms like "today", "tomorrow", "next Monday", or specific dates.
+- "date": (String) The date for the task in "YYYY-MM-DD" format. If the user says 'today', this MUST be \`{{{currentDate}}}\`. Infer this from other terms like "tomorrow", "next Monday", or specific dates.
 - "description": (String or Null) Only include additional details if explicitly provided in the request beyond the task name and date/time. If the user mentions a specific time, include it clearly in the description (e.g., "Time: 3:00 PM"). If no extra details or time, this field should be an empty string or null.
 - "parsedTime": (String or Null) If a specific time is mentioned (e.g., "3pm", "15:00"), extract it as "HH:MM AM/PM" or "HH:MM" (24-hour). If no time, this field MUST be null.
 - "recurring": (Boolean) Set to \`true\` if the user's input for this task explicitly uses words like 'every week' or 'weekly'. Otherwise, this MUST be \`false\`. This field MUST always be present.
 - "highPriority": (Boolean) Set to \`true\` if the user's input for this task explicitly uses words like 'important', 'priority', or 'urgent'. Otherwise, this MUST be \`false\`. This field MUST always be present.
-- "color": (String tag like '#colX' or Null) If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (these correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1'). Otherwise, this field MUST be null. This field MUST always be present.
+- "color": (String tag like '#colX' or Null) If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (these correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1', '#col2', '#col3', '#col4', '#col5', '#col6'). Otherwise, this field MUST be null. This field MUST always be present.
 
 If the query contains multiple tasks, create a separate JSON object for each task in the array.
 If the query contains only one task, return an array with a single JSON object.
@@ -68,7 +72,7 @@ Strictly adhere to the JSON output format specified. Do not add any extra explan
 
 Example 1 (Single Task with color tag and priority):
 User Input: "Important: Remind me to call John tomorrow at 3pm with #col1"
-Output (assuming today is 2023-10-26):
+Output (assuming today is 2023-10-26, so tomorrow is 2023-10-27):
 [
   {
     "name": "Call John",
@@ -122,7 +126,7 @@ Output (assuming today is 2023-10-26, so November 5th is 2023-11-05):
 
 Example 4 (Single task with only priority):
 User Input: "urgent meeting with boss tomorrow"
-Output (assuming today is 2023-10-26):
+Output (assuming today is 2023-10-26, so tomorrow is 2023-10-27):
 [
   {
     "name": "meeting with boss",
@@ -152,7 +156,7 @@ Output (assuming today is 2023-10-26, next Monday is 2023-10-30):
 
 Example 6 (Single task with weekly recurrence):
 User Input: "Yoga class every Wednesday at 6pm"
-Output (assuming today is 2023-10-26, so next Wednesday is 2023-11-01, but initial occurrence based on prompt):
+Output (assuming today is 2023-10-26, so the *next* Wednesday is 2023-11-01. If today *was* Wednesday, use today's date):
 [
   {
     "name": "Yoga class",
@@ -165,9 +169,25 @@ Output (assuming today is 2023-10-26, so next Wednesday is 2023-11-01, but initi
   }
 ]
 
+Example 7 (Task for "today"):
+User Input: "Schedule a team sync today at 2pm #col4"
+Output (assuming today is {{{currentDate}}} e.g., 2023-10-26):
+[
+  {
+    "name": "Team sync",
+    "date": "{{{currentDate}}}",
+    "description": "Time: 2:00 PM",
+    "parsedTime": "2:00 PM",
+    "recurring": false,
+    "highPriority": false,
+    "color": "#col4"
+  }
+]
+
 
 User Input: {{{query}}}
 Ensure your entire response is ONLY the JSON array. EACH task object in the array MUST contain all fields: "name", "date", "description", "parsedTime", "recurring", "highPriority", and "color".
+Remember: if 'today' is mentioned, the date MUST be '{{{currentDate}}}'.
 `,
 });
 
@@ -195,4 +215,5 @@ const parseNaturalLanguageTaskFlow = ai.defineFlow(
     }));
   }
 );
+
 
