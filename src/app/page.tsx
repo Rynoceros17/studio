@@ -158,7 +158,8 @@ export default function Home() {
          return updatedTasks;
      });
 
-     if (!isParsingTask && !(moveRecurringConfirmation && newTaskData.name === moveRecurringConfirmation.task.name)) { // Avoid double toast
+     // Conditional toast to avoid double toasting when called from moveRecurringConfirmation logic
+     if (!isParsingTask && !(moveRecurringConfirmation && newTaskData.name === moveRecurringConfirmation.task.name)) {
         const taskDate = parseISOStrict(newTaskData.date);
         toast({
             title: "Task Added",
@@ -248,8 +249,14 @@ export default function Home() {
           }
           return updatedTasks;
       });
-      // Toast moved to specific actions to avoid generic message for all updates
-  }, [setTasks]);
+      // Avoid generic toast if called from moveRecurringConfirmation as it has its own toast
+      if (!moveRecurringConfirmation) {
+          toast({
+            title: "Task Updated",
+            description: "Task details have been updated.",
+          });
+      }
+  }, [setTasks, toast, moveRecurringConfirmation]);
 
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
@@ -560,33 +567,53 @@ export default function Home() {
 
   const handleMoveRecurringInstanceOnly = () => {
     if (!moveRecurringConfirmation) return;
-    const { task, originalDateStr, newDateStr } = moveRecurringConfirmation;
+    const { task: originalRecurringTask, originalDateStr, newDateStr } = moveRecurringConfirmation;
 
-    // 1. Create new non-recurring task
-    const newTask: Omit<Task, 'id'> = {
-      name: task.name,
-      description: task.description,
+    const newSingleInstanceTask: Task = {
+      id: crypto.randomUUID(),
+      name: originalRecurringTask.name,
+      description: originalRecurringTask.description,
       date: newDateStr,
-      recurring: false, // Key change
-      highPriority: task.highPriority,
-      color: task.color,
-      details: task.details,
-      dueDate: task.dueDate,
+      recurring: false,
+      highPriority: originalRecurringTask.highPriority,
+      color: originalRecurringTask.color,
+      details: originalRecurringTask.details,
+      dueDate: originalRecurringTask.dueDate,
       exceptions: [],
     };
-    addTask(newTask);
 
-    // 2. Add exception to original recurring task
-    const updatedExceptions = [...(task.exceptions || []), originalDateStr];
-    updateTask(task.id, { ...task, exceptions: updatedExceptions });
+    setTasks(prevTasks => {
+      const tasksWithNewInstance = [...prevTasks, newSingleInstanceTask];
+      const finalTasks = tasksWithNewInstance.map(t => {
+        if (t.id === originalRecurringTask.id) {
+          return {
+            ...t,
+            exceptions: [...(t.exceptions || []), originalDateStr],
+          };
+        }
+        return t;
+      });
 
-    // 3. Clear completion for the original instance
-    const completionKey = `${task.id}_${originalDateStr}`;
+      finalTasks.sort((a, b) => {
+        const dateA = parseISOStrict(a.date);
+        const dateB = parseISOStrict(b.date);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        const dateComparison = dateA.getTime() - dateB.getTime();
+        if (dateComparison !== 0) return dateComparison;
+        if (a.highPriority !== b.highPriority) return a.highPriority ? -1 : 1;
+        return 0;
+      });
+      return finalTasks;
+    });
+
+    const completionKey = `${originalRecurringTask.id}_${originalDateStr}`;
     setCompletedTaskIds(prev => prev.filter(id => id !== completionKey));
 
     toast({
       title: "Recurring Instance Moved",
-      description: `"${task.name}" for ${format(parseISOStrict(originalDateStr)!, 'PPP')} moved to ${format(parseISOStrict(newDateStr)!, 'PPP')} as a single instance. Original series now has an exception.`,
+      description: `"${originalRecurringTask.name}" for ${format(parseISOStrict(originalDateStr)!, 'PPP')} moved to ${format(parseISOStrict(newDateStr)!, 'PPP')} as a single instance. Original series now has an exception.`,
     });
     setMoveRecurringConfirmation(null);
   };
@@ -595,10 +622,8 @@ export default function Home() {
     if (!moveRecurringConfirmation) return;
     const { task, newDateStr } = moveRecurringConfirmation;
 
-    // 1. Update original task's date
-    updateTask(task.id, { ...task, date: newDateStr, exceptions: [] }); // Clear exceptions as the series start has changed
+    updateTask(task.id, { date: newDateStr, exceptions: [] });
 
-    // 2. Clear all completions for this task ID
     setCompletedTaskIds(prev => prev.filter(id => !id.startsWith(`${task.id}_`)));
 
     toast({
@@ -831,7 +856,7 @@ export default function Home() {
                     </AlertDialogAction>
                     <AlertDialogAction
                         onClick={handleMoveAllRecurringOccurrences}
-                         className={cn("text-foreground")} // Could also be primary variant
+                         className={cn("text-foreground")}
                     >
                         Move All Occurrences
                     </AlertDialogAction>
