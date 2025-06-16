@@ -64,8 +64,9 @@ interface CalendarViewProps {
     toggleTaskCompletion: (taskId: string, dateStr: string) => void;
     completedTasks: Set<string>;
     updateTaskDetails: (id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => void;
-    updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => void;
+    updateTask: (id: string, updates: Partial<Task>) => void;
     completedCount: number;
+    requestMoveRecurringTask: (task: Task, originalDateStr: string, newDateStr: string) => void;
 }
 
 const dropAnimation: DropAnimation = {
@@ -453,6 +454,7 @@ export function CalendarView({
     updateTaskDetails,
     updateTask,
     completedCount,
+    requestMoveRecurringTask,
 }: CalendarViewProps) {
   const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date()));
   const [viewMode, setViewMode] = useState<'week' | 'today'>('week');
@@ -618,7 +620,7 @@ export function CalendarView({
        const taskToMove = tasks.find(task => task.id === activeTaskId);
        if (!taskToMove) return;
 
-       if (activeDateStr === overDateStr) {
+       if (activeDateStr === overDateStr) { // Reordering within the same day
            const currentTaskIdsForDate = (tasksByDay?.[overDateStr] || []).map(task => `${task.id}_${overDateStr}`);
            const oldIndex = currentTaskIdsForDate.indexOf(activeIdStr);
            const newIndex = isOverContainer ? currentTaskIdsForDate.length : currentTaskIdsForDate.indexOf(overIdStr);
@@ -628,24 +630,12 @@ export function CalendarView({
                const reorderedTaskIds = reorderedInstanceIds.map(instanceId => instanceId.split('_')[0]);
                updateTaskOrder(overDateStr, reorderedTaskIds);
            }
-       } else {
+       } else { // Moving to a different day
             if (taskToMove.recurring) {
-                 const updatedExceptions = [...(taskToMove.exceptions || []), activeDateStr];
-                 updateTask(activeTaskId, { exceptions: updatedExceptions });
-
-                  toast({
-                    title: "Recurring Task Instance Moved",
-                    description: `Skipped "${taskToMove.name}" on ${format(parseISOStrict(activeDateStr)!, 'PPP')}. A new, non-recurring instance for ${format(parseISOStrict(overDateStr)!, 'PPP')} would be created. You may need to adjust the original.`,
-                    duration: 7000,
-                 });
-
-                 const completionKey = `${activeTaskId}_${activeDateStr}`;
-                 if (completedTasks.has(completionKey)) {
-                     toggleTaskCompletion(activeTaskId, activeDateStr);
-                 }
+                requestMoveRecurringTask(taskToMove, activeDateStr, overDateStr);
             } else {
-                 updateTask(activeTaskId, { date: overDateStr });
-                  toast({
+                 updateTask(activeTaskId, { ...taskToMove, date: overDateStr });
+                 toast({
                     title: "Task Moved",
                     description: `"${taskToMove.name}" moved to ${format(parseISOStrict(overDateStr)!, 'PPP')}.`,
                  });
@@ -696,28 +686,16 @@ export function CalendarView({
         const targetDate = direction === 'prev' ? subDays(currentInstanceDate, 1) : addDays(currentInstanceDate, 1);
         const targetDateStr = format(targetDate, 'yyyy-MM-dd');
 
-         let message = '';
-         let title = '';
-
         if (taskToMove.recurring) {
-             const updatedExceptions = [...(taskToMove.exceptions || []), currentTaskDateStr];
-             updateTask(taskId, { exceptions: updatedExceptions });
-
-             title = "Recurring Task Exception Added";
-             message = `Skipped "${taskToMove.name}" for ${format(currentInstanceDate, 'PPP')}. Consider creating a new task for ${format(targetDate, 'PPP')}.`;
-
-
-              const completionKey = `${taskId}_${currentTaskDateStr}`;
-              if (completedTasks.has(completionKey)) {
-                   toggleTaskCompletion(taskId, currentTaskDateStr);
-              }
+            requestMoveRecurringTask(taskToMove, currentTaskDateStr, targetDateStr);
         } else {
-             updateTask(taskId, { date: targetDateStr });
-             title = "Task Moved";
-             message = `"${taskToMove.name}" moved to ${format(targetDate, 'PPP')}.`;
+             updateTask(taskId, { ...taskToMove, date: targetDateStr });
+             toast({
+                title: "Task Moved",
+                description: `"${taskToMove.name}" moved to ${format(targetDate, 'PPP')}.`,
+             });
         }
-         toast({ title, description: message });
-     }, [tasks, updateTask, toast, completedTasks, toggleTaskCompletion]);
+     }, [tasks, updateTask, toast, requestMoveRecurringTask]);
 
   const headerTitle = useMemo(() => {
     if (!isClient) return "Loading...";

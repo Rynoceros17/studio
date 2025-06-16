@@ -19,7 +19,7 @@ import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -50,13 +50,19 @@ import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, MessageSquare } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2 } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
 import type { SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { colorTagToHexMap } from '@/lib/color-map';
+
+interface MoveRecurringConfirmationState {
+  task: Task;
+  originalDateStr: string;
+  newDateStr: string;
+}
 
 
 export default function Home() {
@@ -79,6 +85,7 @@ export default function Home() {
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
+  const [moveRecurringConfirmation, setMoveRecurringConfirmation] = useState<MoveRecurringConfirmationState | null>(null);
 
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
@@ -150,18 +157,16 @@ export default function Home() {
          });
          return updatedTasks;
      });
-     // Toast is now handled in handleSendChatMessage for AI tasks
-     // and potentially within TaskForm for manual additions if needed.
-     // For direct AI additions, a summary toast is better.
-     if (!isParsingTask) { // Avoid double toast if addTask is called manually (now less likely as AI adds directly)
+
+     if (!isParsingTask && !(moveRecurringConfirmation && newTaskData.name === moveRecurringConfirmation.task.name)) { // Avoid double toast
         const taskDate = parseISOStrict(newTaskData.date);
         toast({
-            title: "Task Added Manually",
+            title: "Task Added",
             description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
         });
      }
-     setIsFormOpen(false); // Close manual form if it was open
-  }, [setTasks, toast, isParsingTask]);
+     setIsFormOpen(false);
+  }, [setTasks, toast, isParsingTask, moveRecurringConfirmation]);
 
 
   const deleteAllOccurrences = useCallback((id: string) => {
@@ -208,7 +213,7 @@ export default function Home() {
   }, [deleteAllOccurrences]);
 
 
-  const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => {
+  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
       setTasks(prevTasks => {
           let needsResort = false;
           const updatedTasks = prevTasks.map(task => {
@@ -216,7 +221,7 @@ export default function Home() {
                   const updatedTask = { ...task, ...updates };
                   if ((updates.date && updates.date !== task.date) ||
                       (updates.highPriority !== undefined && updates.highPriority !== task.highPriority) ||
-                      (updates.color !== undefined && updates.color !== task.color) // Check for color change
+                      (updates.color !== undefined && updates.color !== task.color)
                     ) {
                       needsResort = true;
                   }
@@ -243,11 +248,8 @@ export default function Home() {
           }
           return updatedTasks;
       });
-      toast({
-          title: "Task Updated",
-          description: "Core task details have been updated.",
-      });
-  }, [setTasks, toast]);
+      // Toast moved to specific actions to avoid generic message for all updates
+  }, [setTasks]);
 
 
   const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
@@ -487,10 +489,9 @@ export default function Home() {
                 const taskDate = parseISOStrict(parsedTask.date);
                 if (!taskDate || !isValid(taskDate)) {
                     console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
-                    return; // Skip this task
+                    return;
                 }
 
-                // Resolve color tag to hex
                 const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
                   ? colorTagToHexMap[parsedTask.color]
                   : undefined;
@@ -498,7 +499,7 @@ export default function Home() {
 
                 addTask({
                     name: parsedTask.name || "Unnamed Task",
-                    date: parsedTask.date, // Assuming this is always valid 'yyyy-MM-dd' from AI
+                    date: parsedTask.date,
                     description: descriptionWithTime,
                     recurring: parsedTask.recurring ?? false,
                     highPriority: parsedTask.highPriority ?? false,
@@ -551,6 +552,60 @@ export default function Home() {
       event.preventDefault();
       handleSendChatMessage();
     }
+  };
+
+  const requestMoveRecurringTask = (task: Task, originalDateStr: string, newDateStr: string) => {
+    setMoveRecurringConfirmation({ task, originalDateStr, newDateStr });
+  };
+
+  const handleMoveRecurringInstanceOnly = () => {
+    if (!moveRecurringConfirmation) return;
+    const { task, originalDateStr, newDateStr } = moveRecurringConfirmation;
+
+    // 1. Create new non-recurring task
+    const newTask: Omit<Task, 'id'> = {
+      name: task.name,
+      description: task.description,
+      date: newDateStr,
+      recurring: false, // Key change
+      highPriority: task.highPriority,
+      color: task.color,
+      details: task.details,
+      dueDate: task.dueDate,
+      exceptions: [],
+    };
+    addTask(newTask);
+
+    // 2. Add exception to original recurring task
+    const updatedExceptions = [...(task.exceptions || []), originalDateStr];
+    updateTask(task.id, { ...task, exceptions: updatedExceptions });
+
+    // 3. Clear completion for the original instance
+    const completionKey = `${task.id}_${originalDateStr}`;
+    setCompletedTaskIds(prev => prev.filter(id => id !== completionKey));
+
+    toast({
+      title: "Recurring Instance Moved",
+      description: `"${task.name}" for ${format(parseISOStrict(originalDateStr)!, 'PPP')} moved to ${format(parseISOStrict(newDateStr)!, 'PPP')} as a single instance. Original series now has an exception.`,
+    });
+    setMoveRecurringConfirmation(null);
+  };
+
+  const handleMoveAllRecurringOccurrences = () => {
+    if (!moveRecurringConfirmation) return;
+    const { task, newDateStr } = moveRecurringConfirmation;
+
+    // 1. Update original task's date
+    updateTask(task.id, { ...task, date: newDateStr, exceptions: [] }); // Clear exceptions as the series start has changed
+
+    // 2. Clear all completions for this task ID
+    setCompletedTaskIds(prev => prev.filter(id => !id.startsWith(`${task.id}_`)));
+
+    toast({
+      title: "Recurring Task Series Moved",
+      description: `All occurrences of "${task.name}" will now start from ${format(parseISOStrict(newDateStr)!, 'PPP')}.`,
+    });
+    setMoveRecurringConfirmation(null);
   };
 
 
@@ -670,6 +725,7 @@ export default function Home() {
                 updateTaskDetails={updateTaskDetails}
                 updateTask={updateTask}
                 completedCount={completedCount}
+                requestMoveRecurringTask={requestMoveRecurringTask}
               />
           )}
         </div>
@@ -751,6 +807,33 @@ export default function Home() {
                         className={cn(buttonVariants({ variant: "destructive" }))}
                     >
                         Delete All Occurrences
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!moveRecurringConfirmation} onOpenChange={(open) => !open && setMoveRecurringConfirmation(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertTitle>Move Recurring Task</AlertTitle>
+                    <AlertDialogDescription>
+                        You are moving the recurring task "{moveRecurringConfirmation?.task?.name}".
+                        How would you like to move it from {moveRecurringConfirmation?.originalDateStr ? format(parseISOStrict(moveRecurringConfirmation.originalDateStr)!, 'PPP') : ''} to {moveRecurringConfirmation?.newDateStr ? format(parseISOStrict(moveRecurringConfirmation.newDateStr)!, 'PPP') : ''}?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setMoveRecurringConfirmation(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={handleMoveRecurringInstanceOnly}
+                        className={cn("text-foreground")}
+                    >
+                        Move This Instance Only
+                    </AlertDialogAction>
+                    <AlertDialogAction
+                        onClick={handleMoveAllRecurringOccurrences}
+                         className={cn("text-foreground")} // Could also be primary variant
+                    >
+                        Move All Occurrences
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
