@@ -105,7 +105,7 @@ export default function useSyncedStorage<T>(key: string, initialValue: T): [T, D
         firestoreUnsubscribeRef.current = null;
       }
     };
-  }, [user, key]); // Rerun effect if user or key changes.
+  }, [user, key, initialValue]); // Rerun effect if user or key changes.
 
   // The setter function returned by the hook.
   const setValue: Dispatch<SetStateAction<T>> = useCallback(
