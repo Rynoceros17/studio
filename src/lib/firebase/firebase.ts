@@ -1,47 +1,44 @@
+
+// src/lib/firebase/firebase.ts
+
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
+/**
+ * Your web app's Firebase configuration.
+ * It's crucial that these environment variables are set.
+ */
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyBmC5qeX86cRkvH8IwFXcN4UFuBProegZU",
+  authDomain: "weekwise-hxko9.firebaseapp.com",
+  projectId: "weekwise-hxko9",
+  storageBucket: "weekwise-hxko9.firebasestorage.app",
+  messagingSenderId: "456158244888",
+  appId: "1:456158244888:web:62decc24812a5a7b70d36d"
 };
 
-const requiredEnvVarKeys: (keyof typeof firebaseConfig)[] = ['apiKey', 'authDomain', 'projectId', 'appId'];
-const missingEnvVars: string[] = [];
-
-for (const key of requiredEnvVarKeys) {
-  if (!firebaseConfig[key]) {
-    missingEnvVars.push(`NEXT_PUBLIC_FIREBASE_${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`);
-  }
-}
-
-if (missingEnvVars.length > 0) {
-  throw new Error(`Firebase Critical Configuration Error: Missing environment variable(s): ${missingEnvVars.join(', ')}. Please set them and restart.`);
-}
-
+// These variables will hold the initialized Firebase services.
 let app: FirebaseApp;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 
 try {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
-  }
+  // Initialize Firebase.
+  // This checks if an app is already initialized to prevent re-initialization.
+  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   
-  db = getFirestore(app);
+  // Get handles to the Auth and Firestore services.
   auth = getAuth(app);
+  db = getFirestore(app);
+
+  console.log("Firebase initialized successfully.");
+
 } catch (error) {
   console.error('Firebase initialization error:', error);
-  // Set to null to indicate initialization failure
-  auth = null;
-  db = null;
+  // If initialization fails, auth and db will remain null.
+  // The application can then gracefully handle this (e.g., by falling back to local storage).
 }
 
+// Export the initialized services for use throughout the application.
 export { app, auth, db };

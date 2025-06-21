@@ -1,185 +1,144 @@
+
 "use client";
 
 import type * as React from 'react';
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import type { User as FirebaseUser, AuthError } from 'firebase/auth';
 import {
-  getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  type Auth,
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { app, auth as firebaseAuthFromLib, db } from '@/lib/firebase/firebase'; // Import app, auth, db
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/firebase'; // Import the initialized services
 
+// --- Define the shape of our context ---
 interface AuthContextType {
   user: FirebaseUser | null;
   authLoading: boolean;
   firebaseError: AuthError | null;
-  signInUser: (email: string, pass: string) => Promise<any>;
+  signInUser: (email: string, pass:string) => Promise<any>;
   signUpUser: (email: string, pass: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
   signOutUser: () => Promise<void>;
 }
 
+// --- Create the context ---
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// --- Create the AuthProvider component ---
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [firebaseError, setFirebaseError] = useState<AuthError | null>(null);
-  const [authInstance, setAuthInstance] = useState<Auth | null>(null);
 
+  // Effect to listen for changes in the user's authentication state.
   useEffect(() => {
-    if (firebaseAuthFromLib && typeof firebaseAuthFromLib.onAuthStateChanged === 'function') {
-      // console.log("AuthProvider: Firebase Auth instance from firebase.ts is valid. Setting authInstance.");
-      setAuthInstance(firebaseAuthFromLib);
-    } else {
-      console.warn("AuthProvider: Firebase Auth instance from firebase.ts is not valid. AuthProvider cannot initialize auth services. This might be due to missing Firebase config environment variables or an issue in firebase.ts.");
-      setFirebaseError({ code: "auth/internal-error", message: "Firebase Auth not properly initialized from firebase.ts" } as AuthError);
+    // Ensure the auth service was initialized correctly before setting up the listener.
+    if (!auth) {
+      console.warn("AuthProvider: Firebase Auth service is not available. Cannot set up auth listener.");
       setAuthLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authInstance) {
-      // console.log("AuthProvider: authInstance is null, onAuthStateChanged listener not set up.");
-      if (authLoading && !firebaseError) { // Only if still loading and no explicit error from previous effect
-        // console.log("AuthProvider: authInstance is null and no firebaseError, setting authLoading to false.");
-        setAuthLoading(false);
-      }
       return;
     }
 
-    // console.log("AuthProvider: Setting up onAuthStateChanged listener with authInstance:", authInstance);
-    if (!authLoading) setAuthLoading(true);
-
+    // onAuthStateChanged returns an 'unsubscribe' function.
     const unsubscribe = onAuthStateChanged(
-      authInstance,
+      auth,
       async (currentUser) => {
-        // console.log("AuthProvider: onAuthStateChanged triggered. Current user:", currentUser?.uid || 'None');
+        console.log("Auth state changed. Current user:", currentUser?.uid || "None");
         setUser(currentUser);
-        setFirebaseError(null); // Clear previous auth errors on successful state change
-        if (currentUser) {
-          // Check if db is available (not null)
-          if (db) {
-            const userRef = doc(db, "users", currentUser.uid);
-            console.log(`AuthProvider: Checking/creating Firestore document for user ${currentUser.uid}`);
-            try {
-              const userDoc = await getDoc(userRef);
-              const userData = {
-                uid: currentUser.uid,
-                email: currentUser.email,
-                displayName: currentUser.displayName,
-                photoURL: currentUser.photoURL,
-                lastLogin: serverTimestamp(),
-              };
-              if (!userDoc.exists()) {
-                console.log(`AuthProvider: User document for ${currentUser.uid} does not exist. Creating...`);
-                await setDoc(userRef, {
-                  ...userData,
-                  createdAt: serverTimestamp(),
-                });
-                console.log(`AuthProvider: User document for ${currentUser.uid} created successfully.`);
-              } else {
-                console.log(`AuthProvider: User document for ${currentUser.uid} exists. Updating lastLogin.`);
-                await updateDoc(userRef, { lastLogin: serverTimestamp() });
-                console.log(`AuthProvider: User document for ${currentUser.uid} updated successfully.`);
-              }
-            } catch (error) {
-              console.error(`AuthProvider: Error creating/updating user document for ${currentUser.uid} in Firestore:`, error);
-              setFirebaseError(error as AuthError); // This could be a Firestore error, not strictly AuthError
-            }
-          } else {
-            console.warn("AuthProvider: Firestore (db) not available. Cannot create/update user document.");
-            // setFirebaseError({ code: "auth/internal-error", message: "Firestore not available for user profile." } as AuthError);
+        setFirebaseError(null);
+
+        // If a user is logged in and the database is available, save/update their info.
+        if (currentUser && db) {
+          // Use the user's unique ID (uid) as the document ID.
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          const userData = {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName,
+            photoURL: currentUser.photoURL,
+            lastLogin: serverTimestamp(), // Record the time of the last login.
+          };
+
+          try {
+            // Use setDoc with { merge: true } to create the document if it doesn't exist,
+            // or update it if it does, without overwriting existing fields.
+            await setDoc(userDocRef, userData, { merge: true });
+            console.log(`User document for ${currentUser.uid} created/updated.`);
+          } catch (error) {
+            console.error("Error saving user data to Firestore:", error);
           }
         }
-        // console.log("AuthProvider: onAuthStateChanged finished, setting authLoading to false.");
+        
+        // Auth state has been determined, so we can stop showing a loading state.
         setAuthLoading(false);
       },
       (error) => {
-        console.error("AuthProvider: Auth state change error:", error);
+        console.error("Auth state listener error:", error);
         setFirebaseError(error as AuthError);
-        // console.log("AuthProvider: Auth state change error, setting authLoading to false.");
         setAuthLoading(false);
       }
     );
 
-    return () => {
-      // console.log("AuthProvider: Cleaning up onAuthStateChanged listener.");
-      unsubscribe();
-    };
-  }, [authInstance]); // Removed authLoading and firebaseError from deps to avoid loops based on their changes
+    // Clean up the listener when the component unmounts.
+    return () => unsubscribe();
+  }, []); // The empty dependency array ensures this effect runs only once.
 
+  // --- Auth action functions ---
+
+  // A wrapper to handle loading and error states for all auth operations.
   const performAuthOperation = async (operation: () => Promise<any>) => {
-    if (!authInstance) {
-      const err = { code: "auth/no-auth-instance", message: "Firebase Auth not initialized." } as AuthError;
-      console.error("performAuthOperation: " + err.message);
+    if (!auth) {
+      const err = { code: "auth/not-initialized", message: "Firebase Auth is not available." } as AuthError;
       setFirebaseError(err);
-      setAuthLoading(false);
       throw err;
     }
     setFirebaseError(null);
     setAuthLoading(true);
     try {
       const result = await operation();
-      // On success, onAuthStateChanged will typically handle setting authLoading to false.
       return result;
     } catch (error) {
-      console.error("AuthProvider: Firebase auth operation error:", (error as AuthError).code, (error as AuthError).message);
       setFirebaseError(error as AuthError);
-      setAuthLoading(false); // Crucial: ensure loading is stopped on error
       throw error;
+    } finally {
+      // Let the onAuthStateChanged listener handle setting authLoading to false on success.
+      // If there's an error, we set it to false here.
+      if (firebaseError) {
+          setAuthLoading(false);
+      }
     }
   };
 
-  const signInUser = useCallback(
-    (email: string, password: string): Promise<any> =>
-      performAuthOperation(() => signInWithEmailAndPassword(authInstance!, email, password)),
-    [authInstance] // performAuthOperation will be recreated if authInstance changes.
-  );
+  const signInUser = useCallback((email: string, password: string) => 
+    performAuthOperation(() => signInWithEmailAndPassword(auth!, email, password)),
+  []);
 
-  const signUpUser = useCallback(
-    (email: string, password: string): Promise<any> =>
-      performAuthOperation(() => createUserWithEmailAndPassword(authInstance!, email, password)),
-    [authInstance]
-  );
+  const signUpUser = useCallback((email: string, password: string) => 
+    performAuthOperation(() => createUserWithEmailAndPassword(auth!, email, password)),
+  []);
 
-  const signInWithGoogle = useCallback((): Promise<any> => {
-    if (!authInstance) {
-      const err = { code: "auth/no-auth-instance", message: "Firebase Auth not initialized." } as AuthError;
-      setFirebaseError(err);
-      setAuthLoading(false);
-      return Promise.reject(err);
-    }
+  const signInWithGoogle = useCallback(() => {
     const provider = new GoogleAuthProvider();
-    return performAuthOperation(() => signInWithPopup(authInstance!, provider));
-  }, [authInstance]);
+    return performAuthOperation(() => signInWithPopup(auth!, provider));
+  }, []);
 
   const signOutUser = useCallback(async () => {
-    if (!authInstance) {
-      console.error("AuthProvider: Firebase Auth not initialized for sign-out.");
-      setAuthLoading(false); // Ensure loading stops if somehow called without authInstance
-      return;
+    if (auth) {
+      try {
+        await signOut(auth);
+        // onAuthStateChanged will handle setting the user to null.
+      } catch(error) {
+        setFirebaseError(error as AuthError);
+      }
     }
-    setFirebaseError(null);
-    setAuthLoading(true); // Set loading before sign out
-    try {
-      // console.log("AuthProvider: Signing out user.");
-      await signOut(authInstance);
-      // setUser(null) and setAuthLoading(false) will be handled by onAuthStateChanged
-    } catch (error: any) {
-      console.error("AuthProvider: Error during sign-out:", error);
-      setFirebaseError(error as AuthError);
-      setAuthLoading(false); // Ensure loading stops on direct error if onAuthStateChanged doesn't cover it quickly
-    }
-  }, [authInstance]);
+  }, []);
 
+  // Memoize the context value to prevent unnecessary re-renders.
   const value = useMemo(() => ({
     user,
     authLoading,
@@ -193,10 +152,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// --- Custom hook to easily access the context ---
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider. Ensure AuthProvider is correctly placed in your component tree (e.g., in layout.tsx) and that Firebase is initializing correctly.');
+    throw new Error('useAuth must be used within an AuthProvider.');
   }
   return context;
 };
