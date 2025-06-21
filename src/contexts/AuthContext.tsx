@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import type * as React from 'react';
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
@@ -53,19 +53,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setFirebaseError(null);
 
         // If a user is logged in and the database is available, save/update their info.
-        if (currentUser && db) {
-          // Use the user's unique ID (uid) as the document ID.
-          const userDocRef = doc(db, 'users', currentUser.uid);
-          // Ensure no undefined values are sent to Firestore. Use null as a fallback.
-          const userData = {
-            uid: currentUser.uid,
-            email: currentUser.email || null,
-            displayName: currentUser.displayName || null,
-            photoURL: currentUser.photoURL || null,
-            lastLogin: serverTimestamp(), // Record the time of the last login.
-          };
-
+        if (currentUser && db && currentUser.uid) { // Check for UID here
           try {
+            // Define the document reference inside the try block, now that we know we have a UID.
+            const userDocRef = doc(db, 'users', currentUser.uid);
+
+            // Ensure no undefined values are sent to Firestore. Use null as a fallback.
+            const userData = {
+              uid: currentUser.uid,
+              email: currentUser.email || null,
+              displayName: currentUser.displayName || null,
+              photoURL: currentUser.photoURL || null,
+              lastLogin: serverTimestamp(), // Record the time of the last login.
+            };
+            
             // Use setDoc with { merge: true } to create the document if it doesn't exist,
             // or update it if it does, without overwriting existing fields.
             await setDoc(userDocRef, userData, { merge: true });
