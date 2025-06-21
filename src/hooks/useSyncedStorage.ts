@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { useState, useEffect, useCallback, type Dispatch, type SetStateAction, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,21 +7,38 @@ import { db } from '@/lib/firebase/firebase';
 import { doc, onSnapshot, setDoc, getDoc, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
 
 /**
+ * A helper function to deeply remove all keys with 'undefined' values from an object.
+ * Firestore does not accept 'undefined'.
+ * Using JSON.stringify/parse is a simple and effective way to achieve this.
+ * @param data The object or data to clean.
+ * @returns A new version of the data without any 'undefined' values.
+ */
+function sanitizeForFirestore<T>(data: T): T {
+  // This is a simple and effective way to strip undefined values.
+  // It works for objects, arrays, and primitives that are JSON-serializable.
+  return JSON.parse(JSON.stringify(data));
+}
+
+
+/**
  * A custom hook to synchronize state between React, localStorage, and Firestore.
- * - It uses Firestore as the source of truth when a user is logged in.
- * - It falls back to localStorage if the user is logged out or Firestore is unavailable.
- * - It syncs data in real-time across browser tabs/devices via Firestore listeners.
+ * - Uses Firestore as the source of truth when a user is logged in.
+ * - Falls back to localStorage if the user is logged out or Firestore is unavailable.
+ * - Syncs data in real-time across browser tabs/devices via Firestore listeners.
  */
 export default function useSyncedStorage<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
   const { user } = useAuth();
   const [storedValue, setStoredValue] = useState<T>(initialValue);
-
-  // A ref to track if a Firestore listener is active to avoid race conditions.
   const firestoreUnsubscribeRef = useRef<Unsubscribe | null>(null);
 
-  // This effect handles the initial data load and sets up Firestore listeners.
   useEffect(() => {
-    // If a user is logged in and the database is available...
+    // Stop any existing listener before setting up a new one.
+    if (firestoreUnsubscribeRef.current) {
+      firestoreUnsubscribeRef.current();
+      firestoreUnsubscribeRef.current = null;
+    }
+
+    // Only sync with Firestore if we have a user with a UID and the db is available.
     if (user && user.uid && db) {
       console.log(`useSyncedStorage (${key}): User is logged in. Setting up Firestore sync.`);
       
@@ -31,20 +48,31 @@ export default function useSyncedStorage<T>(key: string, initialValue: T): [T, D
       firestoreUnsubscribeRef.current = onSnapshot(
         docRef,
         (docSnap) => {
-          // When data arrives from Firestore...
           if (docSnap.exists()) {
-            // ...update the local state with the Firestore data.
             const firestoreData = docSnap.data()?.value;
             console.log(`useSyncedStorage (${key}): Snapshot received. Updating state.`);
+            // Use the data from Firestore, falling back to the initial value if it's missing/malformed.
             setStoredValue(firestoreData !== undefined ? firestoreData : initialValue);
           } else {
-            // If the document doesn't exist, create it.
-            // First, check if there's any data in localStorage to migrate.
-            console.log(`useSyncedStorage (${key}): Document does not exist. Initializing from localStorage or initialValue.`);
-            const localItem = window.localStorage.getItem(key);
-            const valueToSet = localItem ? JSON.parse(localItem) : initialValue;
-            setDoc(docRef, { value: valueToSet, lastUpdated: serverTimestamp() });
-            setStoredValue(valueToSet); // Set local state immediately.
+            // Document doesn't exist, so create it.
+            // Check localStorage for data to migrate, otherwise use the initial value.
+            console.log(`useSyncedStorage (${key}): Document does not exist. Initializing...`);
+            let valueToSet = initialValue;
+            if (typeof window !== 'undefined') {
+                const localItem = window.localStorage.getItem(key);
+                if (localItem) {
+                    try {
+                        valueToSet = JSON.parse(localItem);
+                    } catch (e) {
+                        console.warn(`useSyncedStorage (${key}): Failed to parse local storage item, using initial value.`)
+                    }
+                }
+            }
+            
+            // **CRITICAL FIX**: Sanitize the data before writing to Firestore.
+            const sanitizedValue = sanitizeForFirestore(valueToSet);
+            setDoc(docRef, { value: sanitizedValue, lastUpdated: serverTimestamp() });
+            setStoredValue(valueToSet); // Update local state immediately.
           }
         },
         (error) => {
@@ -52,46 +80,63 @@ export default function useSyncedStorage<T>(key: string, initialValue: T): [T, D
         }
       );
     } else {
-      // If there is no user, use localStorage as the source of truth.
+      // No user, so fall back to using localStorage.
       console.log(`useSyncedStorage (${key}): No user. Using localStorage.`);
-      const item = window.localStorage.getItem(key);
-      if (item) {
-        setStoredValue(JSON.parse(item));
-      } else {
-        setStoredValue(initialValue);
+      if (typeof window !== 'undefined') {
+        try {
+          const item = window.localStorage.getItem(key);
+          if (item) {
+            setStoredValue(JSON.parse(item));
+          } else {
+            setStoredValue(initialValue);
+          }
+        } catch (e) {
+           console.warn(`useSyncedStorage (${key}): Failed to read from local storage, using initial value.`)
+           setStoredValue(initialValue);
+        }
       }
     }
 
-    // Cleanup function: This runs when the component unmounts or dependencies change.
+    // Cleanup function: runs when component unmounts or dependencies change.
     return () => {
       if (firestoreUnsubscribeRef.current) {
         console.log(`useSyncedStorage (${key}): Unsubscribing from Firestore listener.`);
-        firestoreUnsubscribeRef.current(); // Detach the listener.
+        firestoreUnsubscribeRef.current();
         firestoreUnsubscribeRef.current = null;
       }
     };
-  }, [user, key, initialValue]); // Rerun this effect if the user, key, or initialValue changes.
+  }, [user, key]); // Rerun effect if user or key changes.
 
-  // This is the setter function that will be returned by the hook.
+  // The setter function returned by the hook.
   const setValue: Dispatch<SetStateAction<T>> = useCallback(
     (valueOrFn) => {
-      // Allow the value to be a function, just like in useState.
+      // Allow value to be a function, just like in useState.
       const newValue = valueOrFn instanceof Function ? valueOrFn(storedValue) : valueOrFn;
       
-      // Update the React state immediately for a responsive UI.
+      // Update React state immediately for a responsive UI.
       setStoredValue(newValue);
 
-      // If a user is logged in, save the new value to their Firestore document.
       if (user && user.uid && db) {
+        // If logged in, save to Firestore.
         const docRef = doc(db, 'user_data', user.uid, 'data', key);
-        setDoc(docRef, { value: newValue, lastUpdated: serverTimestamp() })
+        
+        // **CRITICAL FIX**: Sanitize the data before writing to Firestore.
+        const sanitizedValue = sanitizeForFirestore(newValue);
+
+        setDoc(docRef, { value: sanitizedValue, lastUpdated: serverTimestamp() })
           .catch(error => console.error(`useSyncedStorage (${key}): Error saving to Firestore:`, error));
       } else {
-        // If not logged in, save the value to localStorage.
-        window.localStorage.setItem(key, JSON.stringify(newValue));
+        // If not logged in, save to localStorage.
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.setItem(key, JSON.stringify(newValue));
+            } catch (e) {
+                console.warn(`useSyncedStorage (${key}): Failed to save to local storage.`)
+            }
+        }
       }
     },
-    [user, key, storedValue] // storedValue is a dependency for the functional update `valueOrFn(storedValue)`.
+    [user, key, storedValue]
   );
 
   return [storedValue, setValue];
