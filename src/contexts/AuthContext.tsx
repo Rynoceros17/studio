@@ -56,11 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (currentUser && db) {
           // Use the user's unique ID (uid) as the document ID.
           const userDocRef = doc(db, 'users', currentUser.uid);
+          // Ensure no undefined values are sent to Firestore. Use null as a fallback.
           const userData = {
             uid: currentUser.uid,
-            email: currentUser.email,
-            displayName: currentUser.displayName,
-            photoURL: currentUser.photoURL,
+            email: currentUser.email || null,
+            displayName: currentUser.displayName || null,
+            photoURL: currentUser.photoURL || null,
             lastLogin: serverTimestamp(), // Record the time of the last login.
           };
 
