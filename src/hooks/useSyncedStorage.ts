@@ -18,7 +18,12 @@ function sanitizeForFirestore<T>(data: T): T {
   if (data === undefined) {
     return null as any; // Or handle as an error, but null is safer for Firestore
   }
-  return JSON.parse(JSON.stringify(data));
+  try {
+    return JSON.parse(JSON.stringify(data));
+  } catch (error) {
+    console.error("Sanitization failed, returning original data:", error);
+    return data; // Return original data if stringify fails
+  }
 }
 
 
