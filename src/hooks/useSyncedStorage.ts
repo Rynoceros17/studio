@@ -9,13 +9,15 @@ import { doc, onSnapshot, setDoc, getDoc, serverTimestamp, type Unsubscribe } fr
 /**
  * A helper function to deeply remove all keys with 'undefined' values from an object.
  * Firestore does not accept 'undefined'.
- * Using JSON.stringify/parse is a simple and effective way to achieve this.
  * @param data The object or data to clean.
  * @returns A new version of the data without any 'undefined' values.
  */
 function sanitizeForFirestore<T>(data: T): T {
   // This is a simple and effective way to strip undefined values.
   // It works for objects, arrays, and primitives that are JSON-serializable.
+  if (data === undefined) {
+    return null as any; // Or handle as an error, but null is safer for Firestore
+  }
   return JSON.parse(JSON.stringify(data));
 }
 
