@@ -57,6 +57,8 @@ import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task
 import type { SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { colorTagToHexMap } from '@/lib/color-map';
+import { db } from '@/lib/firebase/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -633,6 +635,24 @@ export default function Home() {
     setMoveRecurringConfirmation(null);
   };
 
+  const testFirestore = async () => {
+    if (!db) {
+      alert('Test write failed: Firestore DB object is not available. Check firebase.ts.');
+      console.error('Test write failed: Firestore DB is not initialized.');
+      return;
+    }
+    try {
+      console.log('Attempting to write to Firestore...');
+      const testDoc = doc(db, 'test', 'test-doc');
+      await setDoc(testDoc, { test: 'hello world', timestamp: new Date() });
+      console.log('Test write successful!');
+      alert('Test write to Firestore was successful! Check the console and your Firestore "test" collection.');
+    } catch (error) {
+      console.error('Test write failed:', error);
+      alert(`Test write to Firestore failed. Check the console for the error message.`);
+    }
+  };
+
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
@@ -718,6 +738,13 @@ export default function Home() {
       </header>
 
       <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
+
+        <div className="w-full max-w-7xl mb-4 text-center">
+            <p className="text-sm text-muted-foreground mb-2">Click this button to test writing directly to Firestore.</p>
+            <Button onClick={testFirestore} variant="destructive">
+                Run Firestore Write Test
+            </Button>
+        </div>
 
         <div className="w-full max-w-7xl mb-4">
             <Card className="shadow-sm bg-transparent border-none">
@@ -849,16 +876,16 @@ export default function Home() {
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setMoveRecurringConfirmation(null)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                        onClick={handleMoveRecurringInstanceOnly}
+                        onClick={handleMoveAllRecurringOccurrences}
                         className={cn("text-foreground")}
                     >
-                        Move This Instance Only
+                        Move All Occurrences
                     </AlertDialogAction>
                     <AlertDialogAction
-                        onClick={handleMoveAllRecurringOccurrences}
+                        onClick={handleMoveRecurringInstanceOnly}
                          className={cn("text-foreground")}
                     >
-                        Move All Occurrences
+                        Move This Instance Only
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
@@ -868,3 +895,4 @@ export default function Home() {
   );
 }
 
+    
