@@ -46,21 +46,23 @@ function useLocalStorage<T>(
   const setValue: Dispatch<SetStateAction<T>> = useCallback(
     (value) => {
       try {
-        // Allow value to be a function so we have the same API as useState
-        const valueToStore =
-          value instanceof Function ? value(storedValue) : value;
-        // Save state
-        setStoredValueState(valueToStore);
-        // Save to local storage
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore));
-        }
+        // Using the functional update form of the state setter
+        // ensures we get the latest previous value without needing it as a dependency.
+        setStoredValueState(prevValue => {
+            const valueToStore = value instanceof Function ? value(prevValue) : value;
+
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem(key, JSON.stringify(valueToStore));
+            }
+
+            return valueToStore;
+        });
       } catch (error) {
         // A more advanced implementation would handle the error case
         console.warn(`Error setting localStorage key “${key}”:`, error);
       }
     },
-    [key, storedValue] // Add storedValue to ensure the functional update form `value(storedValue)` uses the latest state.
+    [key] // The dependency array is now stable, only depending on the key.
   );
 
 
