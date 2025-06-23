@@ -62,15 +62,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userData = {
               uid: currentUser.uid,
               email: currentUser.email || null,
-              displayName: currentUser.displayName || null,
-              photoURL: currentUser.photoURL || null,
               lastLogin: serverTimestamp(),
             };
             
             // Use setDoc with { merge: true } to create the document if it doesn't exist,
             // or update it if it does, without overwriting existing fields.
             // This is safe to run multiple times.
+            console.log("Attempting to write user data...");
             await setDoc(userDocRef, userData, { merge: true });
+            console.log("User data written successfully.");
             console.log(`User document for ${currentUser.uid} created/updated.`);
           } catch (error) {
             console.error("Error saving user data to Firestore:", error);

@@ -47,20 +47,17 @@ export function AuthButton() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-9 w-9 md:h-10 md:w-auto md:px-3 rounded-full text-primary hover:bg-primary/10">
           <Avatar className="h-7 w-7 md:h-8 md:w-8">
-            <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
+            <AvatarImage src={undefined} alt={user.email || 'User'} />
             <AvatarFallback>{userInitial}</AvatarFallback>
           </Avatar>
-          <span className="hidden md:inline ml-2">{user.displayName || user.email}</span>
+          <span className="hidden md:inline ml-2">{user.email}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {user.displayName || "User"}
-            </p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
+              {user.email || "Authenticated User"}
             </p>
           </div>
         </DropdownMenuLabel>
