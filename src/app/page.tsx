@@ -106,26 +106,28 @@ export default function Home() {
   useEffect(() => {
     const loadUserDataFromFirestore = async () => {
       if (user && db) {
-        // User is logged in, try to load data from Firestore
+        // User is logged in, try to load data from their main user document
         try {
-          // Load tasks
-          const tasksDocRef = doc(db, 'user_data', user.uid, 'data', 'weekwise-tasks');
-          const tasksDocSnap = await getDoc(tasksDocRef);
-          const tasksData = tasksDocSnap.exists() ? tasksDocSnap.data()?.value : [];
-          setTasks(Array.isArray(tasksData) ? tasksData : []);
-
-          // Load completed task IDs
-          const completedIdsDocRef = doc(db, 'user_data', user.uid, 'data', 'weekwise-completed-tasks');
-          const completedIdsDocSnap = await getDoc(completedIdsDocRef);
-          const completedIdsData = completedIdsDocSnap.exists() ? completedIdsDocSnap.data()?.value : [];
-          setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
-
+          const userDocRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists()) {
+              const userData = docSnap.data();
+              // Load tasks and completed IDs from the user document
+              const tasksData = userData.tasks || [];
+              const completedIdsData = userData.completedTaskIds || [];
+              setTasks(Array.isArray(tasksData) ? tasksData : []);
+              setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+          } else {
+              // Document doesn't exist for a new user, so local state remains empty
+              setTasks([]);
+              setCompletedTaskIds([]);
+          }
         } catch (error) {
           console.error("Error loading user data from Firestore:", error);
           toast({ title: "Load Failed", description: "Could not load your data from the cloud.", variant: "destructive" });
         }
       } else if (!authLoading) {
-        // No user is logged in (and auth check is complete), clear local data
+        // No user is logged in (and auth check is complete), ensure local data is cleared
         setTasks([]);
         setCompletedTaskIds([]);
       }
@@ -667,24 +669,6 @@ export default function Home() {
     });
     setMoveRecurringConfirmation(null);
   };
-
-  const testFirestore = async () => {
-    if (!db) {
-      alert('Test write failed: Firestore DB object is not available. Check firebase.ts.');
-      console.error('Test write failed: Firestore DB is not initialized.');
-      return;
-    }
-    try {
-      console.log('Attempting to write to Firestore...');
-      const testDoc = doc(db, 'test', 'test-doc');
-      await setDoc(testDoc, { test: 'hello world', timestamp: new Date() });
-      console.log('Test write successful!');
-      alert('Test write to Firestore was successful! Check the console and your Firestore "test" collection.');
-    } catch (error) {
-      console.error('Test write failed:', error);
-      alert(`Test write to Firestore failed. Check the console for the error message.`);
-    }
-  };
   
   const saveUserDataToFirestore = async () => {
     if (!user || !db) {
@@ -693,13 +677,12 @@ export default function Home() {
     }
 
     try {
-      // Save tasks
-      const tasksDocRef = doc(db, 'user_data', user.uid, 'data', 'weekwise-tasks');
-      await setDoc(tasksDocRef, { value: tasks });
-
-      // Save completed task IDs
-      const completedIdsDocRef = doc(db, 'user_data', user.uid, 'data', 'weekwise-completed-tasks');
-      await setDoc(completedIdsDocRef, { value: completedTaskIds });
+      const userDocRef = doc(db, 'users', user.uid);
+      // Merge tasks and completed IDs into the main user document
+      await setDoc(userDocRef, { 
+          tasks: tasks, 
+          completedTaskIds: completedTaskIds,
+      }, { merge: true });
 
       toast({ title: "Data Saved!", description: "Your tasks have been saved to the cloud." });
     } catch (error) {
@@ -795,12 +778,6 @@ export default function Home() {
       <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
 
         <div className="w-full max-w-7xl mb-4 text-center space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Click this button to test writing directly to Firestore.</p>
-              <Button onClick={testFirestore} variant="default">
-                  Run Firestore Write Test
-              </Button>
-            </div>
             {user && (
               <div className="p-4 border-t">
                 <p className="text-sm text-muted-foreground mb-2">Data is loaded from the cloud. Save any changes back to sync across devices.</p>
@@ -964,3 +941,4 @@ export default function Home() {
     
 
     
+
