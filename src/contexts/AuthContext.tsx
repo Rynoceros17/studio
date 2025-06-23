@@ -58,14 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const userDocRef = doc(db, 'users', currentUser.uid);
 
-            // Create a simple object with only the UID
+            // Create a simple object with the UID and email
             const userData = {
               uid: currentUser.uid,
+              email: currentUser.email,
             };
             
             console.log("Attempting to save user data to Firestore:", userData);
             await setDoc(userDocRef, userData, { merge: true });
-            console.log("User UID saved to Firestore successfully.");
+            console.log("User UID and email saved to Firestore successfully.");
 
           } catch (error: any) {
             console.error("Failed to save user UID to Firestore:", error);
