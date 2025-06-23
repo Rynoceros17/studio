@@ -12,7 +12,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase'; // Import the initialized services
 
 // --- Define the shape of our context ---
@@ -54,22 +54,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setFirebaseError(null);
 
         // If a user is logged in and the database is available, save/update their info.
-        // --- TEMPORARILY DISABLED WRITES TO FIRESTORE ---
-        // if (currentUser && currentUser.uid && db) {
-        //   try {
-        //     const userDocRef = doc(db, 'users', currentUser.uid);
+        if (currentUser && currentUser.uid && db) {
+          try {
+            const userDocRef = doc(db, 'users', currentUser.uid);
 
-        //     const userData = {
-        //       uid: currentUser.uid,
-        //       email: currentUser.email || null,
-        //       lastLogin: serverTimestamp(),
-        //     };
+            // Create a simple object with only the UID
+            const userData = {
+              uid: currentUser.uid,
+            };
             
-        //     await setDoc(userDocRef, userData, { merge: true });
-        //   } catch (error) {
-        //     console.error("Error saving user data to Firestore:", error);
-        //   }
-        // }
+            console.log("Attempting to save user data to Firestore:", userData);
+            await setDoc(userDocRef, userData, { merge: true });
+            console.log("User UID saved to Firestore successfully.");
+
+          } catch (error: any) {
+            console.error("Failed to save user UID to Firestore:", error);
+          }
+        }
         
         // Auth state has been determined, so we can stop showing a loading state.
         setAuthLoading(false);
