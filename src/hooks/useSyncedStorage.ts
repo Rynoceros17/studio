@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, type Dispatch, type SetStateAction, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/firebase';
-import { doc, onSnapshot, setDoc, getDoc, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
 
 /**
  * A helper function to deeply remove all keys with 'undefined' values from an object.
@@ -63,7 +63,7 @@ export default function useSyncedStorage<T>(key: string, initialValue: T): [T, D
           } else {
             // Document doesn't exist, so create it.
             // Check localStorage for data to migrate, otherwise use the initial value.
-            console.log(`useSyncedStorage (${key}): Document does not exist. Initializing...`);
+            console.log(`useSyncedStorage (${key}): Document does not exist. Initializing from localStorage.`);
             let valueToSet = initialValue;
             if (typeof window !== 'undefined') {
                 const localItem = window.localStorage.getItem(key);
@@ -76,9 +76,9 @@ export default function useSyncedStorage<T>(key: string, initialValue: T): [T, D
                 }
             }
             
-            // **CRITICAL FIX**: Sanitize the data before writing to Firestore.
             const sanitizedValue = sanitizeForFirestore(valueToSet);
-            setDoc(docRef, { value: sanitizedValue, lastUpdated: serverTimestamp() });
+            // --- TEMPORARILY DISABLED WRITE TO FIRESTORE ---
+            // setDoc(docRef, { value: sanitizedValue, lastUpdated: serverTimestamp() });
             setStoredValue(valueToSet); // Update local state immediately.
           }
         },
@@ -125,13 +125,11 @@ export default function useSyncedStorage<T>(key: string, initialValue: T): [T, D
 
       if (user && user.uid && db) {
         // If logged in, save to Firestore.
-        const docRef = doc(db, 'user_data', user.uid, 'data', key);
-        
-        // **CRITICAL FIX**: Sanitize the data before writing to Firestore.
-        const sanitizedValue = sanitizeForFirestore(newValue);
-
-        setDoc(docRef, { value: sanitizedValue, lastUpdated: serverTimestamp() })
-          .catch(error => console.error(`useSyncedStorage (${key}): Error saving to Firestore:`, error));
+        // --- TEMPORARILY DISABLED WRITE TO FIRESTORE ---
+        // const docRef = doc(db, 'user_data', user.uid, 'data', key);
+        // const sanitizedValue = sanitizeForFirestore(newValue);
+        // setDoc(docRef, { value: sanitizedValue, lastUpdated: serverTimestamp() })
+        //   .catch(error => console.error(`useSyncedStorage (${key}): Error saving to Firestore:`, error));
       } else {
         // If not logged in, save to localStorage.
         if (typeof window !== 'undefined') {

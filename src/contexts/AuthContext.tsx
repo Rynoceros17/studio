@@ -54,32 +54,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setFirebaseError(null);
 
         // If a user is logged in and the database is available, save/update their info.
-        if (currentUser && currentUser.uid && db) {
-          try {
-            const userDocRef = doc(db, 'users', currentUser.uid);
+        // --- TEMPORARILY DISABLED WRITES TO FIRESTORE ---
+        // if (currentUser && currentUser.uid && db) {
+        //   try {
+        //     const userDocRef = doc(db, 'users', currentUser.uid);
 
-            // Ensure no undefined values are sent to Firestore. Use null as a fallback.
-            const userData = {
-              uid: currentUser.uid,
-              email: currentUser.email || null,
-              lastLogin: serverTimestamp(),
-            };
+        //     const userData = {
+        //       uid: currentUser.uid,
+        //       email: currentUser.email || null,
+        //       lastLogin: serverTimestamp(),
+        //     };
             
-            // Use setDoc with { merge: true } to create the document if it doesn't exist,
-            // or update it if it does, without overwriting existing fields.
-            // This is safe to run multiple times.
-            console.log("Attempting to write user data...");
-            await setDoc(userDocRef, userData, { merge: true });
-            console.log("User data written successfully.");
-            console.log(`User document for ${currentUser.uid} created/updated.`);
-          } catch (error) {
-            console.error("Error saving user data to Firestore:", error);
-            // This error won't block the UI, but it's important to know about.
-          }
-        }
+        //     await setDoc(userDocRef, userData, { merge: true });
+        //   } catch (error) {
+        //     console.error("Error saving user data to Firestore:", error);
+        //   }
+        // }
         
         // Auth state has been determined, so we can stop showing a loading state.
-        // This is now guaranteed to run.
         setAuthLoading(false);
       },
       (error) => {
