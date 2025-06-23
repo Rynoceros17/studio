@@ -20,7 +20,7 @@ interface AuthContextType {
   user: FirebaseUser | null;
   authLoading: boolean;
   firebaseError: AuthError | null;
-  signInUser: (email: string, pass:string) => Promise<any>;
+  signInUser: (email: string, pass: string) => Promise<any>;
   signUpUser: (email: string, pass: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
   signOutUser: () => Promise<void>;
@@ -49,11 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       auth,
       async (currentUser) => {
         console.log("Auth state changed. Current user:", currentUser?.uid || "None");
+
         setUser(currentUser);
         setFirebaseError(null);
 
         // If a user is logged in and the database is available, save/update their info.
-        if (currentUser && currentUser.uid && db) { // Check for UID and db
+        if (currentUser && currentUser.uid && db) {
           try {
             const userDocRef = doc(db, 'users', currentUser.uid);
 
@@ -68,14 +69,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             // Use setDoc with { merge: true } to create the document if it doesn't exist,
             // or update it if it does, without overwriting existing fields.
+            // This is safe to run multiple times.
             await setDoc(userDocRef, userData, { merge: true });
             console.log(`User document for ${currentUser.uid} created/updated.`);
           } catch (error) {
             console.error("Error saving user data to Firestore:", error);
+            // This error won't block the UI, but it's important to know about.
           }
         }
         
         // Auth state has been determined, so we can stop showing a loading state.
+        // This is now guaranteed to run.
         setAuthLoading(false);
       },
       (error) => {
@@ -99,19 +103,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw err;
     }
     setFirebaseError(null);
-    setAuthLoading(true);
+    setAuthLoading(true); // Set loading to true before the operation starts
     try {
       const result = await operation();
+      // setAuthLoading(false) will be handled by onAuthStateChanged
       return result;
     } catch (error) {
       setFirebaseError(error as AuthError);
+      setAuthLoading(false); // Set loading to false if the operation itself fails
       throw error;
-    } finally {
-      // Let the onAuthStateChanged listener handle setting authLoading to false on success.
-      // If there's an error, we set it to false here.
-      if (firebaseError) {
-          setAuthLoading(false);
-      }
     }
   };
 
@@ -132,8 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (auth) {
       try {
         await signOut(auth);
-        // onAuthStateChanged will handle setting the user to null.
-      } catch(error) {
+        // onAuthStateChanged will handle setting the user to null and loading state.
+      } catch (error) {
         setFirebaseError(error as AuthError);
       }
     }
