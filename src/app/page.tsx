@@ -50,7 +50,7 @@ import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2 } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
@@ -58,7 +58,7 @@ import type { SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-fl
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { colorTagToHexMap } from '@/lib/color-map';
 import { db } from '@/lib/firebase/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -101,6 +101,39 @@ export default function Home() {
         setTimerPosition({ x: initialX, y: initialY });
     }
   }, []);
+  
+  // Effect to load data from Firestore on login, or clear it on logout
+  useEffect(() => {
+    const loadUserDataFromFirestore = async () => {
+      if (user && db) {
+        // User is logged in, try to load data from Firestore
+        try {
+          // Load tasks
+          const tasksDocRef = doc(db, 'user_data', user.uid, 'data', 'weekwise-tasks');
+          const tasksDocSnap = await getDoc(tasksDocRef);
+          const tasksData = tasksDocSnap.exists() ? tasksDocSnap.data()?.value : [];
+          setTasks(Array.isArray(tasksData) ? tasksData : []);
+
+          // Load completed task IDs
+          const completedIdsDocRef = doc(db, 'user_data', user.uid, 'data', 'weekwise-completed-tasks');
+          const completedIdsDocSnap = await getDoc(completedIdsDocRef);
+          const completedIdsData = completedIdsDocSnap.exists() ? completedIdsDocSnap.data()?.value : [];
+          setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+
+        } catch (error) {
+          console.error("Error loading user data from Firestore:", error);
+          toast({ title: "Load Failed", description: "Could not load your data from the cloud.", variant: "destructive" });
+        }
+      } else if (!authLoading) {
+        // No user is logged in (and auth check is complete), clear local data
+        setTasks([]);
+        setCompletedTaskIds([]);
+      }
+    };
+
+    loadUserDataFromFirestore();
+  }, [user, authLoading, setTasks, setCompletedTaskIds, toast]);
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -652,6 +685,28 @@ export default function Home() {
       alert(`Test write to Firestore failed. Check the console for the error message.`);
     }
   };
+  
+  const saveUserDataToFirestore = async () => {
+    if (!user || !db) {
+      toast({ title: "Not Logged In", description: "You must be logged in to save data.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Save tasks
+      const tasksDocRef = doc(db, 'user_data', user.uid, 'data', 'weekwise-tasks');
+      await setDoc(tasksDocRef, { value: tasks });
+
+      // Save completed task IDs
+      const completedIdsDocRef = doc(db, 'user_data', user.uid, 'data', 'weekwise-completed-tasks');
+      await setDoc(completedIdsDocRef, { value: completedTaskIds });
+
+      toast({ title: "Data Saved!", description: "Your tasks have been saved to the cloud." });
+    } catch (error) {
+      console.error("Error saving user data to Firestore:", error);
+      toast({ title: "Save Failed", description: "An error occurred while saving your data.", variant: "destructive" });
+    }
+  };
 
 
   return (
@@ -739,11 +794,22 @@ export default function Home() {
 
       <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
 
-        <div className="w-full max-w-7xl mb-4 text-center">
-            <p className="text-sm text-muted-foreground mb-2">Click this button to test writing directly to Firestore.</p>
-            <Button onClick={testFirestore} variant="default">
-                Run Firestore Write Test
-            </Button>
+        <div className="w-full max-w-7xl mb-4 text-center space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Click this button to test writing directly to Firestore.</p>
+              <Button onClick={testFirestore} variant="default">
+                  Run Firestore Write Test
+              </Button>
+            </div>
+            {user && (
+              <div className="p-4 border-t">
+                <p className="text-sm text-muted-foreground mb-2">Data is loaded from the cloud. Save any changes back to sync across devices.</p>
+                <Button onClick={saveUserDataToFirestore} variant="default">
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes to Cloud
+                </Button>
+              </div>
+            )}
         </div>
 
         <div className="w-full max-w-7xl mb-4">
@@ -894,5 +960,7 @@ export default function Home() {
     </DndContext>
   );
 }
+
+    
 
     
