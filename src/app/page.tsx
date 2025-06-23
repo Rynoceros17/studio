@@ -72,6 +72,7 @@ export default function Home() {
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
   const { user, authLoading } = useAuth();
+  const isInitialLoad = useRef(true);
 
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -104,6 +105,7 @@ export default function Home() {
   
   // Effect to load data from Firestore on login, or clear it on logout
   useEffect(() => {
+    isInitialLoad.current = true; // Prevents auto-save on data load
     const loadUserDataFromFirestore = async () => {
       if (user && db) {
         // User is logged in, try to load data from their main user document
@@ -135,6 +137,31 @@ export default function Home() {
 
     loadUserDataFromFirestore();
   }, [user, authLoading, setTasks, setCompletedTaskIds, toast]);
+
+  // Effect to automatically save data to Firestore when it changes
+  useEffect(() => {
+    // Skip the very first render/load to prevent unnecessary writes.
+    if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+        return;
+    }
+
+    const autoSave = async () => {
+        if (!user || !db) return; // Only save if user is logged in
+        try {
+            const userDocRef = doc(db, 'users', user.uid);
+            await setDoc(userDocRef, { 
+                tasks: tasks, 
+                completedTaskIds: completedTaskIds,
+            }, { merge: true });
+        } catch (error) {
+            console.error("Error auto-saving user data to Firestore:", error);
+            toast({ title: "Sync Failed", description: "Your latest changes could not be saved.", variant: "destructive" });
+        }
+    };
+
+    autoSave();
+  }, [tasks, completedTaskIds, user, db, toast]);
 
 
   const sensors = useSensors(
@@ -669,27 +696,6 @@ export default function Home() {
     });
     setMoveRecurringConfirmation(null);
   };
-  
-  const saveUserDataToFirestore = async () => {
-    if (!user || !db) {
-      toast({ title: "Not Logged In", description: "You must be logged in to save data.", variant: "destructive" });
-      return;
-    }
-
-    try {
-      const userDocRef = doc(db, 'users', user.uid);
-      // Merge tasks and completed IDs into the main user document
-      await setDoc(userDocRef, { 
-          tasks: tasks, 
-          completedTaskIds: completedTaskIds,
-      }, { merge: true });
-
-      toast({ title: "Data Saved!", description: "Your tasks have been saved to the cloud." });
-    } catch (error) {
-      console.error("Error saving user data to Firestore:", error);
-      toast({ title: "Save Failed", description: "An error occurred while saving your data.", variant: "destructive" });
-    }
-  };
 
 
   return (
@@ -776,18 +782,6 @@ export default function Home() {
       </header>
 
       <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
-
-        <div className="w-full max-w-7xl mb-4 text-center space-y-4">
-            {user && (
-              <div className="p-4 border-t">
-                <p className="text-sm text-muted-foreground mb-2">Data is loaded from the cloud. Save any changes back to sync across devices.</p>
-                <Button onClick={saveUserDataToFirestore} variant="default">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Changes to Cloud
-                </Button>
-              </div>
-            )}
-        </div>
 
         <div className="w-full max-w-7xl mb-4">
             <Card className="shadow-sm bg-transparent border-none">
@@ -941,4 +935,5 @@ export default function Home() {
     
 
     
+
 
