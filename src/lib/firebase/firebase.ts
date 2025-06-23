@@ -7,8 +7,12 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 /**
  * Your web app's Firebase configuration.
  * It's crucial that these environment variables are set.
+ * To find these values, go to your Firebase project console, click the gear icon
+ * for "Project settings", and under the "General" tab, scroll down to "Your apps".
+ * Select your web app to find its configuration.
  */
 const firebaseConfig = {
+  // FIND THIS IN: Project settings > General > Your apps > Web App > Firebase SDK snippet > Configuration
   apiKey: "AIzaSyBmC5qeX86cRkvH8IwFXcN4UFuBProegZU",
   authDomain: "weekwise-hxko9.firebaseapp.com",
   projectId: "weekwise-hxko9",

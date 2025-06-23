@@ -1,10 +1,22 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to create their own document in the 'users' collection.
-    // The document ID must match their own user ID (uid).
+    
+    // Allow users to read and write to their own document in the 'users' collection
     match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow users to read and write to the data within their own 'user_data' document
+    match /user_data/{userId}/{collection}/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // A test collection that allows any authenticated user to write.
+    // Useful for initial setup and debugging.
+    match /test/{docId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
