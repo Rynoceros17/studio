@@ -741,7 +741,7 @@ export default function Home() {
 
         <div className="w-full max-w-7xl mb-4 text-center">
             <p className="text-sm text-muted-foreground mb-2">Click this button to test writing directly to Firestore.</p>
-            <Button onClick={testFirestore} variant="destructive">
+            <Button onClick={testFirestore} variant="default">
                 Run Firestore Write Test
             </Button>
         </div>
