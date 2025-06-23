@@ -2,14 +2,14 @@
 export interface Task {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   date: string; // Original task date (day it appears on the calendar)
   recurring?: boolean;
-  details?: string;
-  dueDate?: string; // Optional due date (yyyy-MM-dd format)
+  details?: string | null;
+  dueDate?: string | null; // Optional due date (yyyy-MM-dd format)
   highPriority?: boolean; // Optional: Flag for high priority tasks
   exceptions?: string[]; // Optional array of 'yyyy-MM-dd' dates to skip for recurring tasks
-  color?: string; // Optional: Stores HSL string for task background
+  color?: string | null; // Optional: Stores HSL string for task background
 };
 
 export interface Goal {

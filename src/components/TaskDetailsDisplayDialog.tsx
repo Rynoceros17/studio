@@ -49,12 +49,10 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
   const handleSave = () => {
     if (task) {
       const updates: Partial<Pick<Task, 'details' | 'dueDate'>> = {
-          details: taskDetails,
-          dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
+          details: taskDetails || null,
+          dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
       };
-      if (updates.details !== task.details ||
-          updates.dueDate !== task.dueDate
-        )
+      if (updates.details !== (task.details || null) || updates.dueDate !== (task.dueDate || null))
         {
         updateTaskDetails(task.id, updates);
       }
@@ -151,7 +149,7 @@ export function TaskDetailsDisplayDialog({ task, onClose, updateTaskDetails }: T
               <div className="col-span-3">
                 <Textarea
                   id="detailsDisplay"
-                  value={taskDetails}
+                  value={taskDetails || ''}
                   onChange={(e) => setTaskDetails(e.target.value)}
                   placeholder="Add links, notes, etc."
                   className="min-h-[100px] max-h-[200px] overflow-y-auto"

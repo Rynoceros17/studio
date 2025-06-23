@@ -183,16 +183,20 @@ export default function Home() {
 
 
   const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
+     // Explicitly construct the task object to avoid undefined values.
      const newTask: Task = {
-         ...newTaskData,
          id: crypto.randomUUID(),
+         name: newTaskData.name,
+         date: newTaskData.date,
+         description: newTaskData.description || null,
          recurring: newTaskData.recurring ?? false,
          highPriority: newTaskData.highPriority ?? false,
-         color: newTaskData.color ?? undefined,
+         color: newTaskData.color || null,
          exceptions: newTaskData.exceptions || [],
-         details: newTaskData.details || '',
-         dueDate: newTaskData.dueDate || undefined,
+         details: newTaskData.details || null,
+         dueDate: newTaskData.dueDate || null,
      };
+
      setTasks((prevTasks) => {
          const updatedTasks = [...prevTasks, newTask];
          updatedTasks.sort((a, b) => {
@@ -935,5 +939,6 @@ export default function Home() {
     
 
     
+
 
 

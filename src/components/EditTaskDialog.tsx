@@ -56,7 +56,7 @@ interface EditTaskDialogProps {
 
 export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDialogProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [selectedColor, setSelectedColor] = useState<string>(task?.color || colorOptions[0].value);
+  const [selectedColor, setSelectedColor] = useState<string | null>(task?.color || colorOptions[0].value);
 
 
   const form = useForm<EditTaskFormValues>({
@@ -93,11 +93,11 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
     if (task) {
       const updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>> = {
         name: data.name,
-        description: data.description,
+        description: data.description || null,
         date: format(data.date, 'yyyy-MM-dd'),
         recurring: data.recurring,
         highPriority: data.highPriority,
-        color: data.color,
+        color: data.color || null,
       };
       updateTask(task.id, updates);
       onClose();
