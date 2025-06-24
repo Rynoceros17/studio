@@ -51,7 +51,7 @@ import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
-import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
+import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
 import type { SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
@@ -59,6 +59,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { colorTagToHexMap } from '@/lib/color-map';
 import { db } from '@/lib/firebase/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { TodaysTasksDialog } from '@/components/TodaysTasksDialog';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -96,6 +97,7 @@ export default function Home() {
   const chatInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [isTodaysTasksDialogOpen, setIsTodaysTasksDialogOpen] = useState(false);
 
 
   useEffect(() => {
@@ -104,7 +106,13 @@ export default function Home() {
         const initialX = window.innerWidth - 300 - 24;
         const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
+        // Check if the popup has already been shown in this session
+        if (sessionStorage.getItem('todaysTasksShown') !== 'true') {
+            setIsTodaysTasksDialogOpen(true);
+            sessionStorage.setItem('todaysTasksShown', 'true');
+        }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Effect to sync data with Firestore in real-time
@@ -783,6 +791,43 @@ export default function Home() {
     setTouchStartX(null);
   };
 
+  const todaysTasks = useMemo(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const today = startOfDay(new Date());
+
+    return tasks.filter(task => {
+        if (!task || !task.date) return false;
+        const taskDate = parseISOStrict(task.date);
+        if (!taskDate) return false;
+
+        let isForToday = false;
+        if (task.recurring) {
+            const taskStartDayOfWeek = taskDate.getDay();
+            const todayDayOfWeek = today.getDay();
+            if (taskStartDayOfWeek === todayDayOfWeek && today >= taskDate) {
+                isForToday = true;
+            }
+        } else {
+            if (isSameDay(taskDate, today)) {
+                isForToday = true;
+            }
+        }
+
+        if (!isForToday) return false;
+
+        if (task.exceptions?.includes(todayStr)) {
+            return false;
+        }
+
+        const completionKey = `${task.id}_${todayStr}`;
+        if (completedTasks.has(completionKey)) {
+            return false;
+        }
+        
+        return true;
+    });
+  }, [tasks, completedTasks]);
+
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
@@ -1017,6 +1062,12 @@ export default function Home() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <TodaysTasksDialog
+            isOpen={isTodaysTasksDialogOpen && todaysTasks.length > 0}
+            onClose={() => setIsTodaysTasksDialogOpen(false)}
+            tasks={todaysTasks}
+        />
       </main>
     </DndContext>
   );
