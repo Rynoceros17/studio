@@ -106,11 +106,8 @@ export default function Home() {
         const initialX = window.innerWidth - 300 - 24;
         const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
-        // Check if the popup has already been shown in this session
-        if (sessionStorage.getItem('todaysTasksShown') !== 'true') {
-            setIsTodaysTasksDialogOpen(true);
-            sessionStorage.setItem('todaysTasksShown', 'true');
-        }
+        // Always show the dialog on page load
+        setIsTodaysTasksDialogOpen(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
