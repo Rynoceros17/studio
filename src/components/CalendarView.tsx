@@ -153,7 +153,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
             "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
             cardBorderStyle,
             cardBgClass,
-            isDragging && 'shadow-lg scale-105 animate-pulse',
+            isDragging && 'shadow-xl scale-105',
             'transition-all duration-300 ease-in-out'
           )}
           style={cardCustomStyle}
@@ -351,9 +351,9 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 
         <Card
             className={cn(
-                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer",
+                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5",
                 cardBorderStyle,
-                cardBgClass, // Apply default bg class, style prop will override if color is set
+                cardBgClass,
                 isCompletedAnim && 'animate-task-complete'
             )}
             style={cardCustomStyle}
@@ -752,7 +752,7 @@ export function CalendarView({
                   )}
                   {isClient && theme && (
                     <Tabs
-                      value={theme === 'system' || theme === 'bw' ? 'light' : theme}
+                      value={theme === 'system' ? 'light' : theme}
                       onValueChange={setTheme}
                       className="ml-2 w-[100px]"
                     >
