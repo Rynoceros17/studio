@@ -760,11 +760,12 @@ export default function Home() {
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    // Ensure we started with a two-finger touch and are ending it
-    if (touchStartX === null || e.changedTouches.length !== 2) {
+    if (touchStartX === null) {
+      // Gesture didn't start with two fingers, so ignore.
       return;
     }
 
+    // Use the first of the "changed" touches to determine the end position.
     const touchEndX = e.changedTouches[0].clientX;
     const deltaX = touchEndX - touchStartX;
     const swipeThreshold = 50; // Minimum swipe distance in pixels
@@ -777,7 +778,8 @@ export default function Home() {
       router.push('/timetable');
     }
 
-    // Reset touch start position
+    // Reset touch start position regardless of whether a swipe was detected.
+    // This completes the gesture.
     setTouchStartX(null);
   };
 
