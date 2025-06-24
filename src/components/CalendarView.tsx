@@ -737,14 +737,13 @@ export function CalendarView({
               )}
               {isClient && theme && (
                 <Tabs
-                  value={theme === 'system' ? 'light' : theme} // Default to light if system is chosen
+                  value={theme === 'system' || theme === 'bw' ? 'light' : theme}
                   onValueChange={setTheme}
-                  className="ml-2 w-[150px]"
+                  className="ml-2 w-[100px]"
                 >
-                  <TabsList className="grid w-full grid-cols-3 h-8 p-0.5">
+                  <TabsList className="grid w-full grid-cols-2 h-8 p-0.5">
                     <TabsTrigger value="light" className="text-xs h-6 px-2">Light</TabsTrigger>
                     <TabsTrigger value="dark" className="text-xs h-6 px-2">Dark</TabsTrigger>
-                    <TabsTrigger value="bw" className="text-xs h-6 px-2">BW</TabsTrigger>
                   </TabsList>
                 </Tabs>
               )}
