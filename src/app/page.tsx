@@ -106,11 +106,17 @@ export default function Home() {
         const initialX = window.innerWidth - 300 - 24;
         const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
-        // Always show the dialog on page load
-        setIsTodaysTasksDialogOpen(true);
     }
+    // Dialog is now triggered based on authentication status
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Show the "Today's Tasks" dialog only after the user's auth status is resolved.
+  useEffect(() => {
+    if (!authLoading) {
+        setIsTodaysTasksDialogOpen(true);
+    }
+  }, [authLoading]);
   
   // Effect to sync data with Firestore in real-time
   useEffect(() => {
@@ -1081,4 +1087,5 @@ export default function Home() {
 
 
     
+
 
