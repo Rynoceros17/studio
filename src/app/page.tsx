@@ -58,7 +58,7 @@ import type { SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-fl
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { colorTagToHexMap } from '@/lib/color-map';
 import { db } from '@/lib/firebase/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -73,6 +73,7 @@ export default function Home() {
   const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
   const { user, authLoading } = useAuth();
   const isInitialLoad = useRef(true);
+  const firestoreUnsubscribeRef = useRef<Unsubscribe | null>(null);
 
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -103,51 +104,64 @@ export default function Home() {
     }
   }, []);
   
-  // Effect to load data from Firestore on login, or clear it on logout
+  // Effect to sync data with Firestore in real-time
   useEffect(() => {
-    isInitialLoad.current = true; // Prevents auto-save on data load
-    const loadUserDataFromFirestore = async () => {
-      if (user && db) {
-        // User is logged in, try to load data from their main user document
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(userDocRef);
-          if (docSnap.exists()) {
-              const userData = docSnap.data();
-              // Load tasks and completed IDs from the user document
-              const tasksData = userData.tasks || [];
-              const completedIdsData = userData.completedTaskIds || [];
-              setTasks(Array.isArray(tasksData) ? tasksData : []);
-              setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
-          } else {
-              // Document doesn't exist for a new user, so local state remains empty
-              setTasks([]);
-              setCompletedTaskIds([]);
-          }
-        } catch (error) {
-          console.error("Error loading user data from Firestore:", error);
-          toast({ title: "Load Failed", description: "Could not load your data from the cloud.", variant: "destructive" });
-        }
-      } else if (!authLoading) {
-        // No user is logged in (and auth check is complete), ensure local data is cleared
+    // Unsubscribe from any previous listener when the user or auth status changes.
+    if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+        firestoreUnsubscribeRef.current = null;
+    }
+
+    if (user && db) {
+        // User is logged in, set up a real-time listener
+        isInitialLoad.current = true; // Mark as initial load to prevent immediate auto-save
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        
+        firestoreUnsubscribeRef.current = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const userData = docSnap.data();
+                const tasksData = userData.tasks || [];
+                const completedIdsData = userData.completedTaskIds || [];
+                setTasks(Array.isArray(tasksData) ? tasksData : []);
+                setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+            } else {
+                // New user or cleared data, set local state to empty.
+                // The auto-save effect will then create the document.
+                setTasks([]);
+                setCompletedTaskIds([]);
+            }
+            // After the first successful data load from the snapshot, allow auto-saving.
+            isInitialLoad.current = false;
+        }, (error) => {
+            console.error("Error with Firestore listener:", error);
+            toast({ title: "Sync Error", description: "Could not sync data in real-time.", variant: "destructive" });
+        });
+
+    } else if (!authLoading) {
+        // No user is logged in (and auth check is complete), ensure local data is loaded.
+        // useLocalStorage handles this, but we clear tasks to be safe.
         setTasks([]);
         setCompletedTaskIds([]);
-      }
-    };
+    }
 
-    loadUserDataFromFirestore();
+    // Cleanup: Unsubscribe when component unmounts or user changes.
+    return () => {
+        if (firestoreUnsubscribeRef.current) {
+            firestoreUnsubscribeRef.current();
+        }
+    };
   }, [user, authLoading, setTasks, setCompletedTaskIds, toast]);
 
   // Effect to automatically save data to Firestore when it changes
   useEffect(() => {
     // Skip the very first render/load to prevent unnecessary writes.
     if (isInitialLoad.current) {
-        isInitialLoad.current = false;
         return;
     }
 
     const autoSave = async () => {
-        if (!user || !db) return; // Only save if user is logged in
+        if (!user || !db || authLoading) return; // Only save if user is logged in and not in the middle of loading
         try {
             const userDocRef = doc(db, 'users', user.uid);
             await setDoc(userDocRef, { 
@@ -160,8 +174,16 @@ export default function Home() {
         }
     };
 
-    autoSave();
-  }, [tasks, completedTaskIds, user, db, toast]);
+    // Debounce the save operation slightly to avoid rapid writes.
+    const handler = setTimeout(() => {
+        autoSave();
+    }, 1000); // Save 1 second after the last change.
+
+    return () => {
+        clearTimeout(handler);
+    };
+
+  }, [tasks, completedTaskIds, user, db, toast, authLoading]);
 
 
   const sensors = useSensors(
@@ -943,3 +965,6 @@ export default function Home() {
 
 
 
+
+
+    
