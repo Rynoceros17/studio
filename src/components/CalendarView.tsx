@@ -150,7 +150,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     return (
         <Card
           className={cn(
-            "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
+            "p-2 rounded-md shadow-md w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words",
             cardBorderStyle,
             cardBgClass,
             isDragging && 'shadow-xl scale-105',
@@ -351,7 +351,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 
         <Card
             className={cn(
-                "p-2 rounded-md shadow-sm w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5",
+                "p-2 rounded-md shadow-md w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5",
                 cardBorderStyle,
                 cardBgClass,
                 isCompletedAnim && 'animate-task-complete'
