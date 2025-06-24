@@ -48,7 +48,6 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
-import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
@@ -726,7 +725,6 @@ export default function Home() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
-      <SyncStatusIndicator />
       <header
         className={cn(
           "bg-background border-b shadow-sm w-full",
