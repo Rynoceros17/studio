@@ -3,6 +3,7 @@
 
 import type * as React from 'react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   addDays,
   subDays,
@@ -44,7 +45,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -721,9 +722,16 @@ export function CalendarView({
     >
       <div className="p-1 md:p-2 w-full">
         <div className="flex items-center justify-between mb-1">
-            <Button variant="outline" size="icon" onClick={goToPrevious} aria-label="Previous period" className="h-8 w-8">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+                <Link href="/timetable" passHref legacyBehavior>
+                    <a className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), "hidden md:inline-flex h-8 w-8")} aria-label="Go to Timetable">
+                        <ArrowLeftCircle className="h-4 w-4" />
+                    </a>
+                </Link>
+                <Button variant="outline" size="icon" onClick={goToPrevious} aria-label="Previous period" className="h-8 w-8">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+            </div>
 
           <div className="flex-grow text-center flex items-center justify-center gap-2">
               <h2 className="text-base md:text-lg font-semibold text-primary">
@@ -749,9 +757,16 @@ export function CalendarView({
               )}
           </div>
 
-            <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next period" className="h-8 w-8">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next period" className="h-8 w-8">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Link href="/goals" passHref legacyBehavior>
+                    <a className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), "hidden md:inline-flex h-8 w-8")} aria-label="Go to Goals">
+                        <ArrowRightCircle className="h-4 w-4" />
+                    </a>
+                </Link>
+            </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-7 gap-1 w-full">
