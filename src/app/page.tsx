@@ -194,8 +194,8 @@ export default function Home() {
         chatInputRef.current?.focus();
       }
 
-      // Ctrl+N or Cmd+N to open new task dialog
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
+      // Ctrl+Y or Cmd+Y to open new task dialog
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'y') {
         event.preventDefault();
         setIsFormOpen(true);
       }
