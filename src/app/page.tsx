@@ -4,6 +4,7 @@
 import type * as React from 'react';
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   DndContext,
   type DragEndEvent,
@@ -93,6 +94,8 @@ export default function Home() {
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
   const chatInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
 
   useEffect(() => {
@@ -747,6 +750,37 @@ export default function Home() {
     setMoveRecurringConfirmation(null);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Check for two-finger touch
+    if (e.touches.length === 2) {
+      setTouchStartX(e.touches[0].clientX);
+    } else {
+      setTouchStartX(null); // Reset if not a two-finger touch
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // Ensure we started with a two-finger touch and are ending it
+    if (touchStartX === null || e.changedTouches.length !== 2) {
+      return;
+    }
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const deltaX = touchEndX - touchStartX;
+    const swipeThreshold = 50; // Minimum swipe distance in pixels
+
+    if (deltaX > swipeThreshold) {
+      // Swipe Right -> Go to Goals page
+      router.push('/goals');
+    } else if (deltaX < -swipeThreshold) {
+      // Swipe Left -> Go to Timetable page
+      router.push('/timetable');
+    }
+
+    // Reset touch start position
+    setTouchStartX(null);
+  };
+
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
@@ -830,7 +864,11 @@ export default function Home() {
         </nav>
       </header>
 
-      <main className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6">
+      <main
+        className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
 
         <div className="w-full max-w-7xl mb-4">
             <Card className="shadow-sm bg-transparent border-none">
