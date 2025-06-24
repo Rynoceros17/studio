@@ -92,10 +92,13 @@ interface SortableTaskProps {
   onMoveTask: (taskId: string, dateStr: string, direction: 'prev' | 'next') => void;
 }
 
-const goldTaskColors = [
-  'hsl(50, 100%, 90%)', // Pale Gold
-  'hsl(45, 90%, 85%)',  // Soft Gold
-  'hsl(55, 80%, 80%)',  // Light Goldenrod
+const lightBackgroundColors = [
+  'hsl(0 0% 100%)',
+  'hsl(259 67% 88%)',
+  'hsl(259 67% 92%)',
+  'hsl(50, 100%, 90%)',
+  'hsl(45, 90%, 85%)',
+  'hsl(55, 80%, 80%)',
 ];
 
 function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
@@ -122,15 +125,15 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     let textColorClass = 'text-card-foreground';
     let descColorClass = 'text-muted-foreground';
     let cardBorderStyle = 'border-border';
-    const isGoldColor = task.color && goldTaskColors.includes(task.color);
+    const isLightColor = task.color && lightBackgroundColors.includes(task.color);
 
     if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
         cardBorderStyle = 'border-transparent';
-    } else if (isGoldColor) {
-        cardBgClass = ''; // Handled by style prop for gold
+    } else if (isLightColor) {
+        cardBgClass = ''; // Handled by style prop
         textColorClass = 'text-neutral-800';
         descColorClass = 'text-neutral-700';
         cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
@@ -280,7 +283,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
     let iconButtonClass = 'text-muted-foreground hover:text-foreground';
     let completeIconClass = 'text-muted-foreground';
     let cardBorderStyle = 'border-border';
-    const isGoldColor = task.color && goldTaskColors.includes(task.color);
+    const isLightColor = task.color && lightBackgroundColors.includes(task.color);
 
 
     if (isCompleted) {
@@ -290,8 +293,8 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         iconButtonClass = 'text-muted-foreground';
         completeIconClass = 'text-green-600';
         cardBorderStyle = 'border-transparent';
-    } else if (isGoldColor) {
-        cardBgClass = ''; // Handled by style prop for gold
+    } else if (isLightColor) {
+        cardBgClass = ''; // Handled by style prop
         textColorClass = 'text-neutral-800';
         descColorClass = 'text-neutral-700';
         iconButtonClass = 'text-neutral-600 hover:text-neutral-800';
@@ -399,7 +402,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("h-5 w-5 focus-visible:ring-1 focus-visible:ring-ring rounded", completeIconClass, isCompleted && 'hover:text-green-700', !isCompleted && !isGoldColor && 'hover:text-foreground')}
+                className={cn("h-5 w-5 focus-visible:ring-1 focus-visible:ring-ring rounded", completeIconClass, isCompleted && 'hover:text-green-700', !isCompleted && 'hover:text-foreground')}
                 onClick={handleToggleCompletion}
                 aria-label={isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
               >
@@ -874,5 +877,3 @@ export function CalendarView({
     </DndContext>
   );
 }
-
-    

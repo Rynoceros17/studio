@@ -28,9 +28,9 @@ import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const colorOptions = [
-  { name: 'White', value: 'hsl(var(--card))' },
-  { name: 'Light Purple', value: 'hsl(var(--secondary))' },
-  { name: 'Lighter Purple', value: 'hsl(var(--muted))' },
+  { name: 'White', value: 'hsl(0 0% 100%)' },
+  { name: 'Light Purple', value: 'hsl(259 67% 88%)' },
+  { name: 'Lighter Purple', value: 'hsl(259 67% 92%)' },
   { name: 'Pale Gold', value: 'hsl(50, 100%, 90%)' },
   { name: 'Soft Gold', value: 'hsl(45, 90%, 85%)' },
   { name: 'Light Goldenrod', value: 'hsl(55, 80%, 80%)' },
