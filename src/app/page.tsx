@@ -936,19 +936,17 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-7xl space-y-4">
-          {isClient && (
-              <CalendarView
-                tasks={tasks}
-                requestDeleteTask={requestDeleteTask}
-                updateTaskOrder={updateTaskOrder}
-                toggleTaskCompletion={toggleTaskCompletion}
-                completedTasks={completedTasks}
-                updateTaskDetails={updateTaskDetails}
-                updateTask={updateTask}
-                completedCount={completedCount}
-                requestMoveRecurringTask={requestMoveRecurringTask}
-              />
-          )}
+          <CalendarView
+            tasks={tasks}
+            requestDeleteTask={requestDeleteTask}
+            updateTaskOrder={updateTaskOrder}
+            toggleTaskCompletion={toggleTaskCompletion}
+            completedTasks={completedTasks}
+            updateTaskDetails={updateTaskDetails}
+            updateTask={updateTask}
+            completedCount={completedCount}
+            requestMoveRecurringTask={requestMoveRecurringTask}
+          />
         </div>
 
         <div className="w-full max-w-7xl mt-4">
@@ -1083,3 +1081,4 @@ export default function Home() {
 
 
     
+
