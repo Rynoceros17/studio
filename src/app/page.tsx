@@ -49,7 +49,7 @@ import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
@@ -92,6 +92,7 @@ export default function Home() {
 
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
 
   useEffect(() => {
@@ -183,6 +184,30 @@ export default function Home() {
     };
 
   }, [tasks, completedTaskIds, user, db, toast, authLoading]);
+
+  // Effect for keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+K or Cmd+K to focus AI input
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        chatInputRef.current?.focus();
+      }
+
+      // Ctrl+N or Cmd+N to open new task dialog
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        setIsFormOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup the event listener on component unmount
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []); // Empty dependency array ensures this effect runs only once
 
 
   const sensors = useSensors(
@@ -815,6 +840,7 @@ export default function Home() {
                         <span className="sr-only">Send Task Query</span>
                     </Button>
                     <Input
+                        ref={chatInputRef}
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         placeholder="AI Task Entry: e.g., 'Important meeting #col1, Weekly review #col3' (Max 100 chars)"
@@ -963,6 +989,9 @@ export default function Home() {
 
 
 
+
+
+    
 
 
     
