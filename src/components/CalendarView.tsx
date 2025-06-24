@@ -720,119 +720,122 @@ export function CalendarView({
       modifiers={modifiers}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
-      <div className="p-1 md:p-2 w-full">
-        <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-                <Link href="/timetable" passHref legacyBehavior>
-                    <a className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), "hidden md:inline-flex h-8 w-8")} aria-label="Go to Timetable">
-                        <ArrowLeftCircle className="h-4 w-4" />
-                    </a>
-                </Link>
-                <Button variant="outline" size="icon" onClick={goToPrevious} aria-label="Previous period" className="h-8 w-8">
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
+        <div className="relative w-full">
+            <Link href="/timetable" passHref legacyBehavior>
+                <a className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), "hidden md:flex absolute top-1/2 -left-12 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center")} aria-label="Go to Timetable">
+                    <ArrowLeftCircle className="h-6 w-6" />
+                </a>
+            </Link>
+            <Link href="/goals" passHref legacyBehavior>
+                <a className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), "hidden md:flex absolute top-1/2 -right-12 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center")} aria-label="Go to Goals">
+                    <ArrowRightCircle className="h-6 w-6" />
+                </a>
+            </Link>
+
+          <div className="p-1 md:p-2">
+            <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={goToPrevious} aria-label="Previous period" className="h-8 w-8">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                </div>
+
+              <div className="flex-grow text-center flex items-center justify-center gap-2">
+                  <h2 className="text-base md:text-lg font-semibold text-primary">
+                    {headerTitle}
+                  </h2>
+                  {isClient && (
+                    <Badge variant="secondary" className="ml-2 flex items-center gap-1.5 px-2 py-1 text-xs">
+                      <Star className="h-3 w-3" />
+                      {completedCount} Completed
+                    </Badge>
+                  )}
+                  {isClient && theme && (
+                    <Tabs
+                      value={theme === 'system' || theme === 'bw' ? 'light' : theme}
+                      onValueChange={setTheme}
+                      className="ml-2 w-[100px]"
+                    >
+                      <TabsList className="grid w-full grid-cols-2 h-8 p-0.5">
+                        <TabsTrigger value="light" className="text-xs h-6 px-2">Light</TabsTrigger>
+                        <TabsTrigger value="dark" className="text-xs h-6 px-2">Dark</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  )}
+              </div>
+
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next period" className="h-8 w-8">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
 
-          <div className="flex-grow text-center flex items-center justify-center gap-2">
-              <h2 className="text-base md:text-lg font-semibold text-primary">
-                {headerTitle}
-              </h2>
-              {isClient && (
-                <Badge variant="secondary" className="ml-2 flex items-center gap-1.5 px-2 py-1 text-xs">
-                  <Star className="h-3 w-3" />
-                  {completedCount} Completed
-                </Badge>
-              )}
-              {isClient && theme && (
-                <Tabs
-                  value={theme === 'system' || theme === 'bw' ? 'light' : theme}
-                  onValueChange={setTheme}
-                  className="ml-2 w-[100px]"
-                >
-                  <TabsList className="grid w-full grid-cols-2 h-8 p-0.5">
-                    <TabsTrigger value="light" className="text-xs h-6 px-2">Light</TabsTrigger>
-                    <TabsTrigger value="dark" className="text-xs h-6 px-2">Dark</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
-          </div>
-
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next period" className="h-8 w-8">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Link href="/goals" passHref legacyBehavior>
-                    <a className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), "hidden md:inline-flex h-8 w-8")} aria-label="Go to Goals">
-                        <ArrowRightCircle className="h-4 w-4" />
-                    </a>
-                </Link>
-            </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-1 w-full">
-          {days.map((day) => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const dayTasks = (isClient && tasksByDay && typeof tasksByDay === 'object' && Array.isArray(tasksByDay[dateStr])) ? tasksByDay[dateStr] : [];
-            const isActualToday = isSameDay(day, startOfDay(new Date()));
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-1 w-full">
+              {days.map((day) => {
+                const dateStr = format(day, 'yyyy-MM-dd');
+                const dayTasks = (isClient && tasksByDay && typeof tasksByDay === 'object' && Array.isArray(tasksByDay[dateStr])) ? tasksByDay[dateStr] : [];
+                const isActualToday = isSameDay(day, startOfDay(new Date()));
 
 
-            return (
-              <Card key={dateStr} className={cn(
-                  "flex flex-col h-[700px] md:h-[700px] overflow-hidden",
-                  isActualToday ? 'border-accent border-2 shadow-md bg-card dark:bg-muted' :
-                  viewMode === 'today' && !isActualToday ? 'bg-card border-border shadow-sm' :
-                  'bg-secondary/30 border-transparent'
-                  )}>
-                <CardHeader className="p-1 text-center shrink-0">
-                  <CardTitle className="text-xs font-medium">
-                    {format(day, 'EEE')}
-                  </CardTitle>
-                  <CardDescription className={cn(
-                      "text-sm font-bold",
-                      isActualToday ? 'text-accent' : 'text-foreground'
+                return (
+                  <Card key={dateStr} className={cn(
+                      "flex flex-col h-[700px] md:h-[700px] overflow-hidden",
+                      isActualToday ? 'border-accent border-2 shadow-md bg-card dark:bg-muted' :
+                      viewMode === 'today' && !isActualToday ? 'bg-card border-border shadow-sm' :
+                      'bg-secondary/30 border-transparent'
                       )}>
-                    {format(day, 'd')}
-                  </CardDescription>
-                  
-                </CardHeader>
-                <Separator className="shrink-0 my-0.5"/>
-                <ScrollArea className="flex-grow">
-                  <CardContent className="p-1 space-y-1 h-full" data-testid={`day-content-${dateStr}`}>
-                     <SortableContext
-                         id={dateStr}
-                         items={dayTasks.map(task => `${task.id}_${dateStr}`)}
-                         strategy={verticalListSortingStrategy}
-                       >
-                         {!isClient ? (
-                            <div className="p-4 text-center text-xs text-muted-foreground">Loading tasks...</div>
-                         ) : dayTasks.length === 0 ? (
-                           <p className="text-[10px] text-muted-foreground text-center pt-4">No tasks</p>
-                         ) : (
-                             dayTasks.map((task) => {
-                                if (!task) return null;
-                                const completionKey = `${task.id}_${dateStr}`;
-                                return (
-                                   <SortableTask
-                                     key={`${task.id}_${dateStr}`}
-                                     task={task}
-                                     dateStr={dateStr}
-                                     isCompleted={completedTasks?.has(completionKey) ?? false}
-                                     toggleTaskCompletion={toggleTaskCompletion}
-                                     requestDeleteTask={requestDeleteTask}
-                                     onTaskClick={handleTaskClick}
-                                     onEditClick={handleEditClick}
-                                     onMoveTask={handleMoveTask}
-                                   />
-                                );
-                             })
-                         )}
-                       </SortableContext>
-                  </CardContent>
-                </ScrollArea>
-              </Card>
-            );
-          })}
-        </div>
+                    <CardHeader className="p-1 text-center shrink-0">
+                      <CardTitle className="text-xs font-medium">
+                        {format(day, 'EEE')}
+                      </CardTitle>
+                      <CardDescription className={cn(
+                          "text-sm font-bold",
+                          isActualToday ? 'text-accent' : 'text-foreground'
+                          )}>
+                        {format(day, 'd')}
+                      </CardDescription>
+                      
+                    </CardHeader>
+                    <Separator className="shrink-0 my-0.5"/>
+                    <ScrollArea className="flex-grow">
+                      <CardContent className="p-1 space-y-1 h-full" data-testid={`day-content-${dateStr}`}>
+                         <SortableContext
+                             id={dateStr}
+                             items={dayTasks.map(task => `${task.id}_${dateStr}`)}
+                             strategy={verticalListSortingStrategy}
+                           >
+                             {!isClient ? (
+                                <div className="p-4 text-center text-xs text-muted-foreground">Loading tasks...</div>
+                             ) : dayTasks.length === 0 ? (
+                               <p className="text-[10px] text-muted-foreground text-center pt-4">No tasks</p>
+                             ) : (
+                                 dayTasks.map((task) => {
+                                    if (!task) return null;
+                                    const completionKey = `${task.id}_${dateStr}`;
+                                    return (
+                                       <SortableTask
+                                         key={`${task.id}_${dateStr}`}
+                                         task={task}
+                                         dateStr={dateStr}
+                                         isCompleted={completedTasks?.has(completionKey) ?? false}
+                                         toggleTaskCompletion={toggleTaskCompletion}
+                                         requestDeleteTask={requestDeleteTask}
+                                         onTaskClick={handleTaskClick}
+                                         onEditClick={handleEditClick}
+                                         onMoveTask={handleMoveTask}
+                                       />
+                                    );
+                                 })
+                             )}
+                           </SortableContext>
+                      </CardContent>
+                    </ScrollArea>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
       </div>
         <DragOverlay dropAnimation={dropAnimation}>
             {activeId && activeTask && activeId.includes('_') ? (() => {
