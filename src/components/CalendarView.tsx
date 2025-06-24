@@ -49,7 +49,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Task } from '@/lib/types';
 import { cn, truncateText, getMaxLength, parseISOStrict } from '@/lib/utils';
 
@@ -735,13 +735,19 @@ export function CalendarView({
                   {completedCount} Completed
                 </Badge>
               )}
-              <Switch
-                id="theme-toggle-switch"
-                checked={theme === 'dark'}
-                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-                aria-label="Toggle dark mode"
-                className="ml-2"
-              />
+              {isClient && theme && (
+                <Tabs
+                  value={theme === 'system' ? 'light' : theme} // Default to light if system is chosen
+                  onValueChange={setTheme}
+                  className="ml-2 w-[150px]"
+                >
+                  <TabsList className="grid w-full grid-cols-3 h-8 p-0.5">
+                    <TabsTrigger value="light" className="text-xs h-6 px-2">Light</TabsTrigger>
+                    <TabsTrigger value="dark" className="text-xs h-6 px-2">Dark</TabsTrigger>
+                    <TabsTrigger value="bw" className="text-xs h-6 px-2">BW</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              )}
           </div>
 
             <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next period" className="h-8 w-8">
@@ -849,4 +855,3 @@ export function CalendarView({
     </DndContext>
   );
 }
-
