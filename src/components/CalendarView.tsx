@@ -466,9 +466,11 @@ export function CalendarView({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+  const [today, setToday] = useState<Date | null>(null);
 
   useEffect(() => {
       setIsClient(true);
+      setToday(startOfDay(new Date()));
   }, []);
 
   useEffect(() => {
@@ -775,7 +777,7 @@ export function CalendarView({
               {days.map((day) => {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 const dayTasks = (isClient && tasksByDay && typeof tasksByDay === 'object' && Array.isArray(tasksByDay[dateStr])) ? tasksByDay[dateStr] : [];
-                const isActualToday = isSameDay(day, startOfDay(new Date()));
+                const isActualToday = today ? isSameDay(day, today) : false;
 
 
                 return (
@@ -872,3 +874,5 @@ export function CalendarView({
     </DndContext>
   );
 }
+
+    
