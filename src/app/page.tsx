@@ -60,6 +60,7 @@ import { colorTagToHexMap } from '@/lib/color-map';
 import { db } from '@/lib/firebase/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { TodaysTasksDialog } from '@/components/TodaysTasksDialog';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -89,6 +90,7 @@ export default function Home() {
   const [isTimerVisible, setIsTimerVisible] = useState(false);
   const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [moveRecurringConfirmation, setMoveRecurringConfirmation] = useState<MoveRecurringConfirmationState | null>(null);
 
@@ -107,16 +109,14 @@ export default function Home() {
         const initialY = 24;
         setTimerPosition({ x: initialX, y: initialY });
     }
-    // Dialog is now triggered based on authentication status
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Show the "Today's Tasks" dialog only after the user's auth status is resolved.
+  // Show the "Today's Tasks" dialog only after the user's auth status and data is resolved.
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && isDataLoaded) {
         setIsTodaysTasksDialogOpen(true);
     }
-  }, [authLoading]);
+  }, [authLoading, isDataLoaded]);
   
   // Effect to sync data with Firestore in real-time
   useEffect(() => {
@@ -125,6 +125,9 @@ export default function Home() {
         firestoreUnsubscribeRef.current();
         firestoreUnsubscribeRef.current = null;
     }
+
+    // We start in a loading state whenever the user or auth status changes.
+    setIsDataLoaded(false);
 
     if (user && db) {
         // User is logged in, set up a real-time listener
@@ -147,16 +150,17 @@ export default function Home() {
             }
             // After the first successful data load from the snapshot, allow auto-saving.
             isInitialLoad.current = false;
+            setIsDataLoaded(true); // Data is loaded from Firestore.
         }, (error) => {
             console.error("Error with Firestore listener:", error);
             toast({ title: "Sync Error", description: "Could not sync data in real-time.", variant: "destructive" });
+            setIsDataLoaded(true); // Stop loading even on error.
         });
 
     } else if (!authLoading) {
-        // No user is logged in (and auth check is complete), ensure local data is loaded.
-        // useLocalStorage handles this, but we clear tasks to be safe.
-        setTasks([]);
-        setCompletedTaskIds([]);
+        // No user, and auth check is done. Data is already loaded from localStorage by the hook.
+        // So we can just signal that data loading is complete.
+        setIsDataLoaded(true);
     }
 
     // Cleanup: Unsubscribe when component unmounts or user changes.
@@ -831,6 +835,9 @@ export default function Home() {
     });
   }, [tasks, completedTasks]);
 
+  if (authLoading || !isDataLoaded) {
+    return <LoadingScreen />;
+  }
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
@@ -1087,5 +1094,6 @@ export default function Home() {
 
 
     
+
 
 
