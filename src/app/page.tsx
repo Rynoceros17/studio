@@ -70,9 +70,9 @@ interface MoveRecurringConfirmationState {
 
 
 export default function Home() {
-  const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
-  const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
+  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
   const { user, authLoading } = useAuth();
   const isInitialLoad = useRef(true);
   const firestoreUnsubscribeRef = useRef<Unsubscribe | null>(null);
@@ -117,92 +117,100 @@ export default function Home() {
         setIsTodaysTasksDialogOpen(true);
     }
   }, [authLoading, isDataLoaded]);
-  
-  // Effect to sync data with Firestore in real-time
-  useEffect(() => {
-    // Unsubscribe from any previous listener when the user or auth status changes.
-    if (firestoreUnsubscribeRef.current) {
-        firestoreUnsubscribeRef.current();
-        firestoreUnsubscribeRef.current = null;
-    }
 
-    // We start in a loading state whenever the user or auth status changes.
+  // Effect to sync data with Firestore OR load from localStorage
+  useEffect(() => {
+    if (firestoreUnsubscribeRef.current) {
+      firestoreUnsubscribeRef.current();
+      firestoreUnsubscribeRef.current = null;
+    }
     setIsDataLoaded(false);
+    isInitialLoad.current = true; // Prevent auto-saving during data load transition
 
     if (user && db) {
-        // User is logged in, set up a real-time listener
-        isInitialLoad.current = true; // Mark as initial load to prevent immediate auto-save
-        
-        const userDocRef = doc(db, 'users', user.uid);
-        
-        firestoreUnsubscribeRef.current = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const userData = docSnap.data();
-                const tasksData = userData.tasks || [];
-                const completedIdsData = userData.completedTaskIds || [];
-                setTasks(Array.isArray(tasksData) ? tasksData : []);
-                setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
-            } else {
-                // New user or cleared data, set local state to empty.
-                // The auto-save effect will then create the document.
-                setTasks([]);
-                setCompletedTaskIds([]);
-            }
-            // After the first successful data load from the snapshot, allow auto-saving.
-            isInitialLoad.current = false;
-            setIsDataLoaded(true); // Data is loaded from Firestore.
-        }, (error) => {
-            console.error("Error with Firestore listener:", error);
-            toast({ title: "Sync Error", description: "Could not sync data in real-time.", variant: "destructive" });
-            setIsDataLoaded(true); // Stop loading even on error.
-        });
-
-    } else if (!authLoading) {
-        // No user, and auth check is done. Data is already loaded from localStorage by the hook.
-        // So we can just signal that data loading is complete.
+      // User is logged in. Clear local state and set up Firestore listener.
+      setTasks([]);
+      setCompletedTaskIds([]);
+      
+      const userDocRef = doc(db, 'users', user.uid);
+      firestoreUnsubscribeRef.current = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          const tasksData = userData.tasks || [];
+          const completedIdsData = userData.completedTaskIds || [];
+          setTasks(Array.isArray(tasksData) ? tasksData : []);
+          setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+        } else {
+          // New user, Firestore doc will be created on first save. State is already empty.
+          setTasks([]);
+          setCompletedTaskIds([]);
+        }
+        isInitialLoad.current = false;
         setIsDataLoaded(true);
+      }, (error) => {
+        console.error("Error with Firestore listener:", error);
+        toast({ title: "Sync Error", description: "Could not sync data in real-time.", variant: "destructive" });
+        setIsDataLoaded(true);
+      });
+    } else if (!authLoading && !user) {
+      // No user, load from localStorage.
+      try {
+        const localTasks = JSON.parse(localStorage.getItem('weekwise-tasks') || '[]');
+        const localCompleted = JSON.parse(localStorage.getItem('weekwise-completed-tasks') || '[]');
+        setTasks(localTasks);
+        setCompletedTaskIds(localCompleted);
+      } catch (error) {
+        console.warn("Could not parse local storage data.", error);
+        setTasks([]);
+        setCompletedTaskIds([]);
+      }
+      isInitialLoad.current = false;
+      setIsDataLoaded(true);
     }
 
-    // Cleanup: Unsubscribe when component unmounts or user changes.
     return () => {
-        if (firestoreUnsubscribeRef.current) {
-            firestoreUnsubscribeRef.current();
-        }
+      if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+      }
     };
-  }, [user, authLoading, setTasks, setCompletedTaskIds, toast]);
+  }, [user, authLoading, toast]);
 
-  // Effect to automatically save data to Firestore when it changes
+
+  // Effect to automatically save data
   useEffect(() => {
-    // Skip the very first render/load to prevent unnecessary writes.
-    if (isInitialLoad.current) {
-        return;
+    // Skip saving on the very first load or while auth is resolving
+    if (isInitialLoad.current || authLoading) {
+      return;
     }
 
     const autoSave = async () => {
-        if (!user || !db || authLoading) return; // Only save if user is logged in and not in the middle of loading
+      if (user && db) { // Logged in: save to Firestore
         try {
-            const userDocRef = doc(db, 'users', user.uid);
-            await setDoc(userDocRef, { 
-                tasks: tasks, 
-                completedTaskIds: completedTaskIds,
-            }, { merge: true });
+          const userDocRef = doc(db, 'users', user.uid);
+          await setDoc(userDocRef, { 
+              tasks: tasks, 
+              completedTaskIds: completedTaskIds,
+          }, { merge: true });
         } catch (error) {
-            console.error("Error auto-saving user data to Firestore:", error);
-            toast({ title: "Sync Failed", description: "Your latest changes could not be saved.", variant: "destructive" });
+          console.error("Error auto-saving user data to Firestore:", error);
+          toast({ title: "Sync Failed", description: "Your latest changes could not be saved.", variant: "destructive" });
         }
+      } else { // Logged out: save to localStorage
+         localStorage.setItem('weekwise-tasks', JSON.stringify(tasks));
+         localStorage.setItem('weekwise-completed-tasks', JSON.stringify(completedTaskIds));
+      }
     };
 
-    // Debounce the save operation slightly to avoid rapid writes.
+    // Debounce the save operation to avoid rapid writes.
     const handler = setTimeout(() => {
-        autoSave();
-    }, 1000); // Save 1 second after the last change.
+      autoSave();
+    }, 1000);
 
     return () => {
-        clearTimeout(handler);
+      clearTimeout(handler);
     };
-
-  }, [tasks, completedTaskIds, user, db, toast, authLoading]);
-
+  }, [tasks, completedTaskIds, user, authLoading, toast]);
+  
   // Effect for keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -473,22 +481,24 @@ export default function Home() {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
       const completionKey = `${taskId}_${dateStr}`;
-      const currentCompletedKeys = new Set(completedTaskIds);
-      if (currentCompletedKeys.has(completionKey)) {
-          currentCompletedKeys.delete(completionKey);
-          toast({
-              title: "Task Incomplete",
-              description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as incomplete.`,
-          });
-      } else {
-          currentCompletedKeys.add(completionKey);
-          toast({
-              title: "Task Completed!",
-              description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as complete.`,
-          });
-      }
-      setCompletedTaskIds(Array.from(currentCompletedKeys));
-  }, [tasks, completedTaskIds, setCompletedTaskIds, toast]);
+      setCompletedTaskIds((prevIds) => {
+          const currentCompletedKeys = new Set(prevIds);
+          if (currentCompletedKeys.has(completionKey)) {
+              currentCompletedKeys.delete(completionKey);
+              toast({
+                  title: "Task Incomplete",
+                  description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as incomplete.`,
+              });
+          } else {
+              currentCompletedKeys.add(completionKey);
+              toast({
+                  title: "Task Completed!",
+                  description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as complete.`,
+              });
+          }
+          return Array.from(currentCompletedKeys);
+      });
+  }, [tasks, setCompletedTaskIds, toast]);
 
 
   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => {
@@ -740,8 +750,7 @@ export default function Home() {
       return finalTasks;
     });
 
-    const completionKey = `${originalRecurringTask.id}_${originalDateStr}`;
-    setCompletedTaskIds(prev => prev.filter(id => id !== completionKey));
+    setCompletedTaskIds(prev => prev.filter(id => id !== `${originalRecurringTask.id}_${originalDateStr}`));
 
     toast({
       title: "Recurring Instance Moved",
@@ -1082,18 +1091,3 @@ export default function Home() {
 }
 
     
-
-    
-
-
-
-
-
-
-    
-
-
-    
-
-
-
