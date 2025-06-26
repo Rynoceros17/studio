@@ -102,6 +102,7 @@ const lightBackgroundColors = [
 ];
 
 function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
+    const { theme } = useTheme();
     const [titleLimit, setTitleLimit] = useState(getMaxLength('title', 'calendar'));
     const [descLimit, setDescLimit] = useState(getMaxLength('desc', 'calendar'));
 
@@ -125,28 +126,39 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     let textColorClass = 'text-card-foreground';
     let descColorClass = 'text-muted-foreground';
     let cardBorderStyle = 'border-border';
-    const isLightColor = task.color && lightBackgroundColors.includes(task.color);
+
+    const cardCustomStyle: React.CSSProperties = {};
 
     if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
         cardBorderStyle = 'border-transparent';
-    } else if (isLightColor) {
-        cardBgClass = ''; // Handled by style prop
-        textColorClass = 'text-neutral-800';
-        descColorClass = 'text-neutral-700';
-        cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
     } else {
-        cardBgClass = task.color ? '' : 'bg-card'; // Use empty if color is set, otherwise default
-        textColorClass = 'text-card-foreground';
-        descColorClass = 'text-muted-foreground';
         cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
-    }
 
-    const cardCustomStyle: React.CSSProperties = {};
-    if (!isCompleted && task.color) {
-        cardCustomStyle.backgroundColor = task.color;
+        const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
+        const isDarkMode = theme === 'dark';
+        let colorToApply = task.color;
+
+        if (isDefaultWhite && isDarkMode) {
+            colorToApply = 'hsl(259 67% 88%)';
+        }
+
+        if (colorToApply) {
+            cardCustomStyle.backgroundColor = colorToApply;
+            cardBgClass = ''; // Use style prop
+        }
+
+        const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
+
+        if (isLightColor) {
+            textColorClass = 'text-neutral-800';
+            descColorClass = 'text-neutral-700';
+        } else {
+            textColorClass = 'text-card-foreground';
+            descColorClass = 'text-muted-foreground';
+        }
     }
 
 
@@ -204,6 +216,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
 }
 
 function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, requestDeleteTask, onTaskClick, onEditClick, onMoveTask }: SortableTaskProps) {
+  const { theme } = useTheme();
   const [isCompletedAnim, setIsCompletedAnim] = useState(false);
   const {
     attributes,
@@ -283,8 +296,8 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
     let iconButtonClass = 'text-muted-foreground hover:text-foreground';
     let completeIconClass = 'text-muted-foreground';
     let cardBorderStyle = 'border-border';
-    const isLightColor = task.color && lightBackgroundColors.includes(task.color);
 
+    const cardCustomStyle: React.CSSProperties = {};
 
     if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60';
@@ -293,24 +306,34 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         iconButtonClass = 'text-muted-foreground';
         completeIconClass = 'text-green-600';
         cardBorderStyle = 'border-transparent';
-    } else if (isLightColor) {
-        cardBgClass = ''; // Handled by style prop
-        textColorClass = 'text-neutral-800';
-        descColorClass = 'text-neutral-700';
-        iconButtonClass = 'text-neutral-600 hover:text-neutral-800';
-        completeIconClass = 'text-neutral-600';
+    } else {
         cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
-    }
-     else {
-        cardBgClass = task.color ? '' : 'bg-card'; // Use empty if color is set, otherwise default
-        textColorClass = 'text-card-foreground';
-        descColorClass = 'text-muted-foreground';
-        iconButtonClass = 'text-muted-foreground hover:text-foreground';
-        completeIconClass = 'text-muted-foreground';
-        if (task.highPriority) {
-             cardBorderStyle = 'border-accent border-2';
+
+        const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
+        const isDarkMode = theme === 'dark';
+        let colorToApply = task.color;
+
+        if (isDefaultWhite && isDarkMode) {
+            colorToApply = 'hsl(259 67% 88%)';
+        }
+
+        if (colorToApply) {
+            cardCustomStyle.backgroundColor = colorToApply;
+            cardBgClass = ''; // Use style prop
+        }
+
+        const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
+
+        if (isLightColor) {
+            textColorClass = 'text-neutral-800';
+            descColorClass = 'text-neutral-700';
+            iconButtonClass = 'text-neutral-600 hover:text-neutral-800';
+            completeIconClass = 'text-neutral-600';
         } else {
-            cardBorderStyle = 'border-border';
+            textColorClass = 'text-card-foreground';
+            descColorClass = 'text-muted-foreground';
+            iconButtonClass = 'text-muted-foreground hover:text-foreground';
+            completeIconClass = 'text-muted-foreground';
         }
     }
 
@@ -321,11 +344,6 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         e.preventDefault();
     }
   };
-
-  const cardCustomStyle: React.CSSProperties = {};
-  if (!isCompleted && task.color) {
-      cardCustomStyle.backgroundColor = task.color;
-  }
 
 
   return (
