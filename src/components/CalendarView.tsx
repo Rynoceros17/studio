@@ -194,7 +194,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
                      descColorClass,
                      isCompleted && 'line-through',
                     )}
-                    title={task.description}
+                    title={task.description ?? ''}
                  >
                   {descriptionDisplay}
                 </p>
@@ -410,7 +410,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                      descColorClass,
                      isCompleted && 'line-through',
                    )}
-                   title={task.description}
+                   title={task.description ?? ''}
                  >
                   {descriptionDisplay}
                  </p>
