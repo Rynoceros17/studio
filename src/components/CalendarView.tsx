@@ -99,6 +99,7 @@ const lightBackgroundColors = [
   'hsl(50, 100%, 90%)',
   'hsl(45, 90%, 85%)',
   'hsl(55, 80%, 80%)',
+  'hsl(259 67% 82%)',
 ];
 
 function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
