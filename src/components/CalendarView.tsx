@@ -142,7 +142,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
         let colorToApply = task.color;
 
         if (isDefaultWhite && isDarkMode) {
-            colorToApply = 'hsl(259 67% 88%)';
+            colorToApply = 'hsl(259 67% 82%)';
         }
 
         if (colorToApply) {
@@ -314,7 +314,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         let colorToApply = task.color;
 
         if (isDefaultWhite && isDarkMode) {
-            colorToApply = 'hsl(259 67% 88%)';
+            colorToApply = 'hsl(259 67% 82%)';
         }
 
         if (colorToApply) {
