@@ -43,12 +43,15 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
   
   const startTotalMinutes = startH * 60 + startM;
   const endTotalMinutes = endH * 60 + endM;
-  const duration = endTotalMinutes - startTotalMinutes;
+  const actualDuration = endTotalMinutes - startTotalMinutes;
   
-  if (duration <= 0) return { display: 'none' };
+  if (actualDuration <= 0) return { display: 'none' };
 
-  const top = (startTotalMinutes / 15) * 0.875;
-  const height = (duration / 15) * 0.875;
+  // Enforce a minimum visual duration of 45 minutes for better readability
+  const displayDuration = Math.max(actualDuration, 45);
+
+  const top = (startTotalMinutes / 15) * 0.875; // Each 15min block is 0.875rem high
+  const height = (displayDuration / 15) * 0.875;
   
   return {
     top: `${top}rem`,
