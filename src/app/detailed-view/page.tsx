@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -37,6 +37,11 @@ export default function DetailedViewPage() {
   const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<Task> | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const { toast } = useToast();
 
@@ -161,7 +166,7 @@ export default function DetailedViewPage() {
 
       <main className="flex-grow overflow-auto">
         <DetailedCalendarView 
-            tasks={tasks} 
+            tasks={isClient ? tasks : []} 
             onCreateTask={handleCreateTask}
             onEditTask={(task) => setEditingTask(task)}
             onDeleteTask={requestDeleteTask}
