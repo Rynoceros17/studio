@@ -9,7 +9,7 @@ import type { Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn, parseISOStrict } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-import { DndContext, DragOverlay, useDraggable, useDroppable, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useDraggable, useDroppable, type DragEndEvent, type DragStartEvent, rectIntersection } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
 interface DetailedCalendarViewProps {
@@ -96,7 +96,7 @@ function TaskBlock({
 
     const style = {
         ...getTaskStyle(task, colorToApply),
-        transform: CSS.Translate.toString(moveTransform),
+        transform: moveTransform ? CSS.Translate.toString(moveTransform) : undefined,
         zIndex: moveTransform ? 100 : 20,
     };
 
@@ -354,7 +354,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   };
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={rectIntersection}>
         <div className="flex flex-col h-full" onMouseUp={handleMouseUp} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
         <header className="flex items-center justify-between p-2 border-b shrink-0">
             <h2 className="text-lg font-semibold text-primary">{format(currentWeekStart, 'MMMM yyyy')}</h2>
@@ -428,24 +428,8 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
         </div>
         </div>
         <DragOverlay>
-            {activeDragItem && activeDragItem.type === 'move' ? (() => {
-                const { task } = activeDragItem;
-                const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
-                const isDarkMode = theme === 'dark';
-                let colorToApply = task.color;
-                if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
-                
-                const taskStyle = getTaskStyle(task, colorToApply);
-                return (
-                    <div style={{...taskStyle, zIndex: 9999, opacity: 0.75}} className={cn("rounded-md p-1 text-xs text-white", "border border-primary")}>
-                         <p className="font-medium line-clamp-1">{task.name}</p>
-                         {task.description && <p className="line-clamp-1 opacity-80">{task.description}</p>}
-                    </div>
-                )
-            })() : null}
+            {null}
         </DragOverlay>
     </DndContext>
   );
 }
-
-    
