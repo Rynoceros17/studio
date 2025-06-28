@@ -159,7 +159,7 @@ export default function DetailedViewPage() {
             </Link>
             <div>
                 <h1 className="text-2xl font-semibold text-primary">Detailed Calendar View</h1>
-                <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task.</p>
+                <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Drag tasks to reschedule.</p>
             </div>
         </div>
       </header>
@@ -172,6 +172,7 @@ export default function DetailedViewPage() {
             onDeleteTask={requestDeleteTask}
             onToggleComplete={toggleTaskCompletion}
             completedTasks={completedTasks}
+            updateTask={updateTask}
         />
       </main>
 
