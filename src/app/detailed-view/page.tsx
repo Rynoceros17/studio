@@ -1,11 +1,10 @@
 
 "use client";
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
-import useLocalStorage from '@/hooks/useLocalStorage';
 import type { Task } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
 import { TaskForm } from '@/components/TaskForm';
@@ -29,10 +28,19 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { cn, parseISOStrict } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/lib/firebase/firebase';
+import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export default function DetailedViewPage() {
-  const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
-  const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
+  const { user, authLoading } = useAuth();
+  const isInitialLoad = useRef(true);
+  const firestoreUnsubscribeRef = useRef<Unsubscribe | null>(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<Task> | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -47,13 +55,105 @@ export default function DetailedViewPage() {
 
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
+  // Effect to sync data with Firestore OR load from localStorage
+  useEffect(() => {
+    if (firestoreUnsubscribeRef.current) {
+      firestoreUnsubscribeRef.current();
+      firestoreUnsubscribeRef.current = null;
+    }
+    setIsDataLoaded(false);
+    isInitialLoad.current = true; // Prevent auto-saving during data load transition
+
+    if (user && db) {
+      // User is logged in. Clear local state and set up Firestore listener.
+      setTasks([]);
+      setCompletedTaskIds([]);
+      
+      const userDocRef = doc(db, 'users', user.uid);
+      firestoreUnsubscribeRef.current = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          const tasksData = userData.tasks || [];
+          const completedIdsData = userData.completedTaskIds || [];
+          setTasks(Array.isArray(tasksData) ? tasksData : []);
+          setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+        } else {
+          // New user, Firestore doc will be created on first save. State is already empty.
+          setTasks([]);
+          setCompletedTaskIds([]);
+        }
+        isInitialLoad.current = false;
+        setIsDataLoaded(true);
+      }, (error) => {
+        console.error("Error with Firestore listener:", error);
+        toast({ title: "Sync Error", description: "Could not sync data in real-time.", variant: "destructive" });
+        setIsDataLoaded(true);
+      });
+    } else if (!authLoading && !user) {
+      // No user, load from localStorage.
+      try {
+        const localTasks = JSON.parse(localStorage.getItem('weekwise-tasks') || '[]');
+        const localCompleted = JSON.parse(localStorage.getItem('weekwise-completed-tasks') || '[]');
+        setTasks(localTasks);
+        setCompletedTaskIds(localCompleted);
+      } catch (error) {
+        console.warn("Could not parse local storage data.", error);
+        setTasks([]);
+        setCompletedTaskIds([]);
+      }
+      isInitialLoad.current = false;
+      setIsDataLoaded(true);
+    }
+
+    return () => {
+      if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+      }
+    };
+  }, [user, authLoading, toast]);
+
+
+  // Effect to automatically save data
+  useEffect(() => {
+    // Skip saving on the very first load or while auth is resolving
+    if (isInitialLoad.current || authLoading) {
+      return;
+    }
+
+    const autoSave = async () => {
+      if (user && db) { // Logged in: save to Firestore
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          await setDoc(userDocRef, { 
+              tasks: tasks, 
+              completedTaskIds: completedTaskIds,
+          }, { merge: true });
+        } catch (error) {
+          console.error("Error auto-saving user data to Firestore:", error);
+          toast({ title: "Sync Failed", description: "Your latest changes could not be saved.", variant: "destructive" });
+        }
+      } else { // Logged out: save to localStorage
+         localStorage.setItem('weekwise-tasks', JSON.stringify(tasks));
+         localStorage.setItem('weekwise-completed-tasks', JSON.stringify(completedTaskIds));
+      }
+    };
+
+    // Debounce the save operation to avoid rapid writes.
+    const handler = setTimeout(() => {
+      autoSave();
+    }, 1000);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [tasks, completedTaskIds, user, authLoading, toast]);
+
   const handleCreateTask = (taskData: Partial<Task>) => {
     setPrefilledTaskData(taskData);
     setIsFormOpen(true);
   };
 
   const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
-    // Explicitly construct the task object to ensure all fields are handled correctly.
     const newTask: Task = {
         id: crypto.randomUUID(),
         name: newTaskData.name,
@@ -71,8 +171,6 @@ export default function DetailedViewPage() {
 
     setTasks(prevTasks => {
         const updatedTasks = [...prevTasks, newTask];
-        // Sort tasks to ensure a consistent order, which can be important for rendering.
-        // This sorting logic is now consistent with the main page.
         updatedTasks.sort((a, b) => {
             const dateA = parseISOStrict(a.date);
             const dateB = parseISOStrict(b.date);
@@ -99,13 +197,11 @@ export default function DetailedViewPage() {
         return updatedTasks;
     });
 
-    // Provide user feedback.
     toast({
         title: "Task Added",
         description: `"${newTask.name}" added successfully.`,
     });
     
-    // Close the form and clear pre-filled data.
     setIsFormOpen(false);
     setPrefilledTaskData(null);
   }, [setTasks, toast]);
@@ -211,6 +307,10 @@ export default function DetailedViewPage() {
           return Array.from(currentCompletedKeys);
       });
   }, [tasks, setCompletedTaskIds, toast]);
+
+  if (authLoading || !isDataLoaded) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="flex flex-col h-screen bg-background">
