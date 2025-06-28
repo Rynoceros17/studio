@@ -53,30 +53,95 @@ export default function DetailedViewPage() {
   };
 
   const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
+    // Explicitly construct the task object to ensure all fields are handled correctly.
     const newTask: Task = {
         id: crypto.randomUUID(),
-        ...newTaskData,
+        name: newTaskData.name,
+        date: newTaskData.date,
         description: newTaskData.description || null,
         recurring: newTaskData.recurring ?? false,
         highPriority: newTaskData.highPriority ?? false,
         color: newTaskData.color || null,
+        startTime: newTaskData.startTime,
+        endTime: newTaskData.endTime,
         details: newTaskData.details || null,
         dueDate: newTaskData.dueDate || null,
         exceptions: newTaskData.exceptions || [],
     };
-    setTasks(prevTasks => [...prevTasks, newTask]);
+
+    setTasks(prevTasks => {
+        const updatedTasks = [...prevTasks, newTask];
+        // Sort tasks to ensure a consistent order, which can be important for rendering.
+        // This sorting logic is now consistent with the main page.
+        updatedTasks.sort((a, b) => {
+            const dateA = parseISOStrict(a.date);
+            const dateB = parseISOStrict(b.date);
+
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+
+            const dateComparison = dateA.getTime() - dateB.getTime();
+            if (dateComparison !== 0) return dateComparison;
+
+            if (a.highPriority !== b.highPriority) {
+                 return a.highPriority ? -1 : 1;
+            }
+
+            // Fallback sort to maintain some order, not strictly necessary but good practice.
+            const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
+            const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
+            if (originalAIndex === -1 && originalBIndex !== -1) return 1;
+            if (originalAIndex !== -1 && originalBIndex === -1) return -1;
+            if (originalAIndex === -1 && originalBIndex === -1) return 0;
+            return originalAIndex - originalBIndex;
+        });
+        return updatedTasks;
+    });
+
+    // Provide user feedback.
     toast({
         title: "Task Added",
         description: `"${newTask.name}" added successfully.`,
     });
+    
+    // Close the form and clear pre-filled data.
     setIsFormOpen(false);
     setPrefilledTaskData(null);
   }, [setTasks, toast]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-      setTasks(prevTasks => prevTasks.map(task => 
-          task.id === id ? { ...task, ...updates } : task
-      ));
+      setTasks(prevTasks => {
+          let needsResort = false;
+          const updatedTasks = prevTasks.map(task => {
+              if (task.id === id) {
+                  const updatedTask = { ...task, ...updates };
+                  if ((updates.date && updates.date !== task.date) || (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)) {
+                      needsResort = true;
+                  }
+                  return updatedTask;
+              }
+              return task;
+          });
+
+          if (needsResort) {
+              updatedTasks.sort((a, b) => {
+                  const dateA = parseISOStrict(a.date);
+                  const dateB = parseISOStrict(b.date);
+                  if (!dateA && !dateB) return 0;
+                  if (!dateA) return 1;
+                  if (!dateB) return -1;
+                  const dateComparison = dateA.getTime() - dateB.getTime();
+                  if (dateComparison !== 0) return dateComparison;
+
+                  if (a.highPriority !== b.highPriority) {
+                      return a.highPriority ? -1 : 1;
+                  }
+                  return 0;
+              });
+          }
+          return updatedTasks;
+      });
       toast({
           title: "Task Updated",
           description: "Your task has been successfully updated.",
@@ -159,7 +224,7 @@ export default function DetailedViewPage() {
             </Link>
             <div>
                 <h1 className="text-2xl font-semibold text-primary">Detailed Calendar View</h1>
-                <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Drag tasks to reschedule.</p>
+                <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Click tasks to edit.</p>
             </div>
         </div>
       </header>
@@ -226,4 +291,5 @@ export default function DetailedViewPage() {
         </AlertDialog>
     </div>
   );
-}
+
+    
