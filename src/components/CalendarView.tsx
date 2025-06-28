@@ -121,7 +121,8 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
 
 
     const nameDisplay = truncateText(task.name, titleLimit);
-    const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : '';
+    const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : null;
+    const timeDisplay = task.startTime && task.endTime ? `${task.startTime} - ${task.endTime}` : null;
 
     let cardBgClass = 'bg-card';
     let textColorClass = 'text-card-foreground';
@@ -179,23 +180,14 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
                 <GripVertical className="h-3 w-3" />
              </div>
             <div className="flex-grow min-w-0 pr-1 overflow-hidden">
-              <p className={cn(
-                  "text-xs font-medium break-words whitespace-normal line-clamp-1",
-                   textColorClass,
-                   isCompleted && 'line-through',
-                 )}
-                 title={task.name}
-               >
+              <p className={cn( "text-xs font-medium break-words whitespace-normal line-clamp-1", textColorClass, isCompleted && 'line-through' )} title={task.name} >
                 {nameDisplay}
               </p>
-              {descriptionDisplay && (
-                <p className={cn(
-                    "text-[10px] mt-0.5 break-words whitespace-normal line-clamp-2",
-                     descColorClass,
-                     isCompleted && 'line-through',
-                    )}
-                    title={task.description ?? ''}
-                 >
+              {timeDisplay && (
+                <p className={cn("text-[10px] font-mono", descColorClass, isCompleted && 'line-through')}>{timeDisplay}</p>
+              )}
+              {descriptionDisplay && !timeDisplay && (
+                <p className={cn("text-[10px] mt-0.5 break-words whitespace-normal line-clamp-2", descColorClass, isCompleted && 'line-through')} title={task.description ?? ''}>
                   {descriptionDisplay}
                 </p>
               )}
@@ -289,7 +281,9 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 
 
   const nameDisplay = truncateText(task.name, titleLimit);
-  const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : '';
+  const descriptionDisplay = task.description ? truncateText(task.description, descLimit) : null;
+  const timeDisplay = task.startTime && task.endTime ? `${task.startTime} - ${task.endTime}` : null;
+
 
     let cardBgClass = 'bg-card';
     let textColorClass = 'text-card-foreground';
@@ -393,28 +387,17 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 <GripVertical className="h-3 w-3" />
              </button>
              <div className="flex-grow min-w-0 pr-1 overflow-hidden">
-               <p
-                 className={cn(
-                   "text-xs font-medium break-words whitespace-normal line-clamp-1",
-                   textColorClass,
-                   isCompleted && 'line-through',
-                 )}
-                 title={task.name}
-               >
+               <p className={cn( "text-xs font-medium break-words whitespace-normal line-clamp-1", textColorClass, isCompleted && 'line-through' )} title={task.name} >
                  {nameDisplay}
                </p>
-               {descriptionDisplay && (
-                 <p
-                   className={cn(
-                     "text-[10px] mt-0.5 break-words whitespace-normal line-clamp-2",
-                     descColorClass,
-                     isCompleted && 'line-through',
-                   )}
-                   title={task.description ?? ''}
-                 >
+              {timeDisplay && (
+                <p className={cn("text-[10px] font-mono", descColorClass, isCompleted && 'line-through')}>{timeDisplay}</p>
+              )}
+              {descriptionDisplay && !timeDisplay && (
+                <p className={cn("text-[10px] mt-0.5 break-words whitespace-normal line-clamp-2", descColorClass, isCompleted && 'line-through')} title={task.description ?? ''}>
                   {descriptionDisplay}
-                 </p>
-               )}
+                </p>
+              )}
              </div>
 
             <div className="flex flex-col items-center space-y-0.5 shrink-0">
