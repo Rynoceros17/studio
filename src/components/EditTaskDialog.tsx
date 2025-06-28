@@ -40,9 +40,19 @@ const editFormSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   recurring: z.boolean().optional(),
   highPriority: z.boolean().optional(),
   color: z.string().optional().default(colorOptions[0].value),
+}).refine(data => {
+    if (data.startTime || data.endTime) {
+        return !!data.startTime && !!data.endTime && data.endTime > data.startTime;
+    }
+    return true;
+}, {
+    message: "End time must be set and must be after start time.",
+    path: ["endTime"],
 });
 
 type EditTaskFormValues = z.infer<typeof editFormSchema>;
@@ -51,7 +61,7 @@ interface EditTaskDialogProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
-  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>>) => void;
+  updateTask: (id: string, updates: Partial<Task>) => void;
 }
 
 export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDialogProps) {
@@ -65,6 +75,8 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
       name: '',
       description: '',
       date: undefined,
+      startTime: '',
+      endTime: '',
       recurring: false,
       highPriority: false,
       color: colorOptions[0].value,
@@ -78,23 +90,27 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
         name: task.name,
         description: task.description || '',
         date: task.date ? parseISO(task.date + 'T00:00:00') : undefined, // Ensure time part for correct local date
+        startTime: task.startTime || "",
+        endTime: task.endTime || "",
         recurring: task.recurring || false,
         highPriority: task.highPriority || false,
         color: task.color || defaultColorValue,
       });
       setSelectedColor(task.color || defaultColorValue);
     } else if (!isOpen) {
-       form.reset({ name: '', description: '', date: undefined, recurring: false, highPriority: false, color: defaultColorValue });
+       form.reset({ name: '', description: '', date: undefined, startTime: '', endTime: '', recurring: false, highPriority: false, color: defaultColorValue });
        setSelectedColor(defaultColorValue);
     }
   }, [task, isOpen, form]);
 
   const onSubmit: SubmitHandler<EditTaskFormValues> = (data) => {
     if (task) {
-      const updates: Partial<Omit<Task, 'id' | 'details' | 'dueDate' | 'exceptions'>> = {
+      const updates: Partial<Task> = {
         name: data.name,
         description: data.description || null,
         date: format(data.date, 'yyyy-MM-dd'),
+        startTime: data.startTime || undefined,
+        endTime: data.endTime || undefined,
         recurring: data.recurring,
         highPriority: data.highPriority,
         color: data.color || null,
@@ -185,6 +201,35 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                   </FormItem>
                 )}
               />
+
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="startTime"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Start Time</FormLabel>
+                            <FormControl>
+                                <Input type="time" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="endTime"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>End Time</FormLabel>
+                            <FormControl>
+                                <Input type="time" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
 
              <div className="grid grid-cols-2 gap-4">
                   <FormField
