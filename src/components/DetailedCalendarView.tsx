@@ -85,21 +85,19 @@ function TaskBlock({
         id: `move-${task.id}`,
         data: { task, type: 'move' },
     });
-    const { listeners: topResizeListeners, setNodeRef: topResizeRef, transform: topTransform } = useDraggable({
+    const { listeners: topResizeListeners, setNodeRef: topResizeRef } = useDraggable({
         id: `resize-top-${task.id}`,
         data: { task, type: 'resize-top' },
     });
-    const { listeners: bottomResizeListeners, setNodeRef: bottomResizeRef, transform: bottomTransform } = useDraggable({
+    const { listeners: bottomResizeListeners, setNodeRef: bottomResizeRef } = useDraggable({
         id: `resize-bottom-${task.id}`,
         data: { task, type: 'resize-bottom' },
     });
-    
-    const transform = moveTransform || topTransform || bottomTransform;
 
     const style = {
         ...getTaskStyle(task, colorToApply),
-        transform: CSS.Translate.toString(transform),
-        zIndex: transform ? 100 : 20,
+        transform: CSS.Translate.toString(moveTransform),
+        zIndex: moveTransform ? 100 : 20,
     };
 
     const { theme } = useTheme();
@@ -449,3 +447,5 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     </DndContext>
   );
 }
+
+    
