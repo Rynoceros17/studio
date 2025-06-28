@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef } from 'react';
+import { useTheme } from 'next-themes';
 import { addDays, subDays, startOfWeek, format, parseISO, isSameDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle, Star } from 'lucide-react';
 import type { Task } from '@/lib/types';
@@ -24,8 +25,19 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
     return `${hour} ${ampm}`;
 });
 
+const lightBackgroundColors = [
+  'hsl(0 0% 100%)',
+  'hsl(259 67% 88%)',
+  'hsl(259 67% 92%)',
+  'hsl(50, 100%, 90%)',
+  'hsl(45, 90%, 85%)',
+  'hsl(55, 80%, 80%)',
+  'hsl(259 67% 82%)',
+];
+
 
 export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks }: DetailedCalendarViewProps) {
+  const { theme } = useTheme();
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selection, setSelection] = useState<{ startCell: string | null; endCell: string | null }>({ startCell: null, endCell: null });
   const [isSelecting, setIsSelecting] = useState(false);
@@ -151,7 +163,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     return cellTimeValue >= Math.min(startTimeValue, endTimeValue) && cellTimeValue <= Math.max(startTimeValue, endTimeValue);
   };
   
-  const getTaskStyle = (task: Task): React.CSSProperties => {
+  const getTaskStyle = (task: Task, colorToApply: string | null | undefined): React.CSSProperties => {
     if (!task.startTime || !task.endTime) return { display: 'none' };
     const [startH, startM] = task.startTime.split(':').map(Number);
     const [endH, endM] = task.endTime.split(':').map(Number);
@@ -168,7 +180,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     return {
       top: `${top}rem`,
       height: `${height}rem`,
-      backgroundColor: task.color || 'hsl(var(--primary))',
+      backgroundColor: colorToApply || 'hsl(var(--primary))',
       opacity: task.recurring ? 0.85 : 0.95,
       zIndex: 20
     };
@@ -241,26 +253,46 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                     const completionKey = `${task.id}_${dateStr}`;
                     const isCompleted = completedTasks.has(completionKey);
                     
+                    const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
+                    const isDarkMode = theme === 'dark';
+                    let colorToApply = task.color;
+
+                    if (isDefaultWhite && isDarkMode) {
+                        colorToApply = 'hsl(259 67% 82%)';
+                    }
+
+                    const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
+
+                    let textColorClass = isLightColor ? 'text-neutral-800' : 'text-white';
+                    let iconColorClass = isLightColor ? 'text-neutral-700 hover:bg-neutral-900/10' : 'text-white hover:bg-white/20';
+
+                    if (isCompleted) {
+                        textColorClass = 'text-white/80';
+                        iconColorClass = 'text-white/80 hover:bg-white/20';
+                    }
+                    
+                    const taskStyle = getTaskStyle(task, colorToApply);
+                    
                     return (
-                        <div key={task.id} style={getTaskStyle(task)} 
-                           className={cn("absolute left-1 right-1 p-1 rounded-md text-white overflow-hidden text-xs cursor-pointer group", isCompleted && "opacity-50", task.highPriority && !isCompleted && "border-2 border-accent")}
+                        <div key={task.id} style={taskStyle} 
+                           className={cn("absolute left-1 right-1 p-1 rounded-md overflow-hidden text-xs cursor-pointer group", textColorClass, isCompleted && "opacity-50", task.highPriority && !isCompleted && "border-2 border-accent")}
                            onClick={() => onEditTask(task)}
                            title={`${task.name}\n${task.startTime} - ${task.endTime}`}
                         >
                             <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
-                                {task.highPriority && !isCompleted && <Star className="h-3 w-3 fill-white text-white shrink-0" />}
+                                {task.highPriority && !isCompleted && <Star className="h-3 w-3 fill-current shrink-0" />}
                                 <p className="font-bold line-clamp-1">{task.name}</p>
                             </div>
                             {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
 
                             <div className="absolute bottom-1 right-1 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button size="icon" variant="ghost" className="h-5 w-5 text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
+                                <Button size="icon" variant="ghost" className={cn("h-5 w-5", iconColorClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
                                     {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-5 w-5 text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
+                                <Button size="icon" variant="ghost" className={cn("h-5 w-5", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
                                     <Edit className="h-3 w-3" />
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-5 w-5 text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }}>
+                                <Button size="icon" variant="ghost" className={cn("h-5 w-5", iconColorClass)} onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }}>
                                     <Trash2 className="h-3 w-3" />
                                 </Button>
                             </div>
