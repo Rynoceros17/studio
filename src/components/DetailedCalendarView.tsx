@@ -55,8 +55,8 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
       const originalDuration = endTotalMinutes - startTotalMinutes;
       // For very short tasks, just render them without the gap to avoid them disappearing
       if (originalDuration > 0) {
-        const top = (startTotalMinutes / 15) * 0.9; // 0.9rem per 15 min block
-        const height = (originalDuration / 15) * 0.9;
+        const top = (startTotalMinutes / 15) * 0.675; // 0.675rem per 15 min block
+        const height = (originalDuration / 15) * 0.675;
         return {
           top: `${top}rem`,
           height: `${height}rem`,
@@ -67,8 +67,8 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
       return { display: 'none' };
   }
 
-  const top = (visualStartMinutes / 15) * 0.9; // 0.9rem per 15 min block
-  const height = (visualDuration / 15) * 0.9;
+  const top = (visualStartMinutes / 15) * 0.675; // 0.675rem per 15 min block
+  const height = (visualDuration / 15) * 0.675;
 
   return {
     top: `${top}rem`,
@@ -137,13 +137,13 @@ function TaskBlock({
         <div
             style={style}
             className={cn(
-                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md hover:shadow-lg transition-all duration-300 z-10 hover:z-20",
+                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300 z-10 hover:z-20",
                 "flex flex-col justify-between",
                 "border",
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
-                isShortTask && `hover:min-h-[2.7rem]`
+                isShortTask && `hover:min-h-[2.025rem]`
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
         >
@@ -155,7 +155,7 @@ function TaskBlock({
                 {!isVeryShortTask && task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
             </div>
 
-            <div className="flex justify-end items-center space-x-1 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex justify-start items-center space-x-1.5 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button variant="ghost" className={cn("h-4 w-4 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
                     {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                 </Button>
@@ -181,7 +181,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const sevenAmHourSlotPosition = 7 * (3.6 * 16); // 7 * (0.9rem * 4 slots) * 16px/rem
+      const sevenAmHourSlotPosition = 7 * (2.7 * 16); // 7 * (0.675rem * 4 slots) * 16px/rem
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
   }, []);
@@ -348,7 +348,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
       <div ref={scrollContainerRef} className="flex flex-grow overflow-auto">
         <div className="w-14 text-[10px] text-center shrink-0">
           <div className="h-12" />
-          {timeSlots.map(time => <div key={time} className="h-[3.6rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
+          {timeSlots.map(time => <div key={time} className="h-[2.7rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
         </div>
         <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
           {days.map((day, dayIndex) => {
@@ -363,13 +363,13 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                 </div>
                 <div className="relative">
                   {timeSlots.map((_, hour) => (
-                    <div key={hour} className="h-[3.6rem] border-t relative">
+                    <div key={hour} className="h-[2.7rem] border-t relative">
                       {Array.from({ length: 4 }).map((__, quarter) => {
                         const cellId = getCellId(dayIndex, hour, quarter);
                         return (
                           <div
                             key={quarter}
-                            className={cn("h-[0.9rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                            className={cn("h-[0.675rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                             data-cell-id={cellId}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
