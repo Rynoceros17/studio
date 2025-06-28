@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Target } from 'lucide-react';
+import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { Task, Goal } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
@@ -32,7 +32,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { cn, parseISOStrict, calculateGoalProgress } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/firebase';
@@ -42,6 +42,10 @@ import useLocalStorage from '@/hooks/useLocalStorage';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { parseNaturalLanguageTask, type SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
+import { colorTagToHexMap } from '@/lib/color-map';
+
 
 export default function DetailedViewPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -56,7 +60,15 @@ export default function DetailedViewPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [isClient, setIsClient] = useState(false);
+  
+  // Sheet states
   const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false);
+  const [isAiSheetOpen, setIsAiSheetOpen] = useState(false);
+
+  // AI Task state
+  const [chatInput, setChatInput] = useState('');
+  const [isParsingTask, setIsParsingTask] = useState(false);
+
 
   // Fetch goals from local storage
   const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
@@ -211,14 +223,16 @@ export default function DetailedViewPage() {
         return updatedTasks;
     });
 
-    toast({
-        title: "Task Added",
-        description: `"${newTask.name}" added successfully.`,
-    });
+    if (!isParsingTask) {
+        toast({
+            title: "Task Added",
+            description: `"${newTask.name}" added successfully.`,
+        });
+    }
     
     setIsFormOpen(false);
     setPrefilledTaskData(null);
-  }, [setTasks, toast]);
+  }, [setTasks, toast, isParsingTask]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
       setTasks(prevTasks => {
@@ -322,6 +336,85 @@ export default function DetailedViewPage() {
       });
   }, [tasks, setCompletedTaskIds, toast]);
 
+  const handleSendChatMessage = async () => {
+    if (chatInput.trim() && !isParsingTask) {
+      setIsParsingTask(true);
+      try {
+        const parsedTasksArray: SingleTaskOutput[] = await parseNaturalLanguageTask({ query: chatInput.trim() });
+
+        if (parsedTasksArray && parsedTasksArray.length > 0) {
+            let tasksAddedCount = 0;
+            parsedTasksArray.forEach(parsedTask => {
+                let descriptionWithTime = parsedTask.description || "";
+                if (parsedTask.parsedTime) {
+                    descriptionWithTime = `${descriptionWithTime}${descriptionWithTime ? " " : ""}Time: ${parsedTask.parsedTime}.`.trim();
+                }
+
+                const taskDate = parseISOStrict(parsedTask.date);
+                if (!taskDate || !isValid(taskDate)) {
+                    console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
+                    return;
+                }
+
+                const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
+                  ? colorTagToHexMap[parsedTask.color]
+                  : undefined;
+
+                addTask({
+                    name: parsedTask.name || "Unnamed Task",
+                    date: parsedTask.date,
+                    description: descriptionWithTime,
+                    recurring: parsedTask.recurring ?? false,
+                    highPriority: parsedTask.highPriority ?? false,
+                    color: finalColor,
+                });
+                tasksAddedCount++;
+            });
+
+            if (tasksAddedCount > 0) {
+                toast({
+                    title: tasksAddedCount === 1 ? "Task Added by AI" : `${tasksAddedCount} Tasks Added by AI`,
+                    description: tasksAddedCount === 1
+                        ? `Task "${parsedTasksArray.find(pt => pt.name)?.name || 'Unnamed Task'}" added to your calendar.`
+                        : `${tasksAddedCount} tasks parsed and added to your calendar.`,
+                });
+            } else {
+                 toast({
+                    title: "AI Parsing Issue",
+                    description: "The AI processed your request, but no valid tasks could be added. Please check your input or try rephrasing.",
+                    variant: "destructive",
+                });
+            }
+            setChatInput('');
+            setIsAiSheetOpen(false); // Close sheet on success
+        } else {
+             toast({
+                title: "No Tasks Detected",
+                description: "The AI couldn't identify any tasks in your message. Try being more specific.",
+                variant: "destructive",
+            });
+        }
+      } catch (error: any) {
+        console.error("Error parsing task with AI:", error);
+        toast({
+          title: "AI Processing Error",
+          description: error.message || "Could not process your request. Please try again or add manually.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsParsingTask(false);
+      }
+    }
+  };
+
+  const handleChatKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSendChatMessage();
+    }
+  };
+
+
   if (authLoading || !isDataLoaded) {
     return <LoadingScreen />;
   }
@@ -341,10 +434,16 @@ export default function DetailedViewPage() {
                   <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Click tasks to edit.</p>
               </div>
           </div>
-          <Button variant="outline" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Sparkles className="mr-2 h-4 w-4" />
+              AI Task Entry
+            </Button>
+            <Button variant="outline" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Target className="mr-2 h-4 w-4" />
               View Goals
-          </Button>
+            </Button>
+          </div>
       </header>
 
       <main className="flex-grow overflow-auto">
@@ -359,6 +458,42 @@ export default function DetailedViewPage() {
           />
       </main>
 
+      {/* AI Task Generator Sheet */}
+      <Sheet open={isAiSheetOpen} onOpenChange={setIsAiSheetOpen}>
+        <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+            <SheetHeader className="p-4 border-b shrink-0">
+                <SheetTitle className="text-primary flex items-center gap-2">
+                   <Sparkles className="h-6 w-6" />
+                   AI Task Generator
+                </SheetTitle>
+            </SheetHeader>
+            <div className="p-4 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                    Type a task description and let AI parse it into your calendar.
+                    e.g., "Important meeting tomorrow at 2pm #col1"
+                </p>
+                <Card className="shadow-sm">
+                    <CardContent className="p-3 flex flex-col space-y-2">
+                        <Input
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            placeholder="Type task details..."
+                            className="h-10 text-sm"
+                            onKeyPress={handleChatKeyPress}
+                            disabled={isParsingTask}
+                            maxLength={100}
+                        />
+                        <Button onClick={handleSendChatMessage} className="w-full" disabled={isParsingTask || !chatInput.trim()}>
+                            {isParsingTask ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SendHorizonal className="mr-2 h-4 w-4" />}
+                            {isParsingTask ? "Parsing..." : "Add to Calendar"}
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Goals Sheet */}
       <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
         <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
             <SheetHeader className="p-4 border-b shrink-0">
@@ -451,5 +586,3 @@ export default function DetailedViewPage() {
   );
 
     
-
-
