@@ -229,10 +229,13 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     }
     const start = parseCellId(selection.startCell);
     const end = parseCellId(selection.endCell);
+
     if (!start || !end) {
       resetSelection();
       return;
     }
+
+    // Ensure selection is on the same day
     const selectionStartDay = Math.min(start.dayIndex, end.dayIndex);
     const selectionEndDay = Math.max(start.dayIndex, end.dayIndex);
     if (selectionStartDay !== selectionEndDay) {
@@ -240,22 +243,40 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
       resetSelection();
       return;
     }
+
     const dayIndex = selectionStartDay;
-    const startTimeValue = start.hour * 100 + start.quarter * 15;
-    const endTimeValue = end.hour * 100 + end.quarter * 15;
-    const finalStartHour = Math.floor(Math.min(startTimeValue, endTimeValue) / 100);
-    const finalStartMinute = Math.min(startTimeValue, endTimeValue) % 100;
-    const finalEndHour = Math.floor(Math.max(startTimeValue, endTimeValue) / 100);
-    const finalEndMinute = (Math.max(startTimeValue, endTimeValue) % 100) + 15;
-    const startDate = days[dayIndex];
-    const finalStartTime = `${String(finalStartHour).padStart(2, '0')}:${String(finalStartMinute).padStart(2, '0')}`;
-    let adjustedEndHour = finalEndHour;
-    let adjustedEndMinute = finalEndMinute;
-    if (adjustedEndMinute >= 60) {
-      adjustedEndHour += Math.floor(adjustedEndMinute / 60);
-      adjustedEndMinute %= 60;
+
+    // Calculate total minutes from the start of the day for the start and end of the selection
+    const startTotalMinutes = start.hour * 60 + start.quarter * 15;
+    const endTotalMinutes = end.hour * 60 + end.quarter * 15;
+
+    // Determine the final start and end times in minutes
+    const finalStartMinutes = Math.min(startTotalMinutes, endTotalMinutes);
+    const finalEndMinutes = Math.max(startTotalMinutes, endTotalMinutes) + 15; // Add 15 because the selection includes the last block
+
+    const duration = finalEndMinutes - finalStartMinutes;
+
+    if (duration < 30) {
+      toast({
+        title: "Selection Too Short",
+        description: "Tasks must be at least 30 minutes long.",
+        variant: "destructive",
+      });
+      resetSelection();
+      return;
     }
-    const finalEndTime = `${String(adjustedEndHour).padStart(2, '0')}:${String(adjustedEndMinute).padStart(2, '0')}`;
+
+    const startDate = days[dayIndex];
+    
+    // Convert minutes back to HH:mm format
+    const finalStartHour = Math.floor(finalStartMinutes / 60);
+    const finalStartMinute = finalStartMinutes % 60;
+    const finalStartTime = `${String(finalStartHour).padStart(2, '0')}:${String(finalStartMinute).padStart(2, '0')}`;
+    
+    const finalEndHour = Math.floor(finalEndMinutes / 60);
+    const finalEndMinute = finalEndMinutes % 60;
+    const finalEndTime = `${String(finalEndHour).padStart(2, '0')}:${String(finalEndMinute).padStart(2, '0')}`;
+    
     onCreateTask({ date: format(startDate, 'yyyy-MM-dd'), startTime: finalStartTime, endTime: finalEndTime });
     resetSelection();
   };
