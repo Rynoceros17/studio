@@ -1,18 +1,21 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { addDays, subDays, startOfWeek, endOfWeek, format, setHours, setMinutes } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { addDays, subDays, startOfWeek, format, parseISO, isSameDay } from 'date-fns';
+import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle, Star } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, parseISOStrict } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-
 
 interface DetailedCalendarViewProps {
   tasks: Task[];
   onCreateTask: (taskData: Partial<Task>) => void;
+  onEditTask: (task: Task) => void;
+  onDeleteTask: (task: Task, dateStr: string) => void;
+  onToggleComplete: (taskId: string, dateStr: string) => void;
+  completedTasks: Set<string>;
 }
 
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
@@ -22,7 +25,7 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
 });
 
 
-export function DetailedCalendarView({ tasks, onCreateTask }: DetailedCalendarViewProps) {
+export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks }: DetailedCalendarViewProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selection, setSelection] = useState<{ startCell: string | null; endCell: string | null }>({ startCell: null, endCell: null });
   const [isSelecting, setIsSelecting] = useState(false);
@@ -52,7 +55,7 @@ export function DetailedCalendarView({ tasks, onCreateTask }: DetailedCalendarVi
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return; // Only for left click
+    if (e.button !== 0) return;
     const cellId = e.currentTarget.dataset.cellId;
     if (!cellId) return;
 
@@ -82,7 +85,6 @@ export function DetailedCalendarView({ tasks, onCreateTask }: DetailedCalendarVi
       return;
     }
     
-    // Ensure start is before end
     const selectionStartDay = Math.min(start.dayIndex, end.dayIndex);
     const selectionEndDay = Math.max(start.dayIndex, end.dayIndex);
 
@@ -109,9 +111,9 @@ export function DetailedCalendarView({ tasks, onCreateTask }: DetailedCalendarVi
     let adjustedEndHour = finalEndHour;
     let adjustedEndMinute = finalEndMinute;
 
-    if (adjustedEndMinute === 60) {
-        adjustedEndHour += 1;
-        adjustedEndMinute = 0;
+    if (adjustedEndMinute >= 60) {
+        adjustedEndHour += Math.floor(adjustedEndMinute / 60);
+        adjustedEndMinute = adjustedEndMinute % 60;
     }
     finalEndTime = `${String(adjustedEndHour).padStart(2, '0')}:${String(adjustedEndMinute).padStart(2, '0')}`;
     
@@ -150,7 +152,7 @@ export function DetailedCalendarView({ tasks, onCreateTask }: DetailedCalendarVi
   };
   
   const getTaskStyle = (task: Task): React.CSSProperties => {
-    if (!task.startTime || !task.endTime) return {};
+    if (!task.startTime || !task.endTime) return { display: 'none' };
     const [startH, startM] = task.startTime.split(':').map(Number);
     const [endH, endM] = task.endTime.split(':').map(Number);
     
@@ -158,17 +160,21 @@ export function DetailedCalendarView({ tasks, onCreateTask }: DetailedCalendarVi
     const endTotalMinutes = endH * 60 + endM;
     const duration = endTotalMinutes - startTotalMinutes;
     
-    // Each hour slot is h-20 (5rem). A quarter is h-5 (1.25rem).
-    const top = (startTotalMinutes / 15) * 1.25; // 1.25rem per 15 mins
+    if (duration <= 0) return { display: 'none' };
+
+    const top = (startTotalMinutes / 15) * 1.25;
     const height = (duration / 15) * 1.25;
     
     return {
       top: `${top}rem`,
       height: `${height}rem`,
       backgroundColor: task.color || 'hsl(var(--primary))',
-      opacity: 0.9
+      opacity: task.recurring ? 0.85 : 0.95,
+      zIndex: 20
     };
   };
+
+  const tasksWithTime = tasks.filter(t => t.startTime && t.endTime);
 
   return (
     <div className="flex flex-col h-full" onMouseUp={handleMouseUp} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
@@ -189,51 +195,81 @@ export function DetailedCalendarView({ tasks, onCreateTask }: DetailedCalendarVi
         </div>
       </header>
       <div className="flex flex-grow overflow-auto">
-        <div className="w-20 text-xs text-center text-muted-foreground shrink-0">
-          <div className="h-16"></div> {/* Spacer for day header */}
-          {timeSlots.map((time, index) => (
-            <div key={index} className="h-20 flex items-start justify-center pt-1 border-t relative -top-2">
-              <span className="relative -top-2">{time}</span>
+        <div className="w-20 text-xs text-center shrink-0">
+          <div className="h-16" /> {/* Spacer for day header */}
+          {timeSlots.map((time) => (
+            <div key={time} className="h-20 relative text-muted-foreground">
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span>
             </div>
           ))}
         </div>
         
         <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
-          {days.map((day, dayIndex) => (
-            <div key={day.toISOString()} className="relative border-l">
-              <div className="sticky top-0 z-10 p-2 text-center bg-background border-b h-16">
-                <p className="text-sm font-medium">{format(day, 'EEE')}</p>
-                <p className="text-2xl font-bold">{format(day, 'd')}</p>
-              </div>
+          {days.map((day, dayIndex) => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const isToday = isSameDay(day, new Date());
+            
+            return (
+              <div key={dateStr} className={cn("relative border-l", isToday && "bg-secondary/20")}>
+                <div className="sticky top-0 z-10 p-2 text-center bg-background border-b h-16">
+                  <p className="text-sm font-medium">{format(day, 'EEE')}</p>
+                  <p className={cn("text-2xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
+                </div>
               
-              <div className="relative">
-                {timeSlots.map((_, hour) => (
-                  <div key={hour} className="h-20 border-t relative">
-                    {Array.from({ length: 4 }).map((__, quarter) => (
-                      <div
-                        key={quarter}
-                        className={cn(
-                          "h-5",
-                          quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40",
-                          isCellSelected(dayIndex, hour, quarter) && "bg-primary/30"
-                        )}
-                        data-cell-id={getCellId(dayIndex, hour, quarter)}
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                      />
-                    ))}
-                  </div>
-                ))}
-                
-                {tasks.filter(t => t.date === format(day, 'yyyy-MM-dd')).map(task => (
-                    <div key={task.id} style={getTaskStyle(task)} className="absolute left-1 right-1 p-1 rounded-md text-white overflow-hidden text-xs z-20">
-                        <p className="font-bold line-clamp-1">{task.name}</p>
-                        <p className="line-clamp-1">{task.description}</p>
+                <div className="relative">
+                  {/* Grid Lines */}
+                  {timeSlots.map((_, hour) => (
+                    <div key={hour} className="h-20 border-t relative">
+                      {Array.from({ length: 4 }).map((__, quarter) => (
+                        <div
+                          key={quarter}
+                          className={cn(
+                            "h-5",
+                            quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40",
+                            isCellSelected(dayIndex, hour, quarter) && "bg-primary/30"
+                          )}
+                          data-cell-id={getCellId(dayIndex, hour, quarter)}
+                          onMouseDown={handleMouseDown}
+                          onMouseMove={handleMouseMove}
+                        />
+                      ))}
                     </div>
-                ))}
+                  ))}
+                
+                  {/* Task Blocks */}
+                  {tasksWithTime.filter(t => t.date === dateStr).map(task => {
+                    const completionKey = `${task.id}_${dateStr}`;
+                    const isCompleted = completedTasks.has(completionKey);
+                    
+                    return (
+                        <div key={task.id} style={getTaskStyle(task)} 
+                           className={cn("absolute left-1 right-1 p-1 rounded-md text-white overflow-hidden text-xs cursor-pointer group", isCompleted && "opacity-50", task.highPriority && !isCompleted && "border-2 border-accent")}
+                           onClick={() => onEditTask(task)}
+                           title={`${task.name}\n${task.startTime} - ${task.endTime}`}
+                        >
+                            <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
+                                {task.highPriority && !isCompleted && <Star className="h-3 w-3 fill-white text-white shrink-0" />}
+                                <p className="font-bold line-clamp-1">{task.name}</p>
+                            </div>
+                            {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
+
+                            <div className="absolute bottom-1 right-1 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button size="icon" variant="ghost" className="h-5 w-5 text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
+                                    {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-5 w-5 text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
+                                    <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-5 w-5 text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }}>
+                                    <Trash2 className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                })}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </div>
     </div>

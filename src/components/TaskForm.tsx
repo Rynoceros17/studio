@@ -29,15 +29,26 @@ const colorOptions = [
   { name: 'Light Goldenrod', value: 'hsl(55, 80%, 80%)' },
 ];
 
-// Form schema with color
 const formSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   recurring: z.boolean().optional().default(false),
   highPriority: z.boolean().optional().default(false),
-  color: z.string().optional().default(colorOptions[0].value), // Default to white
+  color: z.string().optional().default(colorOptions[0].value),
+}).refine(data => {
+    // If one time is set, the other must also be set, and end must be after start
+    if (data.startTime || data.endTime) {
+        return !!data.startTime && !!data.endTime && data.endTime > data.startTime;
+    }
+    return true;
+}, {
+    message: "End time must be set and must be after start time.",
+    path: ["endTime"],
 });
+
 
 type TaskFormValues = z.infer<typeof formSchema>;
 
@@ -57,6 +68,8 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
       name: initialData?.name || "",
       description: initialData?.description || "",
       date: initialData?.date ? new Date(initialData.date + 'T00:00:00') : undefined,
+      startTime: initialData?.startTime || "",
+      endTime: initialData?.endTime || "",
       recurring: initialData?.recurring || false,
       highPriority: initialData?.highPriority || false,
       color: initialData?.color || colorOptions[0].value,
@@ -70,6 +83,8 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
          name: initialData.name || "",
          description: initialData.description || "",
          date: initialData.date ? new Date(initialData.date + 'T00:00:00') : undefined,
+         startTime: initialData.startTime || "",
+         endTime: initialData.endTime || "",
          recurring: initialData.recurring || false,
          highPriority: initialData.highPriority || false,
          color: initialData.color || defaultColorValue,
@@ -80,6 +95,8 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
          name: "",
          description: "",
          date: undefined,
+         startTime: "",
+         endTime: "",
          recurring: false,
          highPriority: false,
          color: defaultColorValue,
@@ -94,8 +111,8 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
       name: data.name,
       description: data.description,
       date: format(data.date, 'yyyy-MM-dd'),
-      startTime: initialData?.startTime,
-      endTime: initialData?.endTime,
+      startTime: data.startTime || undefined,
+      endTime: data.endTime || undefined,
       recurring: data.recurring,
       highPriority: data.highPriority,
       color: data.color,
@@ -105,8 +122,8 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
     };
     addTask(newTask);
     onTaskAdded?.();
-    form.reset(); // Reset form after submission
-    setSelectedColor(colorOptions[0].value); // Reset selected color to default
+    form.reset();
+    setSelectedColor(colorOptions[0].value);
   };
 
 
@@ -185,6 +202,35 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
             </FormItem>
           )}
         />
+
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+                control={form.control}
+                name="startTime"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Start Time</FormLabel>
+                        <FormControl>
+                            <Input type="time" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="endTime"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>End Time</FormLabel>
+                        <FormControl>
+                            <Input type="time" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
 
          <div className="grid grid-cols-2 gap-4">
             <FormField
