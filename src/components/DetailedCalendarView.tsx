@@ -55,8 +55,8 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
       const originalDuration = endTotalMinutes - startTotalMinutes;
       // For very short tasks, just render them without the gap to avoid them disappearing
       if (originalDuration > 0) {
-        const top = (startTotalMinutes / 15) * 0.675; // 0.675rem per 15 min block
-        const height = (originalDuration / 15) * 0.675;
+        const top = (startTotalMinutes / 15) * 0.675 * 0.75; // 0.675rem per 15 min block, then scaled
+        const height = (originalDuration / 15) * 0.675 * 0.75;
         return {
           top: `${top}rem`,
           height: `${height}rem`,
@@ -67,8 +67,8 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
       return { display: 'none' };
   }
 
-  const top = (visualStartMinutes / 15) * 0.675; // 0.675rem per 15 min block
-  const height = (visualDuration / 15) * 0.675;
+  const top = (visualStartMinutes / 15) * 0.675 * 0.75; // 0.675rem per 15 min block, then scaled
+  const height = (visualDuration / 15) * 0.675 * 0.75;
 
   return {
     top: `${top}rem`,
@@ -150,12 +150,12 @@ function TaskBlock({
             <div className="flex-grow cursor-pointer" onClick={() => onEditTask(task)}>
                 <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
                     
-                    <p className="font-medium line-clamp-1">{task.name}</p>
+                    <p className={cn("font-medium", isVeryShortTask ? 'line-clamp-1' : 'line-clamp-2')}>{task.name}</p>
                 </div>
                 {!isVeryShortTask && task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
             </div>
 
-            <div className="flex justify-start items-center space-x-1.5 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex justify-start items-center space-x-0.5 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button variant="ghost" className={cn("h-4 w-4 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
                     {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                 </Button>
@@ -181,7 +181,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const sevenAmHourSlotPosition = 7 * (2.7 * 16); // 7 * (0.675rem * 4 slots) * 16px/rem
+      const sevenAmHourSlotPosition = 7 * (2.025 * 16); // 7 * (0.50625rem * 4 slots) * 16px/rem
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
   }, []);
@@ -193,6 +193,8 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     }
     return week;
   }, [currentWeekStart]);
+
+  const weekEnd = useMemo(() => addDays(currentWeekStart, 6), [currentWeekStart]);
 
   const getCellId = (dayIndex: number, hour: number, quarter: number): string => `cell-${dayIndex}-${hour}-${quarter}`;
   const parseCellId = (cellId: string): { dayIndex: number; hour: number; quarter: number } | null => {
@@ -338,7 +340,9 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   return (
     <div className="flex flex-col h-full" onMouseUp={handleMouseUp} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
       <header className="flex items-center justify-between p-2 border-b shrink-0">
-        <h2 className="text-base font-semibold text-primary">{format(currentWeekStart, 'MMMM yyyy')}</h2>
+        <h2 className="text-base font-semibold text-primary">
+          {`${format(currentWeekStart, 'd MMMM')} - ${format(weekEnd, 'd MMMM, yyyy')}`}
+        </h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(subDays(currentWeekStart, 7))}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" size="sm" onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
@@ -348,7 +352,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
       <div ref={scrollContainerRef} className="flex flex-grow overflow-auto">
         <div className="w-14 text-[10px] text-center shrink-0">
           <div className="h-12" />
-          {timeSlots.map(time => <div key={time} className="h-[2.7rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
+          {timeSlots.map(time => <div key={time} className="h-[2.025rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
         </div>
         <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
           {days.map((day, dayIndex) => {
@@ -357,19 +361,19 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
             const isToday = isSameDay(day, new Date());
             return (
               <div key={dateStr} className={cn("relative border-l", isToday && "bg-secondary/20")}>
-                <div className="sticky top-0 z-20 p-2 text-center bg-background border-b h-12">
+                <div className="sticky top-0 z-20 pt-2 px-2 pb-3 text-center bg-background border-b">
                   <p className="text-xs font-medium">{format(day, 'EEE')}</p>
                   <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
                 </div>
                 <div className="relative">
                   {timeSlots.map((_, hour) => (
-                    <div key={hour} className="h-[2.7rem] border-t relative">
+                    <div key={hour} className="h-[2.025rem] border-t relative">
                       {Array.from({ length: 4 }).map((__, quarter) => {
                         const cellId = getCellId(dayIndex, hour, quarter);
                         return (
                           <div
                             key={quarter}
-                            className={cn("h-[0.675rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                            className={cn("h-[0.50625rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                             data-cell-id={cellId}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
