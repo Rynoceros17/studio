@@ -47,11 +47,8 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
   
   if (actualDuration <= 0) return { display: 'none' };
 
-  // Enforce a minimum visual duration of 45 minutes for better readability
-  const displayDuration = Math.max(actualDuration, 45);
-
-  const top = (startTotalMinutes / 15) * 0.875; // Each 15min block is 0.875rem high
-  const height = (displayDuration / 15) * 0.875;
+  const top = (startTotalMinutes / 15) * 0.875;
+  const height = (actualDuration / 15) * 0.875;
   
   return {
     top: `${top}rem`,
@@ -84,6 +81,12 @@ function TaskBlock({
     const isDarkMode = theme === 'dark';
     const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
 
+    // Calculate duration to add conditional hover class
+    const [startH, startM] = (task.startTime || '0:0').split(':').map(Number);
+    const [endH, endM] = (task.endTime || '0:0').split(':').map(Number);
+    const actualDuration = (endH * 60 + endM) - (startH * 60 + startM);
+    const isShortTask = actualDuration > 0 && actualDuration < 45;
+
     let textColorClass = 'text-white';
     let iconColorClass = 'text-white/80 hover:bg-white/20';
 
@@ -113,12 +116,13 @@ function TaskBlock({
         <div
             style={style}
             className={cn(
-                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md hover:shadow-lg transition-all",
-                "flex flex-col justify-between", // Added for flex layout
+                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md hover:shadow-lg transition-all z-10 hover:z-20",
+                "flex flex-col justify-between",
                 "border",
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
+                isShortTask && `hover:min-h-[2.625rem]`
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
         >
@@ -159,11 +163,10 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   useEffect(() => {
     // Scroll to 7 AM on initial mount
     if (scrollContainerRef.current) {
-      // Each hour slot has a height of h-14 (3.5rem or 56px).
-      const sevenAmHourSlotPosition = 7 * (3.5 * 16); // 7 * h-14 in pixels (assuming 1rem=16px)
+      const sevenAmHourSlotPosition = 7 * (3.5 * 16);
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
 
   const days = useMemo(() => {
     const week = [];
@@ -250,7 +253,6 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
       return false;
     }
 
-    // Drag selection is only for a single day.
     if (dayIndex !== start.dayIndex || dayIndex !== end.dayIndex) {
         return false;
     }
