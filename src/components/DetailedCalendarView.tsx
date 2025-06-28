@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { addDays, subDays, startOfWeek, format, parseISO, isSameDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle, Star } from 'lucide-react';
@@ -78,16 +78,30 @@ function TaskBlock({
     const style = getTaskStyle(task, colorToApply);
     
     const { theme } = useTheme();
-    const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
     const isDarkMode = theme === 'dark';
+    const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
 
-    let textColorClass = (isLightColor && !isDarkMode) || (isLightColor && isDarkMode && colorToApply === 'hsl(259 67% 82%)') ? 'text-neutral-800' : 'text-white';
-    let iconColorClass = (isLightColor && !isDarkMode) || (isLightColor && isDarkMode && colorToApply === 'hsl(259 67% 82%)') ? 'text-neutral-700 hover:bg-neutral-900/10' : 'text-white/80 hover:bg-white/20';
+    let textColorClass = 'text-white';
+    let iconColorClass = 'text-white/80 hover:bg-white/20';
 
-    if (isCompleted) {
-        textColorClass = 'text-white/80';
-        iconColorClass = 'text-white/80 hover:bg-white/20';
+    if (isDarkMode) {
+      // In dark mode, if any custom background color is applied, use dark text for contrast.
+      if (colorToApply) {
+        textColorClass = 'text-neutral-800';
+        iconColorClass = 'text-neutral-700 hover:bg-neutral-900/10';
+      }
+    } else {
+      // In light mode, use dark text only on the designated light background colors.
+      if (isLightColor) {
+        textColorClass = 'text-neutral-800';
+        iconColorClass = 'text-neutral-700 hover:bg-neutral-900/10';
+      }
     }
+
+    // Special styling for the completion checkmark itself to ensure visibility
+    const checkmarkIconClass = isCompleted 
+        ? (isDarkMode && colorToApply) || (!isDarkMode && isLightColor) ? 'text-green-700' : 'text-green-400'
+        : iconColorClass;
 
     const borderStyle = isCompleted
         ? 'border-transparent'
@@ -115,7 +129,7 @@ function TaskBlock({
             {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
             
             <div className="absolute top-1 right-1 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button size="icon" variant="ghost" className={cn("h-4 w-4", iconColorClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
+                <Button size="icon" variant="ghost" className={cn("h-4 w-4", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
                     {isCompleted ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
                 </Button>
                 <Button size="icon" variant="ghost" className={cn("h-4 w-4", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
@@ -135,7 +149,17 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   const [selection, setSelection] = useState<{ startCell: string | null; endCell: string | null }>({ startCell: null, endCell: null });
   const [isSelecting, setIsSelecting] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Scroll to 7 AM on initial mount
+    if (scrollContainerRef.current) {
+      // The 7th hour (7 AM) is at index 7. Each hour slot has a height of h-14 (3.5rem or 56px).
+      const sevenAmHourSlotPosition = 7 * 56;
+      scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   const days = useMemo(() => {
     const week = [];
@@ -211,20 +235,6 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     setSelection({ startCell: null, endCell: null });
   };
   
-  const isCellSelected = (dayIndex: number, hour: number, quarter: number): boolean => {
-    if (!selection.startCell || !selection.endCell) return false;
-    const start = parseCellId(selection.startCell);
-    const end = parseCellId(selection.endCell);
-    if (!start || !end) return false;
-    const minDay = Math.min(start.dayIndex, end.dayIndex);
-    const maxDay = Math.max(start.dayIndex, end.dayIndex);
-    if (dayIndex < minDay || dayIndex > maxDay || minDay !== maxDay) return false;
-    const startTimeValue = start.hour * 100 + start.quarter * 15;
-    const endTimeValue = end.hour * 100 + end.quarter * 15;
-    const cellTimeValue = hour * 100 + quarter * 15;
-    return cellTimeValue >= Math.min(startTimeValue, endTimeValue) && cellTimeValue <= Math.max(startTimeValue, endTimeValue);
-  };
-  
   const tasksWithTime = tasks.filter(t => t.startTime && t.endTime);
   
   const tasksByDay = useMemo(() => {
@@ -264,7 +274,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
-      <div className="flex flex-grow overflow-auto">
+      <div ref={scrollContainerRef} className="flex flex-grow overflow-auto">
         <div className="w-14 text-[10px] text-center shrink-0">
           <div className="h-12" />
           {timeSlots.map(time => <div key={time} className="h-14 relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
@@ -326,3 +336,5 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     </div>
   );
 }
+
+    
