@@ -149,13 +149,13 @@ function TaskBlock({
         >
             <div className="flex-grow cursor-pointer" onClick={() => onEditTask(task)}>
                 <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
-                    {task.highPriority && !isCompleted && <Star className="h-2.5 w-2.5 text-accent fill-accent shrink-0" />}
+                    
                     <p className="font-medium line-clamp-1">{task.name}</p>
                 </div>
                 {!isVeryShortTask && task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
             </div>
 
-            <div className="flex justify-end items-center space-x-1.5 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex justify-end items-center space-x-1 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button variant="ghost" className={cn("h-4 w-4 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
                     {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                 </Button>
