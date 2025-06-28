@@ -17,6 +17,7 @@ interface DetailedCalendarViewProps {
   onDeleteTask: (task: Task, dateStr: string) => void;
   onToggleComplete: (taskId: string, dateStr: string) => void;
   completedTasks: Set<string>;
+  updateTask: (id: string, updates: Partial<Task>) => void;
 }
 
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
@@ -225,6 +226,33 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   };
   
   const tasksWithTime = tasks.filter(t => t.startTime && t.endTime);
+  
+  const tasksByDay = useMemo(() => {
+    const grouped: { [key: string]: Task[] } = {};
+    days.forEach(day => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const currentDayOfWeek = day.getDay();
+
+        grouped[dateStr] = tasksWithTime.filter(task => {
+            if (!task.date) return false;
+            const taskDate = parseISOStrict(task.date);
+            if (!taskDate) return false;
+
+            if (task.exceptions?.includes(dateStr)) {
+                return false;
+            }
+
+            if (task.recurring) {
+                const taskStartDayOfWeek = taskDate.getDay();
+                return taskStartDayOfWeek === currentDayOfWeek && day >= taskDate;
+            } else {
+                return isSameDay(taskDate, day);
+            }
+        });
+    });
+    return grouped;
+  }, [tasksWithTime, days]);
+
 
   return (
     <div className="flex flex-col h-full" onMouseUp={handleMouseUp} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
@@ -244,6 +272,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
         <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
           {days.map((day, dayIndex) => {
             const dateStr = format(day, 'yyyy-MM-dd');
+            const dailyTasks = tasksByDay[dateStr] || [];
             const isToday = isSameDay(day, new Date());
             return (
               <div key={dateStr} className={cn("relative border-l", isToday && "bg-secondary/20")}>
@@ -268,7 +297,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                       })}
                     </div>
                   ))}
-                  {tasksWithTime.filter(t => t.date === dateStr).map(task => {
+                  {dailyTasks.map(task => {
                     const completionKey = `${task.id}_${dateStr}`;
                     const isCompleted = completedTasks.has(completionKey);
                     const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
@@ -277,7 +306,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                     if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
                     return (
                       <TaskBlock
-                        key={task.id}
+                        key={`${task.id}_${dateStr}`}
                         task={task}
                         dateStr={dateStr}
                         colorToApply={colorToApply}
