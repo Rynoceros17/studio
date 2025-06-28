@@ -86,6 +86,7 @@ function TaskBlock({
     const [endH, endM] = (task.endTime || '0:0').split(':').map(Number);
     const actualDuration = (endH * 60 + endM) - (startH * 60 + startM);
     const isShortTask = actualDuration > 0 && actualDuration < 45;
+    const isVeryShortTask = actualDuration > 0 && actualDuration <= 15;
 
     let textColorClass = 'text-white';
     let iconColorClass = 'text-white/80 hover:bg-white/20';
@@ -116,7 +117,7 @@ function TaskBlock({
         <div
             style={style}
             className={cn(
-                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md hover:shadow-lg transition-all z-10 hover:z-20",
+                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md hover:shadow-lg transition-all duration-200 z-10 hover:z-20",
                 "flex flex-col justify-between",
                 "border",
                 borderStyle,
@@ -126,32 +127,30 @@ function TaskBlock({
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
         >
-            {/* Clickable area for main content */}
             <div className="flex-grow cursor-pointer" onClick={() => onEditTask(task)}>
                 <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
                     {task.highPriority && !isCompleted && <Star className="h-2.5 w-2.5 text-accent fill-accent shrink-0" />}
                     <p className="font-medium line-clamp-1">{task.name}</p>
                 </div>
-                {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
+                {!isVeryShortTask && task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
             </div>
 
-            {/* Horizontally stacked icons at the bottom */}
-            <div className="flex justify-end items-center space-x-0.5 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" className={cn("h-3.5 w-3.5 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
-                    {isCompleted ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
+            <div className="flex justify-end items-center space-x-1 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" className={cn("h-3 w-3 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
+                    {isCompleted ? <CheckCircle className="h-2 w-2" /> : <Circle className="h-2 w-2" />}
                 </Button>
-                <Button variant="ghost" className={cn("h-3.5 w-3.5 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
-                    <Edit className="h-2.5 w-2.5" />
+                <Button variant="ghost" className={cn("h-3 w-3 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
+                    <Edit className="h-2 w-2" />
                 </Button>
-                <Button variant="ghost" className={cn("h-3.5 w-3.5 p-0 text-destructive/80 hover:bg-destructive/10")} onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }}>
-                    <Trash2 className="h-2.5 w-2.5" />
+                <Button variant="ghost" className={cn("h-3 w-3 p-0 text-destructive/80 hover:bg-destructive/10")} onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }}>
+                    <Trash2 className="h-2 w-2" />
                 </Button>
             </div>
         </div>
     );
 }
 
-export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks }: DetailedCalendarViewProps) {
+export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks, updateTask }: DetailedCalendarViewProps) {
   const { theme } = useTheme();
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selection, setSelection] = useState<{ startCell: string | null; endCell: string | null }>({ startCell: null, endCell: null });
@@ -161,7 +160,6 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   const { toast } = useToast();
 
   useEffect(() => {
-    // Scroll to 7 AM on initial mount
     if (scrollContainerRef.current) {
       const sevenAmHourSlotPosition = 7 * (3.5 * 16);
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
@@ -183,6 +181,31 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     return { dayIndex: parseInt(parts[0], 10), hour: parseInt(parts[1], 10), quarter: parseInt(parts[2], 10) };
   };
 
+  const isCellSelected = (dayIndex: number, hour: number, quarter: number): boolean => {
+    if (!isSelecting || !selection.startCell || !selection.endCell) {
+      return false;
+    }
+    const start = parseCellId(selection.startCell);
+    const end = parseCellId(selection.endCell);
+
+    if (!start || !end) {
+      return false;
+    }
+
+    if (dayIndex !== start.dayIndex || dayIndex !== end.dayIndex) {
+        return false;
+    }
+
+    const currentCellValue = hour * 100 + quarter * 15;
+    const startValue = start.hour * 100 + start.quarter * 15;
+    const endValue = end.hour * 100 + end.quarter * 15;
+
+    const minVal = Math.min(startValue, endValue);
+    const maxVal = Math.max(startValue, endValue);
+
+    return currentCellValue >= minVal && currentCellValue <= maxVal;
+  };
+  
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0 || (e.target as HTMLElement).closest('.group')) return;
     const cellId = e.currentTarget.dataset.cellId;
@@ -240,31 +263,6 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   const resetSelection = () => {
     setIsSelecting(false);
     setSelection({ startCell: null, endCell: null });
-  };
-  
-  const isCellSelected = (dayIndex: number, hour: number, quarter: number): boolean => {
-    if (!isSelecting || !selection.startCell || !selection.endCell) {
-      return false;
-    }
-    const start = parseCellId(selection.startCell);
-    const end = parseCellId(selection.endCell);
-
-    if (!start || !end) {
-      return false;
-    }
-
-    if (dayIndex !== start.dayIndex || dayIndex !== end.dayIndex) {
-        return false;
-    }
-
-    const currentCellValue = hour * 100 + quarter * 15;
-    const startValue = start.hour * 100 + start.quarter * 15;
-    const endValue = end.hour * 100 + end.quarter * 15;
-
-    const minVal = Math.min(startValue, endValue);
-    const maxVal = Math.max(startValue, endValue);
-
-    return currentCellValue >= minVal && currentCellValue <= maxVal;
   };
   
   const tasksWithTime = tasks.filter(t => t.startTime && t.endTime);
