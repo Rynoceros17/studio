@@ -584,5 +584,4 @@ export default function DetailedViewPage() {
         </AlertDialog>
     </div>
   );
-
-    
+}
