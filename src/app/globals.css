@@ -56,13 +56,13 @@ body {
     --secondary-foreground: 250 15% 90%;
     --muted: 260 15% 22%;
     --muted-foreground: 250 10% 60%;
-    --accent: 48 96% 57%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 0 0% 98%; /* Changed from gold to off-white */
+    --accent-foreground: 240 10% 10%; /* Changed to dark gray for contrast */
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
     --border: 260 15% 32%;
     --input: 260 15% 32%;
-    --ring: 48 96% 60%;
+    --ring: 0 0% 98%; /* Changed from gold to off-white for focus ring "shadow" */
     --chart-1: 190 70% 60%;
     --chart-2: 270 60% 65%;
     --chart-3: 30 80% 60%;
