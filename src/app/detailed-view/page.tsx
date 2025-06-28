@@ -345,11 +345,6 @@ export default function DetailedViewPage() {
         if (parsedTasksArray && parsedTasksArray.length > 0) {
             let tasksAddedCount = 0;
             parsedTasksArray.forEach(parsedTask => {
-                let descriptionWithTime = parsedTask.description || "";
-                if (parsedTask.parsedTime) {
-                    descriptionWithTime = `${descriptionWithTime}${descriptionWithTime ? " " : ""}Time: ${parsedTask.parsedTime}.`.trim();
-                }
-
                 const taskDate = parseISOStrict(parsedTask.date);
                 if (!taskDate || !isValid(taskDate)) {
                     console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
@@ -363,10 +358,12 @@ export default function DetailedViewPage() {
                 addTask({
                     name: parsedTask.name || "Unnamed Task",
                     date: parsedTask.date,
-                    description: descriptionWithTime,
+                    description: parsedTask.description || null,
                     recurring: parsedTask.recurring ?? false,
                     highPriority: parsedTask.highPriority ?? false,
                     color: finalColor,
+                    startTime: parsedTask.startTime || null,
+                    endTime: parsedTask.endTime || null,
                 });
                 tasksAddedCount++;
             });
