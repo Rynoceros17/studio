@@ -94,6 +94,8 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
       name: data.name,
       description: data.description,
       date: format(data.date, 'yyyy-MM-dd'),
+      startTime: initialData?.startTime,
+      endTime: initialData?.endTime,
       recurring: data.recurring,
       highPriority: data.highPriority,
       color: data.color,

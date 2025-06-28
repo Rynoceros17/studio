@@ -4,6 +4,8 @@ export interface Task {
   name: string;
   description?: string | null;
   date: string; // Original task date (day it appears on the calendar)
+  startTime?: string; // Optional: 'HH:mm' format
+  endTime?: string;   // Optional: 'HH:mm' format
   recurring?: boolean;
   details?: string | null;
   dueDate?: string | null; // Optional due date (yyyy-MM-dd format)

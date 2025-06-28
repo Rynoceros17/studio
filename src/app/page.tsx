@@ -267,6 +267,8 @@ export default function Home() {
          exceptions: newTaskData.exceptions || [],
          details: newTaskData.details || null,
          dueDate: newTaskData.dueDate || null,
+         startTime: newTaskData.startTime,
+         endTime: newTaskData.endTime,
      };
 
      setTasks((prevTasks) => {
@@ -867,12 +869,12 @@ export default function Home() {
 
         <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
             <Link
-              href="/timetable"
+              href="/detailed-view"
               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
-              aria-label="Go to timetable"
+              aria-label="Go to detailed view"
             >
                 <LayoutDashboard className="h-5 w-5" />
-                <span className="ml-2 hidden md:inline">Timetable</span>
+                <span className="ml-2 hidden md:inline">Detailed View</span>
             </Link>
             <Link
                href="/study-tracker"
