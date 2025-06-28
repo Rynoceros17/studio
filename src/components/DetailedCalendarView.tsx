@@ -155,8 +155,8 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   useEffect(() => {
     // Scroll to 7 AM on initial mount
     if (scrollContainerRef.current) {
-      // The 7th hour (7 AM) is at index 7. Each hour slot has a height of h-14 (3.5rem or 56px).
-      const sevenAmHourSlotPosition = 7 * 56;
+      // Each hour slot has a height of h-14 (3.5rem or 56px).
+      const sevenAmHourSlotPosition = 7 * (3.5 * 16); // 7 * h-14 in pixels (assuming 1rem=16px)
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
   }, []); // Empty dependency array ensures this runs only once on mount
@@ -233,6 +233,32 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   const resetSelection = () => {
     setIsSelecting(false);
     setSelection({ startCell: null, endCell: null });
+  };
+
+  const isCellSelected = (dayIndex: number, hour: number, quarter: number): boolean => {
+    if (!isSelecting || !selection.startCell || !selection.endCell) {
+      return false;
+    }
+    const start = parseCellId(selection.startCell);
+    const end = parseCellId(selection.endCell);
+
+    if (!start || !end) {
+      return false;
+    }
+
+    // Drag selection is only for a single day.
+    if (dayIndex !== start.dayIndex || dayIndex !== end.dayIndex) {
+        return false;
+    }
+
+    const currentCellValue = hour * 100 + quarter * 15;
+    const startValue = start.hour * 100 + start.quarter * 15;
+    const endValue = end.hour * 100 + end.quarter * 15;
+
+    const minVal = Math.min(startValue, endValue);
+    const maxVal = Math.max(startValue, endValue);
+
+    return currentCellValue >= minVal && currentCellValue <= maxVal;
   };
   
   const tasksWithTime = tasks.filter(t => t.startTime && t.endTime);
@@ -336,5 +362,3 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     </div>
   );
 }
-
-    
