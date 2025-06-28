@@ -85,20 +85,17 @@ function TaskBlock({
     let iconColorClass = 'text-white/80 hover:bg-white/20';
 
     if (isDarkMode) {
-      // In dark mode, if any custom background color is applied, use dark text for contrast.
       if (colorToApply) {
         textColorClass = 'text-neutral-800';
         iconColorClass = 'text-neutral-700 hover:bg-neutral-900/10';
       }
     } else {
-      // In light mode, use dark text only on the designated light background colors.
       if (isLightColor) {
         textColorClass = 'text-neutral-800';
         iconColorClass = 'text-neutral-700 hover:bg-neutral-900/10';
       }
     }
 
-    // Special styling for the completion checkmark itself to ensure visibility
     const checkmarkIconClass = isCompleted 
         ? (isDarkMode && colorToApply) || (!isDarkMode && isLightColor) ? 'text-green-700' : 'text-green-400'
         : iconColorClass;
@@ -113,29 +110,33 @@ function TaskBlock({
         <div
             style={style}
             className={cn(
-                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md hover:shadow-lg transition-all cursor-pointer",
+                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md hover:shadow-lg transition-all",
+                "flex flex-col justify-between", // Added for flex layout
                 "border",
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
-            onClick={() => onEditTask(task)}
         >
-            <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
-                {task.highPriority && !isCompleted && <Star className="h-2.5 w-2.5 text-accent fill-accent shrink-0" />}
-                <p className="font-medium line-clamp-1">{task.name}</p>
+            {/* Clickable area for main content */}
+            <div className="flex-grow cursor-pointer" onClick={() => onEditTask(task)}>
+                <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
+                    {task.highPriority && !isCompleted && <Star className="h-2.5 w-2.5 text-accent fill-accent shrink-0" />}
+                    <p className="font-medium line-clamp-1">{task.name}</p>
+                </div>
+                {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
             </div>
-            {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
-            
-            <div className="absolute top-1 right-1 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button size="icon" variant="ghost" className={cn("h-4 w-4", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
+
+            {/* Horizontally stacked icons at the bottom */}
+            <div className="flex justify-end items-center space-x-0.5 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" className={cn("h-3.5 w-3.5 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
                     {isCompleted ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
                 </Button>
-                <Button size="icon" variant="ghost" className={cn("h-4 w-4", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
+                <Button variant="ghost" className={cn("h-3.5 w-3.5 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
                     <Edit className="h-2.5 w-2.5" />
                 </Button>
-                <Button size="icon" variant="ghost" className={cn("h-4 w-4", iconColorClass)} onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }}>
+                <Button variant="ghost" className={cn("h-3.5 w-3.5 p-0 text-destructive/80 hover:bg-destructive/10")} onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }}>
                     <Trash2 className="h-2.5 w-2.5" />
                 </Button>
             </div>
@@ -229,12 +230,12 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     onCreateTask({ date: format(startDate, 'yyyy-MM-dd'), startTime: finalStartTime, endTime: finalEndTime });
     resetSelection();
   };
-
+  
   const resetSelection = () => {
     setIsSelecting(false);
     setSelection({ startCell: null, endCell: null });
   };
-
+  
   const isCellSelected = (dayIndex: number, hour: number, quarter: number): boolean => {
     if (!isSelecting || !selection.startCell || !selection.endCell) {
       return false;
