@@ -3,9 +3,9 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Target } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
-import type { Task } from '@/lib/types';
+import type { Task, Goal } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
 import { TaskForm } from '@/components/TaskForm';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
@@ -27,11 +27,15 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
-import { cn, parseISOStrict } from '@/lib/utils';
+import { cn, parseISOStrict, calculateGoalProgress } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import useLocalStorage from '@/hooks/useLocalStorage';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 export default function DetailedViewPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -46,6 +50,9 @@ export default function DetailedViewPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [isClient, setIsClient] = useState(false);
+
+  // Fetch goals from local storage
+  const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
 
   useEffect(() => {
     setIsClient(true);
@@ -162,8 +169,8 @@ export default function DetailedViewPage() {
         recurring: newTaskData.recurring ?? false,
         highPriority: newTaskData.highPriority ?? false,
         color: newTaskData.color || null,
-        startTime: newTaskData.startTime,
-        endTime: newTaskData.endTime,
+        startTime: newTaskData.startTime || null,
+        endTime: newTaskData.endTime || null,
         details: newTaskData.details || null,
         dueDate: newTaskData.dueDate || null,
         exceptions: newTaskData.exceptions || [],
@@ -313,33 +320,71 @@ export default function DetailedViewPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="flex items-center justify-between p-4 border-b shrink-0">
-        <div className="flex items-center gap-4">
-            <Link href="/" passHref legacyBehavior>
-                <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
-                    <ArrowLeft className="h-5 w-5" />
-                    <span className="sr-only">Back to Main Calendar</span>
-                </Button>
-            </Link>
-            <div>
-                <h1 className="text-2xl font-semibold text-primary">Detailed Calendar View</h1>
-                <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Click tasks to edit.</p>
-            </div>
+    <div className="flex h-screen bg-background">
+      <aside className="w-1/6 border-r bg-secondary/30 p-4 flex flex-col gap-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+            <Target className="h-6 w-6 text-primary" />
+            <h2 className="text-xl font-semibold text-primary">My Goals</h2>
         </div>
-      </header>
+        <ScrollArea className="flex-grow">
+            <div className="space-y-3 pr-2">
+            {goals.length > 0 ? (
+                goals.map((goal) => {
+                const progress = calculateGoalProgress(goal);
+                return (
+                    <Card key={goal.id} className="shadow-sm bg-card">
+                        <CardHeader className="p-2 pb-1">
+                            <CardTitle className="text-sm font-medium truncate" title={goal.name}>
+                                {goal.name}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-2 pt-0">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                                <span>Progress</span>
+                                <span>{progress}%</span>
+                            </div>
+                            <Progress value={progress} className="h-2" />
+                        </CardContent>
+                    </Card>
+                );
+                })
+            ) : (
+                <p className="text-sm text-muted-foreground text-center pt-8 px-2">
+                    No goals have been set. Visit the goals page to add some!
+                </p>
+            )}
+            </div>
+        </ScrollArea>
+      </aside>
 
-      <main className="flex-grow overflow-auto">
-        <DetailedCalendarView 
-            tasks={isClient ? tasks : []} 
-            onCreateTask={handleCreateTask}
-            onEditTask={(task) => setEditingTask(task)}
-            onDeleteTask={requestDeleteTask}
-            onToggleComplete={toggleTaskCompletion}
-            completedTasks={completedTasks}
-            updateTask={updateTask}
-        />
-      </main>
+      <div className="flex flex-col flex-1 w-5/6">
+        <header className="flex items-center justify-between p-4 border-b shrink-0">
+            <div className="flex items-center gap-4">
+                <Link href="/" passHref legacyBehavior>
+                    <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
+                        <ArrowLeft className="h-5 w-5" />
+                        <span className="sr-only">Back to Main Calendar</span>
+                    </Button>
+                </Link>
+                <div>
+                    <h1 className="text-2xl font-semibold text-primary">Detailed Calendar View</h1>
+                    <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Click tasks to edit.</p>
+                </div>
+            </div>
+        </header>
+
+        <main className="flex-grow overflow-auto">
+            <DetailedCalendarView 
+                tasks={isClient ? tasks : []} 
+                onCreateTask={handleCreateTask}
+                onEditTask={(task) => setEditingTask(task)}
+                onDeleteTask={requestDeleteTask}
+                onToggleComplete={toggleTaskCompletion}
+                completedTasks={completedTasks}
+                updateTask={updateTask}
+            />
+        </main>
+      </div>
 
       {/* Add New Task Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
