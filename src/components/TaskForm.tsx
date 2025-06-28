@@ -41,11 +41,20 @@ const formSchema = z.object({
 }).refine(data => {
     // If one time is set, the other must also be set, and end must be after start
     if (data.startTime || data.endTime) {
-        return !!data.startTime && !!data.endTime && data.endTime > data.startTime;
+        if (!data.startTime || !data.endTime || data.endTime <= data.startTime) {
+            return false;
+        }
+        const timeToMinutes = (timeStr: string) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        };
+        const startMinutes = timeToMinutes(data.startTime);
+        const endMinutes = timeToMinutes(data.endTime);
+        return (endMinutes - startMinutes) >= 30;
     }
     return true;
 }, {
-    message: "End time must be set and must be after start time.",
+    message: "End time must be after start time, and duration must be at least 30 minutes.",
     path: ["endTime"],
 });
 
