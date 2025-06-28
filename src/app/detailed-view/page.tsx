@@ -353,7 +353,7 @@ export default function DetailedViewPage() {
 
                 const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
                   ? colorTagToHexMap[parsedTask.color]
-                  : undefined;
+                  : colorTagToHexMap['#col1']; // Default to color 1 (white/purple)
 
                 addTask({
                     name: parsedTask.name || "Unnamed Task",

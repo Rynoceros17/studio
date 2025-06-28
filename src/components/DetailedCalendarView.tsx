@@ -143,7 +143,7 @@ function TaskBlock({
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
-                isShortTask && `hover:min-h-[2.025rem]`
+                isShortTask && `hover:min-h-[2.7rem]`
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
         >
@@ -351,7 +351,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
       </header>
       <div ref={scrollContainerRef} className="flex flex-grow overflow-auto">
         <div className="w-14 text-[10px] text-center shrink-0">
-          <div className="h-12 pb-1" />
+          <div className="h-12 pb-4" />
           {timeSlots.map(time => <div key={time} className="h-[3.6rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
         </div>
         <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
