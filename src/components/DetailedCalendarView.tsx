@@ -275,13 +275,13 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                     
                     return (
                         <div key={task.id} style={taskStyle} 
-                           className={cn("absolute left-1 right-1 p-1 rounded-md overflow-hidden text-xs cursor-pointer group", textColorClass, isCompleted && "opacity-50", task.highPriority && !isCompleted && "border-2 border-accent")}
+                           className={cn("absolute left-1 right-1 p-1 rounded-md overflow-hidden text-xs cursor-pointer group shadow-md hover:shadow-lg transition-shadow", textColorClass, isCompleted && "opacity-50", task.highPriority && !isCompleted && "border-2 border-primary")}
                            onClick={() => onEditTask(task)}
                            title={`${task.name}\n${task.startTime} - ${task.endTime}`}
                         >
                             <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
-                                {task.highPriority && !isCompleted && <Star className="h-3 w-3 fill-current shrink-0" />}
-                                <p className="font-bold line-clamp-1">{task.name}</p>
+                                {task.highPriority && !isCompleted && <Star className="h-3 w-3 text-primary fill-primary shrink-0" />}
+                                <p className="font-medium line-clamp-1">{task.name}</p>
                             </div>
                             {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
 
