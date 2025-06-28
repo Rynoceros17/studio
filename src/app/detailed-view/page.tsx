@@ -321,7 +321,36 @@ export default function DetailedViewPage() {
 
   return (
     <div className="flex h-screen bg-background">
-      <aside className="w-1/6 border-r bg-secondary/30 p-4 flex flex-col gap-4">
+      <div className="flex flex-col flex-1 w-2/3">
+        <header className="flex items-center justify-between p-4 border-b shrink-0">
+            <div className="flex items-center gap-4">
+                <Link href="/" passHref legacyBehavior>
+                    <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
+                        <ArrowLeft className="h-5 w-5" />
+                        <span className="sr-only">Back to Main Calendar</span>
+                    </Button>
+                </Link>
+                <div>
+                    <h1 className="text-2xl font-semibold text-primary">Detailed Calendar View</h1>
+                    <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Click tasks to edit.</p>
+                </div>
+            </div>
+        </header>
+
+        <main className="flex-grow overflow-auto">
+            <DetailedCalendarView 
+                tasks={isClient ? tasks : []} 
+                onCreateTask={handleCreateTask}
+                onEditTask={(task) => setEditingTask(task)}
+                onDeleteTask={requestDeleteTask}
+                onToggleComplete={toggleTaskCompletion}
+                completedTasks={completedTasks}
+                updateTask={updateTask}
+            />
+        </main>
+      </div>
+      
+      <aside className="w-1/3 border-l bg-secondary/30 p-4 flex flex-col gap-4">
         <div className="flex items-center gap-2 pb-2 border-b">
             <Target className="h-6 w-6 text-primary" />
             <h2 className="text-xl font-semibold text-primary">My Goals</h2>
@@ -356,35 +385,6 @@ export default function DetailedViewPage() {
             </div>
         </ScrollArea>
       </aside>
-
-      <div className="flex flex-col flex-1 w-5/6">
-        <header className="flex items-center justify-between p-4 border-b shrink-0">
-            <div className="flex items-center gap-4">
-                <Link href="/" passHref legacyBehavior>
-                    <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
-                        <ArrowLeft className="h-5 w-5" />
-                        <span className="sr-only">Back to Main Calendar</span>
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-2xl font-semibold text-primary">Detailed Calendar View</h1>
-                    <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Click tasks to edit.</p>
-                </div>
-            </div>
-        </header>
-
-        <main className="flex-grow overflow-auto">
-            <DetailedCalendarView 
-                tasks={isClient ? tasks : []} 
-                onCreateTask={handleCreateTask}
-                onEditTask={(task) => setEditingTask(task)}
-                onDeleteTask={requestDeleteTask}
-                onToggleComplete={toggleTaskCompletion}
-                completedTasks={completedTasks}
-                updateTask={updateTask}
-            />
-        </main>
-      </div>
 
       {/* Add New Task Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -438,3 +438,4 @@ export default function DetailedViewPage() {
   );
 
     
+
