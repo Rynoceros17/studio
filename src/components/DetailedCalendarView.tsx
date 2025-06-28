@@ -60,25 +60,46 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
   };
 };
 
-
-function TaskBlock({ task, dateStr, colorToApply, isCompleted, onEditTask, onDeleteTask, onToggleComplete }: {
+function TaskBlock({
+    task,
+    dateStr,
+    colorToApply,
+    isCompleted,
+    isResizing,
+    onEditTask,
+    onDeleteTask,
+    onToggleComplete,
+    onToggleResize,
+}: {
     task: Task;
     dateStr: string;
     colorToApply: string | null;
     isCompleted: boolean;
+    isResizing: boolean;
     onEditTask: (task: Task) => void;
     onDeleteTask: (task: Task, dateStr: string) => void;
     onToggleComplete: (taskId: string, dateStr: string) => void;
+    onToggleResize: (taskId: string) => void;
 }) {
-    const { attributes, listeners, setNodeRef, transform } = useDraggable({
-        id: `task-${task.id}`,
-        data: { task },
+    const { attributes: moveAttributes, listeners: moveListeners, setNodeRef: moveRef, transform: moveTransform } = useDraggable({
+        id: `move-${task.id}`,
+        data: { task, type: 'move' },
     });
+    const { listeners: topResizeListeners, setNodeRef: topResizeRef, transform: topTransform } = useDraggable({
+        id: `resize-top-${task.id}`,
+        data: { task, type: 'resize-top' },
+    });
+    const { listeners: bottomResizeListeners, setNodeRef: bottomResizeRef, transform: bottomTransform } = useDraggable({
+        id: `resize-bottom-${task.id}`,
+        data: { task, type: 'resize-bottom' },
+    });
+    
+    const transform = moveTransform || topTransform || bottomTransform;
 
     const style = {
         ...getTaskStyle(task, colorToApply),
         transform: CSS.Translate.toString(transform),
-        zIndex: transform ? 100 : 20, // Bring to front when dragging
+        zIndex: transform ? 100 : 20,
     };
 
     const { theme } = useTheme();
@@ -89,7 +110,6 @@ function TaskBlock({ task, dateStr, colorToApply, isCompleted, onEditTask, onDel
     let iconColorClass = (isLightColor && !isDarkMode) || (isLightColor && isDarkMode && colorToApply === 'hsl(259 67% 82%)') ? 'text-neutral-700 hover:bg-neutral-900/10' : 'text-white/80 hover:bg-white/20';
     let dragHandleColorClass = (isLightColor && !isDarkMode) || (isLightColor && isDarkMode && colorToApply === 'hsl(259 67% 82%)') ? 'text-neutral-600 hover:bg-neutral-900/10' : 'text-white/70 hover:bg-white/20';
 
-
     if (isCompleted) {
         textColorClass = 'text-white/80';
         iconColorClass = 'text-white/80 hover:bg-white/20';
@@ -98,23 +118,36 @@ function TaskBlock({ task, dateStr, colorToApply, isCompleted, onEditTask, onDel
 
     return (
         <div
-            ref={setNodeRef}
+            ref={moveRef}
             style={style}
             className={cn(
-                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-xs cursor-pointer group shadow-md hover:shadow-lg transition-shadow",
-                "border border-primary",
+                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-xs group shadow-md transition-all",
+                "border",
+                isResizing ? "border-primary border-2 ring-2 ring-primary/50" : task.highPriority && !isCompleted ? "border-accent border-2" : "border-primary",
                 textColorClass,
                 isCompleted && "opacity-50 border-transparent",
-                task.highPriority && !isCompleted && "border-2 border-accent"
             )}
-            onClick={() => onEditTask(task)}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
         >
-            <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
-                {task.highPriority && !isCompleted && <Star className="h-3 w-3 text-accent fill-accent shrink-0" />}
-                <p className="font-medium line-clamp-1">{task.name}</p>
+            <div
+                {...moveListeners}
+                {...moveAttributes}
+                className={cn("w-full h-full cursor-move", isCompleted && "cursor-not-allowed")}
+                onClick={() => !isResizing && onEditTask(task)} // Only allow click to edit if not resizing
+            >
+                <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
+                    {task.highPriority && !isCompleted && <Star className="h-3 w-3 text-accent fill-accent shrink-0" />}
+                    <p className="font-medium line-clamp-1">{task.name}</p>
+                </div>
+                {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
             </div>
-            {task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
+
+            {isResizing && !isCompleted && (
+                <>
+                    <div ref={topResizeRef} {...topResizeListeners} className="absolute -top-1 left-0 right-0 h-2 bg-primary/50 rounded-t-full cursor-ns-resize z-10"/>
+                    <div ref={bottomResizeRef} {...bottomResizeListeners} className="absolute -bottom-1 left-0 right-0 h-2 bg-primary/50 rounded-b-full cursor-ns-resize z-10"/>
+                </>
+            )}
 
             <div className="absolute top-1 right-1 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button size="icon" variant="ghost" className={cn("h-5 w-5", iconColorClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
@@ -128,19 +161,29 @@ function TaskBlock({ task, dateStr, colorToApply, isCompleted, onEditTask, onDel
                 </Button>
             </div>
              <div
-                {...listeners}
-                {...attributes}
                 className={cn(
-                    "absolute bottom-1 right-1 cursor-move p-1 rounded-full",
+                    "absolute bottom-1 right-1 p-1 rounded-full",
                     dragHandleColorClass
                 )}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onToggleResize(task.id) }}
              >
-                <MoveVertical className="h-3 w-3" />
+                <MoveVertical className={cn("h-3 w-3", isResizing ? "text-primary" : "")} />
              </div>
         </div>
     );
 }
+
+// Time conversion helpers
+const timeToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+};
+
+const minutesToTime = (minutes: number): string => {
+    const h = Math.floor(minutes / 60) % 24;
+    const m = minutes % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
 
 export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks, updateTask }: DetailedCalendarViewProps) {
   const { theme } = useTheme();
@@ -149,7 +192,8 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   const [isSelecting, setIsSelecting] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const [activeDragItem, setActiveDragItem] = useState<Task | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<{ task: Task; type: 'move' | 'resize-top' | 'resize-bottom' } | null>(null);
+  const [resizingTaskId, setResizingTaskId] = useState<string | null>(null);
 
   const days = useMemo(() => {
     const week = [];
@@ -241,46 +285,74 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   
   const tasksWithTime = tasks.filter(t => t.startTime && t.endTime);
 
+  const handleToggleResize = (taskId: string) => {
+    setResizingTaskId(currentId => (currentId === taskId ? null : taskId));
+  };
+  
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     if (active.data.current) {
-        setActiveDragItem(active.data.current.task as Task);
+        setActiveDragItem(active.data.current as { task: Task; type: 'move' | 'resize-top' | 'resize-bottom' });
     }
   };
   
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveDragItem(null);
-    const { active, over } = event;
-    if (!over || !active.data.current) return;
-
-    const task = active.data.current.task as Task;
-    const targetCellId = over.id as string;
-    const cellData = parseCellId(targetCellId);
-    if (!cellData) return;
-
-    if (!task.startTime || !task.endTime) {
-      toast({ title: "Cannot Move Task", description: "This task needs a start and end time to be moved.", variant: "destructive" });
-      return;
-    }
-
-    const { dayIndex, hour, quarter } = cellData;
-    const targetDate = days[dayIndex];
-    const targetDateStr = format(targetDate, 'yyyy-MM-dd');
-    const [startH, startM] = task.startTime.split(':').map(Number);
-    const [endH, endM] = task.endTime.split(':').map(Number);
-    const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-    if (durationMinutes <= 0) return;
-
-    const newStartMinutes = hour * 60 + quarter * 15;
-    let newEndMinutes = newStartMinutes + durationMinutes;
-    const MAX_MINUTES_IN_DAY = 24 * 60;
-    if (newEndMinutes > MAX_MINUTES_IN_DAY) newEndMinutes = MAX_MINUTES_IN_DAY;
-
-    const newStartTime = `${String(Math.floor(newStartMinutes / 60)).padStart(2, '0')}:${String(newStartMinutes % 60).padStart(2, '0')}`;
-    const newEndTime = `${String(Math.floor(newEndMinutes / 60)).padStart(2, '0')}:${String(newEndMinutes % 60).padStart(2, '0')}`;
+    const { active, over, delta } = event;
+    const activeData = active.data.current as { task: Task; type: string };
     
-    updateTask(task.id, { date: targetDateStr, startTime: newStartTime, endTime: newEndTime });
-    toast({ title: "Task Moved", description: `"${task.name}" moved to ${format(targetDate, 'PPP')} at ${newStartTime}.` });
+    setActiveDragItem(null);
+    
+    if (!activeData) return;
+    
+    const { task, type } = activeData;
+    const pixelsPer15Min = 1.25 * 16; // 1.25rem * 16px/rem
+    const quarterDelta = Math.round(delta.y / pixelsPer15Min);
+    const minuteDelta = quarterDelta * 15;
+
+    switch (type) {
+        case 'move':
+            if (!over) return;
+            const targetCellId = over.id as string;
+            const cellData = parseCellId(targetCellId);
+            if (!cellData || !task.startTime || !task.endTime) return;
+
+            const { dayIndex, hour, quarter } = cellData;
+            const targetDate = days[dayIndex];
+            const targetDateStr = format(targetDate, 'yyyy-MM-dd');
+            
+            const durationMinutes = timeToMinutes(task.endTime) - timeToMinutes(task.startTime);
+            const newStartMinutes = hour * 60 + quarter * 15;
+            let newEndMinutes = newStartMinutes + durationMinutes;
+            
+            if (newEndMinutes > 24 * 60) newEndMinutes = 24 * 60;
+            
+            const newStartTime = minutesToTime(newStartMinutes);
+            const newEndTime = minutesToTime(newEndMinutes);
+            
+            updateTask(task.id, { date: targetDateStr, startTime: newStartTime, endTime: newEndTime });
+            toast({ title: "Task Moved", description: `"${task.name}" moved to ${format(targetDate, 'PPP')} at ${newStartTime}.` });
+            break;
+
+        case 'resize-top':
+            if (!task.startTime || !task.endTime) return;
+            const originalStartTime = timeToMinutes(task.startTime);
+            const originalEndTime = timeToMinutes(task.endTime);
+            const newResizeStartTime = originalStartTime + minuteDelta;
+            if (newResizeStartTime < originalEndTime && newResizeStartTime >= 0) {
+                updateTask(task.id, { startTime: minutesToTime(newResizeStartTime) });
+            }
+            break;
+
+        case 'resize-bottom':
+            if (!task.startTime || !task.endTime) return;
+            const originalStartTime2 = timeToMinutes(task.startTime);
+            const originalEndTime2 = timeToMinutes(task.endTime);
+            const newResizeEndTime = originalEndTime2 + minuteDelta;
+            if (newResizeEndTime > originalStartTime2 && newResizeEndTime <= 24 * 60) {
+                updateTask(task.id, { endTime: minutesToTime(newResizeEndTime) });
+            }
+            break;
+    }
   };
 
   return (
@@ -342,9 +414,11 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                                 dateStr={dateStr}
                                 colorToApply={colorToApply}
                                 isCompleted={isCompleted}
+                                isResizing={resizingTaskId === task.id}
                                 onEditTask={onEditTask}
                                 onDeleteTask={onDeleteTask}
                                 onToggleComplete={onToggleComplete}
+                                onToggleResize={handleToggleResize}
                             />
                         );
                     })}
@@ -356,17 +430,18 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
         </div>
         </div>
         <DragOverlay>
-            {activeDragItem ? (() => {
-                const isDefaultWhite = activeDragItem.color === 'hsl(0 0% 100%)';
+            {activeDragItem && activeDragItem.type === 'move' ? (() => {
+                const { task } = activeDragItem;
+                const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
                 const isDarkMode = theme === 'dark';
-                let colorToApply = activeDragItem.color;
+                let colorToApply = task.color;
                 if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
                 
-                const taskStyle = getTaskStyle(activeDragItem, colorToApply);
+                const taskStyle = getTaskStyle(task, colorToApply);
                 return (
                     <div style={{...taskStyle, zIndex: 9999, opacity: 0.75}} className={cn("rounded-md p-1 text-xs text-white", "border border-primary")}>
-                         <p className="font-medium line-clamp-1">{activeDragItem.name}</p>
-                         {activeDragItem.description && <p className="line-clamp-1 opacity-80">{activeDragItem.description}</p>}
+                         <p className="font-medium line-clamp-1">{task.name}</p>
+                         {task.description && <p className="line-clamp-1 opacity-80">{task.description}</p>}
                     </div>
                 )
             })() : null}
