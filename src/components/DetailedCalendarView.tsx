@@ -36,47 +36,99 @@ const lightBackgroundColors = [
   'hsl(259 67% 82%)',
 ];
 
-const getTaskStyle = (task: Task, colorToApply: string | null | undefined): React.CSSProperties => {
+// Helper to convert HH:mm to minutes from midnight for layout calculation
+const timeToMinutes = (timeStr: string): number => {
+    if (!timeStr || !timeStr.includes(':')) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+};
+
+
+// Calculates the vertical position and height of a task
+const getTaskVerticalStyle = (task: Task): React.CSSProperties => {
   if (!task.startTime || !task.endTime) return { display: 'none' };
-  const [startH, startM] = task.startTime.split(':').map(Number);
-  const [endH, endM] = task.endTime.split(':').map(Number);
+  const startTotalMinutes = timeToMinutes(task.startTime);
+  const endTotalMinutes = timeToMinutes(task.endTime);
+  const duration = endTotalMinutes - startTotalMinutes;
 
-  const startTotalMinutes = startH * 60 + startM;
-  const endTotalMinutes = endH * 60 + endM;
-
-  // Visual adjustment for gaps
-  const visualStartMinutes = startTotalMinutes + 1;
-  const visualEndMinutes = endTotalMinutes - 1;
-
-  const visualDuration = visualEndMinutes - visualStartMinutes;
-
-  // Don't render if the visual duration would be zero or negative
-  if (visualDuration <= 0) {
-      const originalDuration = endTotalMinutes - startTotalMinutes;
-      // For very short tasks, just render them without the gap to avoid them disappearing
-      if (originalDuration > 0) {
-        const top = (startTotalMinutes / 15) * 1.15;
-        const height = (originalDuration / 15) * 1.15;
-        return {
-          top: `${top}rem`,
-          height: `${height}rem`,
-          backgroundColor: colorToApply || 'hsl(var(--primary))',
-          opacity: task.recurring ? 0.85 : 0.95,
-        };
-      }
-      return { display: 'none' };
-  }
-
-  const top = (visualStartMinutes / 15) * 1.15;
-  const height = (visualDuration / 15) * 1.15;
+  if (duration <= 0) return { display: 'none' };
+  
+  const top = (startTotalMinutes / 15) * 1.15;
+  const height = (duration / 15) * 1.15;
 
   return {
     top: `${top}rem`,
     height: `${height}rem`,
-    backgroundColor: colorToApply || 'hsl(var(--primary))',
-    opacity: task.recurring ? 0.85 : 0.95,
   };
 };
+
+// New function to calculate side-by-side layout for overlapping tasks
+const getDayLayout = (dailyTasksWithTime: Task[]) => {
+    if (!dailyTasksWithTime || dailyTasksWithTime.length === 0) return [];
+
+    const sortedTasks = [...dailyTasksWithTime].sort((a, b) => {
+        const startA = timeToMinutes(a.startTime!);
+        const startB = timeToMinutes(b.startTime!);
+        if (startA !== startB) return startA - startB;
+        const endA = timeToMinutes(a.endTime!);
+        const endB = timeToMinutes(b.endTime!);
+        return endA - endB;
+    });
+
+    const columns: Task[][] = [];
+    const taskLayouts = new Map<string, { col: number; totalCols: number }>();
+
+    sortedTasks.forEach(task => {
+        let placed = false;
+        const taskStart = timeToMinutes(task.startTime!);
+
+        for (const col of columns) {
+            const lastTaskInCol = col[col.length - 1];
+            if (timeToMinutes(lastTaskInCol.endTime!) <= taskStart) {
+                col.push(task);
+                taskLayouts.set(task.id, { col: columns.indexOf(col), totalCols: 0 });
+                placed = true;
+                break;
+            }
+        }
+
+        if (!placed) {
+            columns.push([task]);
+            taskLayouts.set(task.id, { col: columns.length - 1, totalCols: 0 });
+        }
+    });
+
+    const finalLayouts: Array<{ task: Task; layout: React.CSSProperties }> = [];
+
+    sortedTasks.forEach(task => {
+        const collisions = sortedTasks.filter(otherTask => {
+            if (task.id === otherTask.id) return false;
+            const tStart = timeToMinutes(task.startTime!);
+            const tEnd = timeToMinutes(task.endTime!);
+            const oStart = timeToMinutes(otherTask.startTime!);
+            const oEnd = timeToMinutes(otherTask.endTime!);
+            return Math.max(tStart, oStart) < Math.min(tEnd, oEnd);
+        });
+
+        const myLayout = taskLayouts.get(task.id)!;
+        const collisionLayouts = collisions.map(t => taskLayouts.get(t.id)!);
+        myLayout.totalCols = Math.max(columns.length, collisionLayouts.length + 1);
+
+        const width = 98 / myLayout.totalCols; 
+        const left = (98 / myLayout.totalCols) * myLayout.col;
+
+        finalLayouts.push({
+            task,
+            layout: {
+                width: `${width}%`,
+                left: `${left}%`,
+            }
+        });
+    });
+    
+    return finalLayouts;
+};
+
 
 function TaskBlock({
     task,
@@ -86,6 +138,7 @@ function TaskBlock({
     onEditTask,
     onDeleteTask,
     onToggleComplete,
+    layoutStyle,
 }: {
     task: Task;
     dateStr: string;
@@ -94,8 +147,10 @@ function TaskBlock({
     onEditTask: (task: Task) => void;
     onDeleteTask: (task: Task, dateStr: string) => void;
     onToggleComplete: (taskId: string, dateStr: string) => void;
+    layoutStyle: React.CSSProperties;
 }) {
-    const style = getTaskStyle(task, colorToApply);
+    const verticalStyle = getTaskVerticalStyle(task);
+    const style = { ...verticalStyle, ...layoutStyle, backgroundColor: colorToApply || 'hsl(var(--primary))' };
     
     const { theme } = useTheme();
     const isDarkMode = theme === 'dark';
@@ -131,13 +186,13 @@ function TaskBlock({
         ? 'border-transparent'
         : task.highPriority
         ? 'border-accent border-2'
-        : 'border-primary';
+        : 'border-primary/70';
 
     return (
         <div
             style={style}
             className={cn(
-                "absolute left-1 right-1 p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300 z-10 hover:z-20",
+                "absolute p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300 z-10 hover:z-20",
                 "flex flex-col justify-between",
                 "border",
                 borderStyle,
@@ -308,23 +363,19 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     setSelection({ startCell: null, endCell: null });
   };
   
-  const tasksWithTime = tasks.filter(t => t.startTime && t.endTime);
-  
-  const tasksByDay = useMemo(() => {
-    const grouped: { [key: string]: Task[] } = {};
+  const tasksWithLayoutByDay = useMemo(() => {
+    const groupedByDay: { [key: string]: Task[] } = {};
     days.forEach(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
         const currentDayOfWeek = day.getDay();
 
-        grouped[dateStr] = tasksWithTime.filter(task => {
-            if (!task.date) return false;
+        groupedByDay[dateStr] = tasks.filter(task => {
+            if (!task.date || !task.startTime || !task.endTime) return false;
             const taskDate = parseISOStrict(task.date);
             if (!taskDate) return false;
 
-            if (task.exceptions?.includes(dateStr)) {
-                return false;
-            }
-
+            if (task.exceptions?.includes(dateStr)) return false;
+            
             if (task.recurring) {
                 const taskStartDayOfWeek = taskDate.getDay();
                 return taskStartDayOfWeek === currentDayOfWeek && day >= taskDate;
@@ -333,8 +384,13 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
             }
         });
     });
-    return grouped;
-  }, [tasksWithTime, days]);
+
+    const finalLayouts: { [key: string]: Array<{ task: Task; layout: React.CSSProperties }> } = {};
+    for (const dateStr in groupedByDay) {
+        finalLayouts[dateStr] = getDayLayout(groupedByDay[dateStr]);
+    }
+    return finalLayouts;
+  }, [tasks, days]);
 
 
   return (
@@ -349,18 +405,18 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
-      <div ref={scrollContainerRef} className="flex flex-grow overflow-auto bg-secondary/30">
-        <div className="w-14 text-[10px] text-center shrink-0 bg-background">
+      <div ref={scrollContainerRef} className="flex flex-grow overflow-auto">
+        <div className="w-14 text-[10px] text-center shrink-0 bg-background z-20">
           <div className="h-12 pb-4" />
           {timeSlots.map(time => <div key={time} className="h-[4.6rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
         </div>
         <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
           {days.map((day, dayIndex) => {
             const dateStr = format(day, 'yyyy-MM-dd');
-            const dailyTasks = tasksByDay[dateStr] || [];
+            const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
             const isToday = isSameDay(day, new Date());
             return (
-              <div key={dateStr} className={cn("relative border-l", isToday && "bg-background")}>
+              <div key={dateStr} className={cn("relative border-l", isToday ? "bg-background" : "bg-secondary/30")}>
                 <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b">
                   <p className="text-xs font-medium">{format(day, 'EEE')}</p>
                   <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
@@ -382,7 +438,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                       })}
                     </div>
                   ))}
-                  {dailyTasks.map(task => {
+                  {dailyTasksWithLayout.map(({ task, layout }) => {
                     const completionKey = `${task.id}_${dateStr}`;
                     const isCompleted = completedTasks.has(completionKey);
                     const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
@@ -399,6 +455,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                         onEditTask={onEditTask}
                         onDeleteTask={onDeleteTask}
                         onToggleComplete={onToggleComplete}
+                        layoutStyle={layout}
                       />
                     );
                   })}
