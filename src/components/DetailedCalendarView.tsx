@@ -53,8 +53,8 @@ const getTaskVerticalStyle = (task: Task): React.CSSProperties => {
 
   if (duration <= 0) return { display: 'none' };
   
-  const top = (startTotalMinutes / 15) * 1.15;
-  const height = (duration / 15) * 1.15;
+  const top = (startTotalMinutes / 15) * 1.25;
+  const height = (duration / 15) * 1.25;
 
   return {
     top: `${top}rem`,
@@ -111,17 +111,36 @@ const getDayLayout = (dailyTasksWithTime: Task[]) => {
         });
 
         const myLayout = taskLayouts.get(task.id)!;
-        const collisionLayouts = collisions.map(t => taskLayouts.get(t.id)!);
-        myLayout.totalCols = Math.max(columns.length, collisionLayouts.length + 1);
+        
+        let maxCol = myLayout.col;
+        collisions.forEach(collidingTask => {
+            const layout = taskLayouts.get(collidingTask.id);
+            if(layout) {
+                maxCol = Math.max(maxCol, layout.col);
+            }
+        });
+        
+        myLayout.totalCols = maxCol + 1;
 
-        const width = 98 / myLayout.totalCols; 
-        const left = (98 / myLayout.totalCols) * myLayout.col;
+        let width = 98;
+        let left = 1;
+
+        if (myLayout.totalCols > 1) {
+            width = 75; // 3/4 width
+            const maxShift = 25; // This is 100 - 75
+            // Avoid division by zero if totalCols is 1, though the `if` prevents this.
+            const leftShiftPerCol = myLayout.totalCols > 1 ? maxShift / (myLayout.totalCols - 1) : 0;
+            left = myLayout.col * leftShiftPerCol;
+        }
+
+        const startTime = timeToMinutes(task.startTime!);
 
         finalLayouts.push({
             task,
             layout: {
                 width: `${width}%`,
                 left: `${left}%`,
+                zIndex: startTime, // Add zIndex based on start time
             }
         });
     });
@@ -192,13 +211,13 @@ function TaskBlock({
         <div
             style={style}
             className={cn(
-                "absolute p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300 z-10 hover:z-20",
+                "absolute p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300 hover:z-50",
                 "flex flex-col justify-between",
                 "border",
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
-                isShortTask && `hover:min-h-[3.45rem]`
+                isShortTask && `hover:min-h-[3.75rem]`
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
         >
@@ -236,7 +255,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const sevenAmHourSlotPosition = 7 * (4.6 * 16); // 7 * (1.15rem * 4 slots) * 16px/rem
+      const sevenAmHourSlotPosition = 7 * (5 * 16); // 7 * (1.25rem * 4 slots) * 16px/rem
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
   }, []);
@@ -395,7 +414,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
 
   return (
     <div className="flex flex-col h-full" onMouseUp={handleMouseUp} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
-      <header className="flex items-center justify-center relative p-2 border-b shrink-0">
+      <header className="flex items-center justify-center relative p-2 border-b shrink-0 bg-background">
         <h2 className="text-base font-semibold text-primary">
           {`${format(currentWeekStart, 'd MMMM')} - ${format(weekEnd, 'd MMMM, yyyy')}`}
         </h2>
@@ -405,64 +424,66 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
-      <div ref={scrollContainerRef} className="flex flex-grow overflow-auto">
-        <div className="w-14 text-[10px] text-center shrink-0 bg-background z-20">
+      <div className="flex flex-grow overflow-auto bg-background">
+        <div className="w-14 text-[10px] text-center shrink-0 bg-background z-20 sticky left-0">
           <div className="h-12 pb-4" />
-          {timeSlots.map(time => <div key={time} className="h-[4.6rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
+          {timeSlots.map(time => <div key={time} className="h-[5rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
         </div>
-        <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
-          {days.map((day, dayIndex) => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
-            const isToday = isSameDay(day, new Date());
-            return (
-              <div key={dateStr} className={cn("relative border-l", isToday ? "bg-background" : "bg-secondary/30")}>
-                <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b">
-                  <p className="text-xs font-medium">{format(day, 'EEE')}</p>
-                  <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
-                </div>
-                <div className="relative">
-                  {timeSlots.map((_, hour) => (
-                    <div key={hour} className="h-[4.6rem] border-t relative">
-                      {Array.from({ length: 4 }).map((__, quarter) => {
-                        const cellId = getCellId(dayIndex, hour, quarter);
-                        return (
-                          <div
-                            key={quarter}
-                            className={cn("h-[1.15rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
-                            data-cell-id={cellId}
-                            onMouseDown={handleMouseDown}
-                            onMouseMove={handleMouseMove}
-                          />
-                        );
-                      })}
+        <div ref={scrollContainerRef} className="flex-grow overflow-y-auto">
+            <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none bg-secondary/30">
+            {days.map((day, dayIndex) => {
+                const dateStr = format(day, 'yyyy-MM-dd');
+                const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
+                const isToday = isSameDay(day, new Date());
+                return (
+                <div key={dateStr} className={cn("relative border-l", isToday && "bg-background")}>
+                    <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b">
+                    <p className="text-xs font-medium">{format(day, 'EEE')}</p>
+                    <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
                     </div>
-                  ))}
-                  {dailyTasksWithLayout.map(({ task, layout }) => {
-                    const completionKey = `${task.id}_${dateStr}`;
-                    const isCompleted = completedTasks.has(completionKey);
-                    const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
-                    const isDarkMode = theme === 'dark';
-                    let colorToApply = task.color;
-                    if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
-                    return (
-                      <TaskBlock
-                        key={`${task.id}_${dateStr}`}
-                        task={task}
-                        dateStr={dateStr}
-                        colorToApply={colorToApply}
-                        isCompleted={isCompleted}
-                        onEditTask={onEditTask}
-                        onDeleteTask={onDeleteTask}
-                        onToggleComplete={onToggleComplete}
-                        layoutStyle={layout}
-                      />
-                    );
-                  })}
+                    <div className="relative">
+                    {timeSlots.map((_, hour) => (
+                        <div key={hour} className="h-[5rem] border-t relative">
+                        {Array.from({ length: 4 }).map((__, quarter) => {
+                            const cellId = getCellId(dayIndex, hour, quarter);
+                            return (
+                            <div
+                                key={quarter}
+                                className={cn("h-[1.25rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                                data-cell-id={cellId}
+                                onMouseDown={handleMouseDown}
+                                onMouseMove={handleMouseMove}
+                            />
+                            );
+                        })}
+                        </div>
+                    ))}
+                    {dailyTasksWithLayout.map(({ task, layout }) => {
+                        const completionKey = `${task.id}_${dateStr}`;
+                        const isCompleted = completedTasks.has(completionKey);
+                        const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
+                        const isDarkMode = theme === 'dark';
+                        let colorToApply = task.color;
+                        if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
+                        return (
+                        <TaskBlock
+                            key={`${task.id}_${dateStr}`}
+                            task={task}
+                            dateStr={dateStr}
+                            colorToApply={colorToApply}
+                            isCompleted={isCompleted}
+                            onEditTask={onEditTask}
+                            onDeleteTask={onDeleteTask}
+                            onToggleComplete={onToggleComplete}
+                            layoutStyle={layout}
+                        />
+                        );
+                    })}
+                    </div>
                 </div>
-              </div>
-            );
-          })}
+                );
+            })}
+            </div>
         </div>
       </div>
     </div>
