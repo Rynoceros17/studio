@@ -71,3 +71,9 @@ export interface ChatMessage {
   sender: 'user' | 'ai';
   timestamp: number;
 }
+
+export interface WeekPreset {
+  id: string;
+  name: string;
+  tasks: Array<Omit<Task, 'id' | 'date'> & { dayOfWeek: number }>; // 0=Mon, 6=Sun
+}

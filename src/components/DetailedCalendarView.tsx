@@ -11,6 +11,8 @@ import { cn, parseISOStrict } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
 interface DetailedCalendarViewProps {
+  currentWeekStart: Date;
+  onWeekChange: (newWeekStart: Date) => void;
   tasks: Task[];
   onCreateTask: (taskData: Partial<Task>) => void;
   onEditTask: (task: Task) => void;
@@ -267,9 +269,8 @@ function TaskBlock({
     );
 }
 
-export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks, updateTask }: DetailedCalendarViewProps) {
+export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks, updateTask }: DetailedCalendarViewProps) {
   const { theme } = useTheme();
-  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selection, setSelection] = useState<{ startCell: string | null; endCell: string | null }>({ startCell: null, endCell: null });
   const [isSelecting, setIsSelecting] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -587,9 +588,9 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           {`${format(currentWeekStart, 'd MMMM')} - ${format(weekEnd, 'd MMMM, yyyy')}`}
         </h2>
         <div className="flex items-center gap-2 absolute right-2 top-1/2 -translate-y-1/2">
-          <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(subDays(currentWeekStart, 7))}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
-          <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={() => onWeekChange(subDays(currentWeekStart, 7))}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="sm" onClick={() => onWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
+          <Button variant="outline" size="icon" onClick={() => onWeekChange(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
       <div ref={scrollContainerRef} className="flex-grow overflow-auto relative">

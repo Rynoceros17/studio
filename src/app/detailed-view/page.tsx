@@ -3,9 +3,9 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal } from 'lucide-react';
+import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
-import type { Task, Goal } from '@/lib/types';
+import type { Task, Goal, WeekPreset } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
 import { TaskForm } from '@/components/TaskForm';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
@@ -14,6 +14,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -32,7 +34,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { format, isValid } from 'date-fns';
+import { format, isValid, isSameDay, addDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { cn, parseISOStrict, calculateGoalProgress } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/firebase';
@@ -43,6 +45,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { parseNaturalLanguageTask, type SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
 import { colorTagToHexMap } from '@/lib/color-map';
@@ -69,6 +72,13 @@ export default function DetailedViewPage() {
   // AI Task state
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
+
+  // Preset state
+  const [presets, setPresets] = useLocalStorage<WeekPreset[]>('weekwise-presets', []);
+  const [isSavePresetDialogOpen, setIsSavePresetDialogOpen] = useState(false);
+  const [savePresetName, setSavePresetName] = useState('');
+  const [isImportPresetDialogOpen, setIsImportPresetDialogOpen] = useState(false);
+  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
 
   // Fetch goals from local storage
@@ -412,6 +422,94 @@ export default function DetailedViewPage() {
     }
   };
 
+  const handleSavePreset = () => {
+    if (!savePresetName.trim()) {
+      toast({ title: "Preset Name Required", description: "Please enter a name for your preset.", variant: "destructive" });
+      return;
+    }
+
+    const weekStart = startOfWeek(currentWeekStart, { weekStartsOn: 1 });
+    const daysOfWeek = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    const tasksForPreset: WeekPreset['tasks'] = [];
+
+    daysOfWeek.forEach((day, dayOfWeekIndex) => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const currentDayOfWeekFns = day.getDay();
+      tasks.forEach(task => {
+        if (!task.date) return;
+        const taskDate = parseISOStrict(task.date);
+        if (!taskDate) return;
+
+        let isTaskForThisDay = false;
+        if (task.recurring) {
+          if (!task.exceptions?.includes(dateStr)) {
+            const taskStartDayOfWeekFns = taskDate.getDay();
+            if (taskStartDayOfWeekFns === currentDayOfWeekFns && day >= taskDate) {
+              isTaskForThisDay = true;
+            }
+          }
+        } else {
+          if (isSameDay(taskDate, day)) {
+            isTaskForThisDay = true;
+          }
+        }
+        if (isTaskForThisDay) {
+          const { id, date, ...restOfTask } = task;
+          tasksForPreset.push({ ...restOfTask, recurring: false, dayOfWeek: dayOfWeekIndex });
+        }
+      });
+    });
+
+    if (tasksForPreset.length === 0) {
+      toast({ title: "No Tasks to Save", description: "The current week has no tasks to save as a preset.", variant: "destructive" });
+      setIsSavePresetDialogOpen(false);
+      setSavePresetName('');
+      return;
+    }
+
+    const newPreset: WeekPreset = { id: crypto.randomUUID(), name: savePresetName.trim(), tasks: tasksForPreset };
+    setPresets(prev => [...prev, newPreset]);
+    toast({ title: "Preset Saved", description: `"${newPreset.name}" has been saved.` });
+    setIsSavePresetDialogOpen(false);
+    setSavePresetName('');
+  };
+
+  const handleImportPreset = (preset: WeekPreset) => {
+    const weekStart = startOfWeek(currentWeekStart, { weekStartsOn: 1 });
+    const tasksToAdd = preset.tasks.map(presetTask => ({
+      ...presetTask,
+      date: format(addDays(weekStart, presetTask.dayOfWeek), 'yyyy-MM-dd'),
+      recurring: false,
+    }));
+    const newTasks: Task[] = tasksToAdd.map(taskData => ({
+      ...taskData,
+      id: crypto.randomUUID(),
+      details: taskData.details || null,
+      dueDate: taskData.dueDate || null,
+      exceptions: [],
+    }));
+    setTasks(prevTasks => {
+      const updatedTasks = [...prevTasks, ...newTasks];
+      updatedTasks.sort((a, b) => {
+        const dateA = parseISOStrict(a.date);
+        const dateB = parseISOStrict(b.date);
+        if (!dateA || !dateB) return 0;
+        const dateComparison = dateA.getTime() - dateB.getTime();
+        if (dateComparison !== 0) return dateComparison;
+        if (a.highPriority !== b.highPriority) return a.highPriority ? -1 : 1;
+        return 0;
+      });
+      return updatedTasks;
+    });
+    toast({ title: "Preset Imported", description: `Tasks from "${preset.name}" have been added to the current week.` });
+    setIsImportPresetDialogOpen(false);
+  };
+
+  const handleDeletePreset = (presetId: string) => {
+    setPresets(prev => prev.filter(p => p.id !== presetId));
+    toast({ title: "Preset Deleted", variant: "destructive" });
+  };
+
 
   if (authLoading || !isDataLoaded) {
     return <LoadingScreen />;
@@ -433,6 +531,14 @@ export default function DetailedViewPage() {
               </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Save className="mr-2 h-4 w-4" />
+              Save Preset
+            </Button>
+            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Download className="mr-2 h-4 w-4" />
+              Import Preset
+            </Button>
             <Button variant="outline" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Sparkles className="mr-2 h-4 w-4" />
               AI Manager
@@ -446,6 +552,8 @@ export default function DetailedViewPage() {
 
       <main className="flex-grow overflow-auto">
           <DetailedCalendarView 
+              currentWeekStart={currentWeekStart}
+              onWeekChange={setCurrentWeekStart}
               tasks={isClient ? tasks : []} 
               onCreateTask={handleCreateTask}
               onEditTask={(task) => setEditingTask(task)}
@@ -579,6 +687,67 @@ export default function DetailedViewPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        {/* Save Preset Dialog */}
+        <Dialog open={isSavePresetDialogOpen} onOpenChange={setIsSavePresetDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Save Week Preset</DialogTitle>
+                    <DialogDescription>
+                    Save the current week's task layout as a reusable preset.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 py-4">
+                    <Label htmlFor="preset-name">Preset Name</Label>
+                    <Input
+                    id="preset-name"
+                    value={savePresetName}
+                    onChange={(e) => setSavePresetName(e.target.value)}
+                    placeholder="e.g., My Ideal Study Week"
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSavePreset}>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Import Preset Dialog */}
+        <Dialog open={isImportPresetDialogOpen} onOpenChange={setIsImportPresetDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Import a Preset</DialogTitle>
+                    <DialogDescription>
+                    Apply a saved preset to the currently viewed week. This will add tasks and will not remove existing ones.
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh] -mx-6">
+                    <div className="py-4 px-6 space-y-2">
+                    {presets.length > 0 ? (
+                        presets.map(preset => (
+                        <Card key={preset.id}>
+                            <CardContent className="p-3 flex items-center justify-between gap-2">
+                            <span className="font-medium truncate">{preset.name}</span>
+                            <div className="flex items-center gap-1 shrink-0">
+                                <Button size="sm" onClick={() => handleImportPreset(preset)}>Apply</Button>
+                                <Button variant="destructive" size="icon" className="h-9 w-9" onClick={() => handleDeletePreset(preset.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            </CardContent>
+                        </Card>
+                        ))
+                    ) : (
+                        <p className="text-center text-sm text-muted-foreground py-8">No presets saved yet.</p>
+                    )}
+                    </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
