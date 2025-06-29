@@ -310,6 +310,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
 
   const weekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
   const isCurrentWeekVisible = useMemo(() => isWithinInterval(new Date(), { start: currentWeekStart, end: weekEnd }), [currentWeekStart, weekEnd]);
+  const today = useMemo(() => startOfDay(new Date()), []);
 
   const handleToggleLayoutEdit = useCallback((taskId: string, dateStr: string) => {
     setLayoutEditState(prev => (prev?.taskId === taskId ? null : { taskId, dateStr }));
@@ -609,10 +610,16 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
                 {days.map((day, dayIndex) => {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
-                    const isToday = isSameDay(day, new Date());
+                    const isToday = isSameDay(day, today);
+                    const isPrevDayToday = dayIndex > 0 && isSameDay(days[dayIndex - 1], today);
 
                     return (
-                        <div key={dateStr} className={cn("relative", isToday ? "bg-background outline outline-2 outline-accent z-10" : "border-l")}>
+                        <div key={dateStr} className={cn(
+                            "relative", 
+                            isToday 
+                                ? "bg-background border-l-2 border-r-2 border-accent z-10" 
+                                : (dayIndex > 0 && !isPrevDayToday ? "border-l" : "")
+                        )}>
                             
                             <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b h-[76px]">
                                 <p className="text-xs font-medium">{format(day, 'EEE')}</p>
