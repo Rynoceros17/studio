@@ -581,7 +581,7 @@ export default function GoalsPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b">
                     <div className="flex items-center gap-4 mb-4 sm:mb-0">
                         <Link href="/" passHref legacyBehavior>
-                            <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground h-10 w-10">
+                            <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground h-10 w-10">
                                 <ArrowLeft className="h-5 w-5" />
                                 <span className="sr-only">Back to Calendar</span>
                             </Button>
@@ -737,3 +737,5 @@ export default function GoalsPage() {
 }
 
 
+
+    

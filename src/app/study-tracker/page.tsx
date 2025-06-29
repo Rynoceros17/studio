@@ -300,7 +300,7 @@ export default function StudyTrackerPage() {
         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
           <div className="flex items-center gap-4 flex-grow"> 
             <Link href="/" passHref legacyBehavior>
-              <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground h-10 w-10 flex-shrink-0">
+              <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground h-10 w-10 flex-shrink-0">
                 <ArrowLeft className="h-5 w-5" />
                 <span className="sr-only">Back to Calendar</span>
               </Button>
@@ -318,7 +318,7 @@ export default function StudyTrackerPage() {
                     <TooltipTrigger asChild>
                          <Dialog open={isGoalDialogOpen} onOpenChange={setIsGoalDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground h-10 w-10 flex-shrink-0 ml-4">
+                                <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground h-10 w-10 flex-shrink-0 ml-4">
                                     <Target className="h-5 w-5" />
                                     <span className="sr-only">Set Study Goals</span> 
                                 </Button>
@@ -648,3 +648,5 @@ export default function StudyTrackerPage() {
     </div>
   );
 }
+
+    

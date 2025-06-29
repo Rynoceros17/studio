@@ -23,7 +23,7 @@ export function AuthButton() {
 
   if (authLoading) {
     return (
-      <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-primary-foreground" disabled>
+      <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10" disabled>
         <Loader2 className="h-5 w-5 animate-spin" />
         <span className="hidden md:inline ml-2">Loading...</span>
       </Button>
@@ -33,7 +33,7 @@ export function AuthButton() {
   if (!user) {
     return (
       <Link href="/login" passHref legacyBehavior>
-        <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-primary-foreground">
+        <Button variant="ghost" className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
           <LogIn className="h-5 w-5" />
           <span className="hidden md:inline ml-2">Login</span>
         </Button>
@@ -46,7 +46,7 @@ export function AuthButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className={cn("relative h-9 w-9 md:h-10 md:w-auto md:px-3 rounded-full text-primary hover:bg-primary/10 hover:text-primary-foreground")}>
+        <Button variant="ghost" className={cn("relative h-9 w-9 md:h-10 md:w-auto md:px-3 rounded-full text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}>
           <Avatar className="h-7 w-7 md:h-8 md:w-8">
             <AvatarImage src={undefined} alt={user.email || 'User'} />
             <AvatarFallback>{userInitial}</AvatarFallback>
@@ -73,3 +73,5 @@ export function AuthButton() {
     </DropdownMenu>
   );
 }
+
+    
