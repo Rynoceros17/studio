@@ -34,7 +34,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { format, isValid, isSameDay, addDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { format, isValid, isSameDay, addDays, startOfWeek, endOfWeek, isWithinInterval, startOfDay } from 'date-fns';
 import { cn, parseISOStrict, calculateGoalProgress } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/firebase';
@@ -136,8 +136,9 @@ export default function DetailedViewPage() {
   const [isSavePresetDialogOpen, setIsSavePresetDialogOpen] = useState(false);
   const [savePresetName, setSavePresetName] = useState('');
   const [isImportPresetDialogOpen, setIsImportPresetDialogOpen] = useState(false);
-  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
+  const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   // Fetch goals from local storage
   const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
@@ -145,6 +146,25 @@ export default function DetailedViewPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+      if (!isClient) return;
+      const checkSize = () => {
+          const isPortrait = window.innerWidth < window.innerHeight && window.innerWidth < 768;
+          const newMode = isPortrait ? 'day' : 'week';
+          if (viewMode !== newMode) {
+            setViewMode(newMode);
+            if (newMode === 'day') {
+                setCurrentDisplayDate(startOfDay(new Date()));
+            } else {
+                setCurrentDisplayDate(prev => startOfWeek(prev, { weekStartsOn: 1 }));
+            }
+          }
+      };
+      checkSize();
+      window.addEventListener('resize', checkSize);
+      return () => window.removeEventListener('resize', checkSize);
+  }, [isClient, viewMode]);
 
   const { toast } = useToast();
 
@@ -162,12 +182,15 @@ export default function DetailedViewPage() {
     if (user && db) {
       const userDocRef = doc(db, 'users', user.uid);
       firestoreUnsubscribeRef.current = onSnapshot(userDocRef, (docSnap) => {
-        const tasksData = docSnap.exists() ? (docSnap.data().tasks || []) : [];
-        const completedIdsData = docSnap.exists() ? (docSnap.data().completedTaskIds || []) : [];
-        
+        const data = docSnap.data();
+        const tasksData = data?.tasks || [];
+        const completedIdsData = data?.completedTaskIds || [];
+        const presetsData = data?.presets || [];
+
         if (isInitialLoad.current) {
           setTasks(Array.isArray(tasksData) ? tasksData : []);
           setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+          setPresets(Array.isArray(presetsData) ? presetsData : []);
           history.current = [{ tasks: tasksData, completedTaskIds: completedIdsData }];
           historyIndex.current = 0;
           forceUpdate(n => n + 1);
@@ -175,6 +198,7 @@ export default function DetailedViewPage() {
         } else {
           setTasks(Array.isArray(tasksData) ? tasksData : []);
           setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+          setPresets(Array.isArray(presetsData) ? presetsData : []);
         }
         setIsDataLoaded(true);
       }, (error) => {
@@ -185,14 +209,17 @@ export default function DetailedViewPage() {
     } else if (!authLoading && !user) {
       let localTasks: Task[] = [];
       let localCompleted: string[] = [];
+      let localPresets: WeekPreset[] = [];
       try {
         localTasks = JSON.parse(localStorage.getItem('weekwise-tasks') || '[]');
         localCompleted = JSON.parse(localStorage.getItem('weekwise-completed-tasks') || '[]');
+        localPresets = JSON.parse(localStorage.getItem('weekwise-presets') || '[]');
       } catch (error) {
         console.warn("Could not parse local storage data.", error);
       }
       setTasks(localTasks);
       setCompletedTaskIds(localCompleted);
+      setPresets(localPresets);
       
       history.current = [{ tasks: localTasks, completedTaskIds: localCompleted }];
       historyIndex.current = 0;
@@ -225,6 +252,7 @@ export default function DetailedViewPage() {
           await setDoc(userDocRef, { 
               tasks: tasks, 
               completedTaskIds: completedTaskIds,
+              presets: presets,
           }, { merge: true });
         } catch (error) {
           console.error("Error auto-saving user data to Firestore:", error);
@@ -233,6 +261,7 @@ export default function DetailedViewPage() {
       } else { // Logged out: save to localStorage
          localStorage.setItem('weekwise-tasks', JSON.stringify(tasks));
          localStorage.setItem('weekwise-completed-tasks', JSON.stringify(completedTaskIds));
+         localStorage.setItem('weekwise-presets', JSON.stringify(presets));
       }
     };
 
@@ -244,7 +273,7 @@ export default function DetailedViewPage() {
     return () => {
       clearTimeout(handler);
     };
-  }, [tasks, completedTaskIds, user, authLoading, toast]);
+  }, [tasks, completedTaskIds, presets, user, authLoading, toast]);
 
   const handleCreateTask = (taskData: Partial<Task>) => {
     setPrefilledTaskData(taskData);
@@ -489,7 +518,7 @@ export default function DetailedViewPage() {
       return;
     }
 
-    const weekStart = startOfWeek(currentWeekStart, { weekStartsOn: 1 });
+    const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
     const daysOfWeek = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     const tasksForPreset: WeekPreset['tasks'] = [];
 
@@ -536,7 +565,7 @@ export default function DetailedViewPage() {
   };
 
   const handleImportPreset = (preset: WeekPreset) => {
-    const weekStart = startOfWeek(currentWeekStart, { weekStartsOn: 1 });
+    const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
     const tasksToAdd = preset.tasks.map(presetTask => ({
       ...presetTask,
       date: format(addDays(weekStart, presetTask.dayOfWeek), 'yyyy-MM-dd'),
@@ -586,6 +615,9 @@ export default function DetailedViewPage() {
                       <span className="sr-only">Back to Main Calendar</span>
                   </Button>
               </Link>
+               {viewMode === 'week' && (
+                    <h1 className="text-xl font-semibold text-primary hidden md:block">Detailed Calendar</h1>
+                )}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10">
@@ -596,13 +628,13 @@ export default function DetailedViewPage() {
                 <Redo2 className="h-4 w-4" />
                 <span className="sr-only">Redo</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
-              <Save className="h-4 w-4" />
-              <span className="sr-only">Save</span>
+            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Save className="h-4 w-4 mr-2" />
+              Save
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
-              <Download className="h-4 w-4" />
-              <span className="sr-only">Import</span>
+            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Download className="h-4 w-4 mr-2" />
+              Import
             </Button>
             <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Sparkles className="h-4 w-4" />
@@ -617,8 +649,8 @@ export default function DetailedViewPage() {
 
       <main className="flex-grow overflow-auto">
           <DetailedCalendarView 
-              currentWeekStart={currentWeekStart}
-              onWeekChange={setCurrentWeekStart}
+              currentWeekStart={currentDisplayDate}
+              onWeekChange={setCurrentDisplayDate}
               tasks={isClient ? tasks : []} 
               onCreateTask={handleCreateTask}
               onEditTask={(task) => setEditingTask(task)}
