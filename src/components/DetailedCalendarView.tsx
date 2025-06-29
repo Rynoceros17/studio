@@ -289,11 +289,6 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     return parseFloat(getComputedStyle(document.documentElement).fontSize);
   }, []);
 
-  const dayWidth = useMemo(() => {
-    if (!gridRef.current) return 0;
-    return gridRef.current.offsetWidth / 7;
-  }, [gridRef.current]);
-
   const days = useMemo(() => {
     const week = [];
     for (let i = 0; i < 7; i++) {
@@ -301,6 +296,11 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     }
     return week;
   }, [currentWeekStart]);
+  
+  const dayWidth = useMemo(() => {
+    if (!gridRef.current) return 0;
+    return gridRef.current.offsetWidth / 7;
+  }, [gridRef.current]);
 
   const weekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
   const isCurrentWeekVisible = useMemo(() => isWithinInterval(new Date(), { start: currentWeekStart, end: weekEnd }), [currentWeekStart, weekEnd]);
@@ -606,7 +606,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                     const isToday = isSameDay(day, new Date());
 
                     return (
-                        <div key={dateStr} className={cn("relative border-l", isToday && "bg-background")}>
+                        <div key={dateStr} className={cn("relative border-l", isToday && "bg-background border-2 border-accent z-10")}>
                             
                             <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b h-[76px]">
                                 <p className="text-xs font-medium">{format(day, 'EEE')}</p>
