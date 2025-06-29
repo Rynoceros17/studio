@@ -612,7 +612,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
                     const isToday = isSameDay(day, new Date());
 
                     return (
-                        <div key={dateStr} className={cn("relative border-l", isToday && "bg-background border-2 border-accent z-10")}>
+                        <div key={dateStr} className={cn("relative", isToday ? "bg-background outline outline-2 outline-accent z-10" : "border-l")}>
                             
                             <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b h-[76px]">
                                 <p className="text-xs font-medium">{format(day, 'EEE')}</p>
