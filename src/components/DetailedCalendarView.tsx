@@ -275,6 +275,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
   const [isSelecting, setIsSelecting] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasScrolledRef = useRef(false);
   const { toast } = useToast();
   const [timeMarkerTop, setTimeMarkerTop] = useState<number | null>(null);
 
@@ -444,23 +445,32 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
   }, [dragState, handleDragMove, handleDragEnd]);
   
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      const sevenAmHourSlotPosition = 7 * (4 * (remToPx * 1.05));
-      scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
-    }
-    
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer || !isClient) return;
+
     const updateLinePosition = () => {
       const now = new Date();
       const minutes = now.getHours() * 60 + now.getMinutes();
-      const top = (minutes / 15) * 1.05; // 1.05rem per 15 minutes
-      setTimeMarkerTop(top);
+      const topRem = (minutes / 15) * 1.05; // 1.05rem per 15 minutes
+      setTimeMarkerTop(topRem);
+      return topRem;
     };
 
-    updateLinePosition();
+    const initialTopRem = updateLinePosition();
+
+    if (!hasScrolledRef.current && remToPx > 0) {
+      const redLineTopPx = initialTopRem * remToPx;
+      const containerHeight = scrollContainer.clientHeight;
+      const desiredScrollTop = Math.max(0, redLineTopPx - (containerHeight / 2));
+      
+      scrollContainer.scrollTop = desiredScrollTop;
+      hasScrolledRef.current = true;
+    }
+    
     const interval = setInterval(updateLinePosition, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, [remToPx]);
+  }, [isClient, remToPx]);
 
   const getCellId = (dayIndex: number, hour: number, quarter: number): string => `cell-${dayIndex}-${hour}-${quarter}`;
   const parseCellId = (cellId: string): { dayIndex: number; hour: number; quarter: number } | null => {
