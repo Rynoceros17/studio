@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { addDays, subDays, startOfWeek, format, parseISO, isSameDay } from 'date-fns';
+import { addDays, subDays, startOfWeek, format, parseISO, isSameDay, isWithinInterval, endOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -53,8 +53,8 @@ const getTaskVerticalStyle = (task: Task): React.CSSProperties => {
 
   if (duration <= 0) return { display: 'none' };
   
-  const top = (startTotalMinutes / 15) * 1.5;
-  const height = (duration / 15) * 1.5;
+  const top = (startTotalMinutes / 15) * 1; // 1rem per 15-min slot
+  const height = (duration / 15) * 1;
 
   return {
     top: `${top}rem`,
@@ -214,7 +214,7 @@ function TaskBlock({
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
-                isShortTask && `hover:min-h-[4.5rem]`
+                isShortTask && `hover:min-h-[3rem]`
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
             onMouseEnter={() => setIsHovered(true)}
@@ -251,12 +251,25 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [timeMarkerTop, setTimeMarkerTop] = useState<number | null>(null);
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const sevenAmHourSlotPosition = 7 * (6 * 16); // 7 * (1.5rem * 4 slots) * 16px/rem
+      const sevenAmHourSlotPosition = 7 * (4 * 16); // 7 * (1rem * 4 slots) * 16px/rem
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
+    
+    const updateLinePosition = () => {
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      const top = (minutes / 15) * 1; // 1rem per 15 minutes
+      setTimeMarkerTop(top);
+    };
+
+    updateLinePosition();
+    const interval = setInterval(updateLinePosition, 60000); // Update every minute
+
+    return () => clearInterval(interval);
   }, []);
 
   const days = useMemo(() => {
@@ -267,7 +280,8 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     return week;
   }, [currentWeekStart]);
 
-  const weekEnd = useMemo(() => addDays(currentWeekStart, 6), [currentWeekStart]);
+  const weekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
+  const isCurrentWeekVisible = useMemo(() => isWithinInterval(new Date(), { start: currentWeekStart, end: weekEnd }), [currentWeekStart, weekEnd]);
 
   const getCellId = (dayIndex: number, hour: number, quarter: number): string => `cell-${dayIndex}-${hour}-${quarter}`;
   const parseCellId = (cellId: string): { dayIndex: number; hour: number; quarter: number } | null => {
@@ -429,35 +443,35 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
             <div className="w-14 text-[10px] text-center shrink-0 bg-background z-30 sticky left-0">
                 <div className="h-[76px] border-b bg-background" />
                 {timeSlots.map(time => (
-                    <div key={time} className="h-[6rem] relative text-muted-foreground">
+                    <div key={time} className="h-[4rem] relative text-muted-foreground">
                         <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span>
                     </div>
                 ))}
             </div>
 
-            <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
+            <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none relative">
                 {days.map((day, dayIndex) => {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
                     const isToday = isSameDay(day, new Date());
 
                     return (
-                        <div key={dateStr} className="relative border-l">
+                        <div key={dateStr} className={cn("relative border-l", isToday && "bg-background")}>
                             
                             <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b h-[76px]">
                                 <p className="text-xs font-medium">{format(day, 'EEE')}</p>
                                 <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
                             </div>
                             
-                            <div className={cn("relative z-10")}>
+                            <div className={cn("relative z-10")} style={{ transform: 'translateZ(0)' }}>
                                 {timeSlots.map((_, hour) => (
-                                    <div key={hour} className="h-[6rem] border-t relative">
+                                    <div key={hour} className="h-[4rem] border-t relative">
                                         {Array.from({ length: 4 }).map((__, quarter) => {
                                             const cellId = getCellId(dayIndex, hour, quarter);
                                             return (
                                                 <div
                                                     key={quarter}
-                                                    className={cn("h-[1.5rem]", quarter === 3 ? "border-b border-solid border-border/50" : "border-b border-dashed border-border/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                                                    className={cn("h-[1rem]", quarter === 3 ? "border-b border-solid border-border/50" : "border-b border-dashed border-border/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                                                     data-cell-id={cellId}
                                                     onMouseDown={handleMouseDown}
                                                     onMouseMove={handleMouseMove}
@@ -492,6 +506,14 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                         </div>
                     );
                 })}
+                {isCurrentWeekVisible && timeMarkerTop !== null && (
+                  <div
+                    className="absolute left-0 right-0 h-0.5 bg-red-500 pointer-events-none"
+                    style={{ top: `${timeMarkerTop}rem`, zIndex: 30 }}
+                  >
+                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"></div>
+                  </div>
+                )}
             </div>
         </div>
       </div>
