@@ -600,21 +600,21 @@ export default function DetailedViewPage() {
                 <Redo2 className="h-4 w-4" />
                 <span className="sr-only">Redo</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
-              <Save className="mr-2 h-4 w-4" />
-              Save
+            <Button variant="outline" size="icon" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Save className="h-4 w-4" />
+              <span className="sr-only">Save</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
-              <Download className="mr-2 h-4 w-4" />
-              Import
+            <Button variant="outline" size="icon" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Download className="h-4 w-4" />
+              <span className="sr-only">Import</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
-              <Sparkles className="mr-2 h-4 w-4" />
-              AI Manager
+            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Sparkles className="h-4 w-4" />
+              <span className="sr-only">AI Manager</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
-              <Target className="mr-2 h-4 w-4" />
-              View Goals
+            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+              <Target className="h-4 w-4" />
+              <span className="sr-only">View Goals</span>
             </Button>
           </div>
       </header>
