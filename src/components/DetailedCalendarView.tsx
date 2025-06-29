@@ -1,10 +1,10 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
-import { addDays, subDays, startOfWeek, format, parseISO, isSameDay, isWithinInterval, endOfWeek } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle } from 'lucide-react';
+import { addDays, subDays, startOfWeek, format, parseISO, isSameDay, isWithinInterval, endOfWeek, addMinutes, startOfDay } from 'date-fns';
+import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle, ArrowsUpDown } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn, parseISOStrict } from '@/lib/utils';
@@ -43,7 +43,6 @@ const timeToMinutes = (timeStr: string): number => {
     return hours * 60 + minutes;
 };
 
-
 // Calculates the vertical position and height of a task
 const getTaskVerticalStyle = (task: Task): React.CSSProperties => {
   if (!task.startTime || !task.endTime) return { display: 'none' };
@@ -53,8 +52,8 @@ const getTaskVerticalStyle = (task: Task): React.CSSProperties => {
 
   if (duration <= 0) return { display: 'none' };
   
-  const top = (startTotalMinutes / 15) * 1; // 1rem per 15-min slot
-  const height = (duration / 15) * 1;
+  const top = (startTotalMinutes / 15) * 1.05; // 1.05rem per 15-min slot
+  const height = (duration / 15) * 1.05;
 
   return {
     top: `${top}rem`,
@@ -148,6 +147,10 @@ function TaskBlock({
     onDeleteTask,
     onToggleComplete,
     layoutStyle,
+    isLayoutEditing,
+    onToggleLayoutEdit,
+    onDragStart,
+    tempStyle
 }: {
     task: Task;
     dateStr: string;
@@ -157,15 +160,20 @@ function TaskBlock({
     onDeleteTask: (task: Task, dateStr: string) => void;
     onToggleComplete: (taskId: string, dateStr: string) => void;
     layoutStyle: React.CSSProperties;
+    isLayoutEditing: boolean;
+    onToggleLayoutEdit: (taskId: string, dateStr: string) => void;
+    onDragStart: (e: React.MouseEvent, task: Task, dateStr: string, type: 'move' | 'resize-top' | 'resize-bottom') => void;
+    tempStyle?: React.CSSProperties;
 }) {
     const [isHovered, setIsHovered] = useState(false);
     const verticalStyle = getTaskVerticalStyle(task);
     
-    const style = { 
+    const combinedStyle = { 
         ...verticalStyle, 
         ...layoutStyle, 
         backgroundColor: colorToApply || 'hsl(var(--primary))',
-        zIndex: isHovered ? 2000 : layoutStyle.zIndex,
+        zIndex: isHovered || isLayoutEditing ? 2000 : layoutStyle.zIndex,
+        ...tempStyle
     };
     
     const { theme } = useTheme();
@@ -206,7 +214,7 @@ function TaskBlock({
 
     return (
         <div
-            style={style}
+            style={combinedStyle}
             className={cn(
                 "absolute p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300",
                 "flex flex-col justify-between",
@@ -214,15 +222,16 @@ function TaskBlock({
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
-                isShortTask && `hover:min-h-[3rem]`
+                isShortTask && !isLayoutEditing && `hover:min-h-[3rem]`,
+                isLayoutEditing && 'ring-2 ring-primary ring-offset-2 cursor-move'
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onMouseDown={(e) => { if (isLayoutEditing) { onDragStart(e, task, dateStr, 'move'); }}}
         >
-            <div className="flex-grow cursor-pointer" onClick={() => onEditTask(task)}>
+            <div className="flex-grow cursor-pointer" onClick={() => !isLayoutEditing && onEditTask(task)}>
                 <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
-                    
                     <p className={cn("font-medium", isVeryShortTask ? 'line-clamp-1' : 'line-clamp-2')}>{task.name}</p>
                 </div>
                 {!isVeryShortTask && task.description && <p className={cn("line-clamp-1 opacity-80", isCompleted && "line-through")}>{task.description}</p>}
@@ -232,6 +241,9 @@ function TaskBlock({
                 <Button variant="ghost" className={cn("h-4 w-4 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
                     {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                 </Button>
+                <Button variant="ghost" className={cn("h-4 w-4 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onToggleLayoutEdit(task.id, dateStr); }}>
+                    <ArrowsUpDown className="h-3 w-3" />
+                </Button>
                 <Button variant="ghost" className={cn("h-4 w-4 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
                     <Edit className="h-3 w-3" />
                 </Button>
@@ -239,6 +251,13 @@ function TaskBlock({
                     <Trash2 className="h-3 w-3" />
                 </Button>
             </div>
+            
+            {isLayoutEditing && (
+                <>
+                    <div className="absolute -top-1 left-0 w-full h-2 cursor-ns-resize" onMouseDown={(e) => { e.stopPropagation(); onDragStart(e, task, dateStr, 'resize-top'); }} />
+                    <div className="absolute -bottom-1 left-0 w-full h-2 cursor-ns-resize" onMouseDown={(e) => { e.stopPropagation(); onDragStart(e, task, dateStr, 'resize-bottom'); }} />
+                </>
+            )}
         </div>
     );
 }
@@ -253,16 +272,146 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   const { toast } = useToast();
   const [timeMarkerTop, setTimeMarkerTop] = useState<number | null>(null);
 
+  const [layoutEditState, setLayoutEditState] = useState<{ taskId: string, dateStr: string } | null>(null);
+  const [dragState, setDragState] = useState<{
+    task: Task;
+    type: 'move' | 'resize-top' | 'resize-bottom';
+    initialMouseX: number;
+    initialMouseY: number;
+    initialTop: number;
+    initialHeight: number;
+    dayIndex: number;
+  } | null>(null);
+  const [modifiedTaskPosition, setModifiedTaskPosition] = useState<{ top: number; height: number; dayIndex: number; } | null>(null);
+
+  const remToPx = useMemo(() => {
+    if (typeof window === 'undefined') return 16;
+    return parseFloat(getComputedStyle(document.documentElement).fontSize);
+  }, []);
+
+  const dayWidth = useMemo(() => {
+    if (!gridRef.current) return 0;
+    return gridRef.current.offsetWidth / 7;
+  }, [gridRef.current]);
+
+  const handleToggleLayoutEdit = useCallback((taskId: string, dateStr: string) => {
+    setLayoutEditState(prev => (prev?.taskId === taskId ? null : { taskId, dateStr }));
+  }, []);
+
+  const handleDragStart = useCallback((e: React.MouseEvent, task: Task, dateStr: string, type: 'move' | 'resize-top' | 'resize-bottom') => {
+    e.preventDefault();
+    document.body.style.cursor = type === 'move' ? 'move' : 'ns-resize';
+    const dayIndex = days.findIndex(day => format(day, 'yyyy-MM-dd') === dateStr);
+    const styles = getTaskVerticalStyle(task);
+    setDragState({
+        task,
+        type,
+        initialMouseX: e.clientX,
+        initialMouseY: e.clientY,
+        initialTop: parseFloat(styles.top as string) * remToPx,
+        initialHeight: parseFloat(styles.height as string) * remToPx,
+        dayIndex
+    });
+  }, [days, remToPx]);
+
+  const handleDragMove = useCallback((e: MouseEvent) => {
+    if (!dragState) return;
+
+    const deltaY = e.clientY - dragState.initialMouseY;
+    const minuteDelta = Math.round((deltaY / (remToPx * 1.05)) * 15 / 15) * 15;
+
+    let newTop = dragState.initialTop;
+    let newHeight = dragState.initialHeight;
+
+    if (dragState.type === 'resize-top') {
+        const originalStartMinutes = timeToMinutes(dragState.task.startTime!);
+        const originalEndMinutes = timeToMinutes(dragState.task.endTime!);
+        const newStartMinutes = Math.max(0, originalStartMinutes + minuteDelta);
+
+        if ((originalEndMinutes - newStartMinutes) >= 30) {
+            newTop = (newStartMinutes / 15) * (remToPx * 1.05);
+            newHeight = ((originalEndMinutes - newStartMinutes) / 15) * (remToPx * 1.05);
+        }
+    } else if (dragState.type === 'resize-bottom') {
+        const originalStartMinutes = timeToMinutes(dragState.task.startTime!);
+        const originalEndMinutes = timeToMinutes(dragState.task.endTime!);
+        const newEndMinutes = Math.min(24 * 60, originalEndMinutes + minuteDelta);
+        if ((newEndMinutes - originalStartMinutes) >= 30) {
+            newHeight = ((newEndMinutes - originalStartMinutes) / 15) * (remToPx * 1.05);
+        }
+    } else if (dragState.type === 'move') {
+        const originalStartMinutes = timeToMinutes(dragState.task.startTime!);
+        newTop = ((originalStartMinutes + minuteDelta) / 15) * (remToPx * 1.05);
+    }
+    
+    const deltaX = e.clientX - dragState.initialMouseX;
+    const dayIndexDelta = Math.round(deltaX / dayWidth);
+    const newDayIndex = Math.max(0, Math.min(6, dragState.dayIndex + dayIndexDelta));
+    
+    setModifiedTaskPosition({ top: newTop / remToPx, height: newHeight / remToPx, dayIndex: newDayIndex });
+  }, [dragState, remToPx, dayWidth]);
+  
+  const handleDragEnd = useCallback(() => {
+    document.body.style.cursor = 'default';
+    if (!dragState || !modifiedTaskPosition) {
+        setDragState(null);
+        return;
+    }
+
+    const { task, type } = dragState;
+    const { top, height, dayIndex } = modifiedTaskPosition;
+
+    const topMinutes = Math.round((top / 1.05) * 15);
+    const heightMinutes = Math.round((height / 1.05) * 15);
+
+    let newStartTime: string;
+    let newEndTime: string;
+
+    if (type === 'move') {
+        newStartTime = format(addMinutes(startOfDay(new Date()), topMinutes), 'HH:mm');
+        const duration = timeToMinutes(task.endTime!) - timeToMinutes(task.startTime!);
+        newEndTime = format(addMinutes(startOfDay(new Date()), topMinutes + duration), 'HH:mm');
+    } else {
+        newStartTime = format(addMinutes(startOfDay(new Date()), topMinutes), 'HH:mm');
+        newEndTime = format(addMinutes(startOfDay(new Date()), topMinutes + heightMinutes), 'HH:mm');
+    }
+
+    const newDate = format(days[dayIndex], 'yyyy-MM-dd');
+    
+    updateTask(task.id, {
+        date: newDate,
+        startTime: newStartTime,
+        endTime: newEndTime,
+    });
+    
+    toast({ title: "Task Updated", description: `"${task.name}" has been rescheduled.` });
+    
+    setDragState(null);
+    setLayoutEditState(null);
+    setModifiedTaskPosition(null);
+  }, [dragState, modifiedTaskPosition, days, updateTask, toast]);
+
+  useEffect(() => {
+    if (dragState) {
+        window.addEventListener('mousemove', handleDragMove);
+        window.addEventListener('mouseup', handleDragEnd);
+    }
+    return () => {
+        window.removeEventListener('mousemove', handleDragMove);
+        window.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, [dragState, handleDragMove, handleDragEnd]);
+  
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const sevenAmHourSlotPosition = 7 * (4 * 16); // 7 * (1rem * 4 slots) * 16px/rem
+      const sevenAmHourSlotPosition = 7 * (4 * (remToPx * 1.05));
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
     
     const updateLinePosition = () => {
       const now = new Date();
       const minutes = now.getHours() * 60 + now.getMinutes();
-      const top = (minutes / 15) * 1; // 1rem per 15 minutes
+      const top = (minutes / 15) * 1.05; // 1.05rem per 15 minutes
       setTimeMarkerTop(top);
     };
 
@@ -270,7 +419,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     const interval = setInterval(updateLinePosition, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, []);
+  }, [remToPx]);
 
   const days = useMemo(() => {
     const week = [];
@@ -426,7 +575,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
 
 
   return (
-    <div className="flex flex-col h-full" onMouseUp={handleMouseUp} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
+    <div className="flex flex-col h-full" onMouseUp={!dragState ? handleMouseUp : undefined} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
       <header className="flex items-center justify-center relative p-2 border-b shrink-0 bg-background">
         <h2 className="text-base font-semibold text-primary">
           {`${format(currentWeekStart, 'd MMMM')} - ${format(weekEnd, 'd MMMM, yyyy')}`}
@@ -437,19 +586,19 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
-      <div ref={scrollContainerRef} className="flex-grow overflow-auto relative bg-secondary/30">
+      <div ref={scrollContainerRef} className="flex-grow overflow-auto relative">
         <div className="flex" style={{ minWidth: '100%' }}>
             
             <div className="w-14 text-[10px] text-center shrink-0 bg-background z-30 sticky left-0">
                 <div className="h-[76px] border-b bg-background" />
                 {timeSlots.map(time => (
-                    <div key={time} className="h-[4rem] relative text-muted-foreground">
+                    <div key={time} className="h-[calc(4*1.05rem)] relative text-muted-foreground">
                         <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span>
                     </div>
                 ))}
             </div>
 
-            <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none relative">
+            <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none relative bg-secondary/30">
                 {days.map((day, dayIndex) => {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
@@ -463,15 +612,15 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                                 <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
                             </div>
                             
-                            <div className={cn("relative z-10")} style={{ transform: 'translateZ(0)' }}>
+                            <div className={cn("relative")} style={{ transform: 'translateZ(0)', zIndex: 1 }}>
                                 {timeSlots.map((_, hour) => (
-                                    <div key={hour} className="h-[4rem] border-t relative">
+                                    <div key={hour} className="h-[calc(4*1.05rem)] border-t relative">
                                         {Array.from({ length: 4 }).map((__, quarter) => {
                                             const cellId = getCellId(dayIndex, hour, quarter);
                                             return (
                                                 <div
                                                     key={quarter}
-                                                    className={cn("h-[1rem]", quarter === 3 ? "border-b border-solid border-border/50" : "border-b border-dashed border-border/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                                                    className={cn("h-[1.05rem]", quarter === 3 ? "border-b border-solid border-border/50" : "border-b border-dashed border-border/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                                                     data-cell-id={cellId}
                                                     onMouseDown={handleMouseDown}
                                                     onMouseMove={handleMouseMove}
@@ -482,6 +631,9 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                                 ))}
 
                                 {dailyTasksWithLayout.map(({ task, layout }) => {
+                                    const isEditing = layoutEditState?.taskId === task.id && layoutEditState?.dateStr === dateStr;
+                                    if (isEditing && modifiedTaskPosition) return null; // Hide original while dragging
+
                                     const completionKey = `${task.id}_${dateStr}`;
                                     const isCompleted = completedTasks.has(completionKey);
                                     const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
@@ -499,6 +651,9 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                                             onDeleteTask={onDeleteTask}
                                             onToggleComplete={onToggleComplete}
                                             layoutStyle={layout}
+                                            isLayoutEditing={isEditing}
+                                            onToggleLayoutEdit={handleToggleLayoutEdit}
+                                            onDragStart={handleDragStart}
                                         />
                                     );
                                 })}
@@ -506,6 +661,52 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                         </div>
                     );
                 })}
+                {/* Render the temporary task being dragged/resized */}
+                {dragState && modifiedTaskPosition && (
+                     (() => {
+                        const { task } = dragState;
+                        const dateStr = format(days[modifiedTaskPosition.dayIndex], 'yyyy-MM-dd');
+                        const completionKey = `${task.id}_${dateStr}`;
+                        const isCompleted = completedTasks.has(completionKey);
+                        const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
+                        const isDarkMode = theme === 'dark';
+                        let colorToApply = task.color;
+                        if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
+
+                        const originalLayout = getDayLayout(tasksWithLayoutByDay[dateStr] || []).find(l => l.task.id === task.id)?.layout || {};
+                        const tempLayoutStyle: React.CSSProperties = {
+                           ...originalLayout,
+                           position: 'absolute',
+                           top: `${modifiedTaskPosition.top}rem`,
+                           height: `${modifiedTaskPosition.height}rem`,
+                           left: `${modifiedTaskPosition.dayIndex * (100 / 7)}%`,
+                           width: `${100/7}%`,
+                           marginLeft: '0.25rem', // Small offset from day line
+                           marginRight: '0.25rem',
+                           width: `calc(${100/7}% - 0.5rem)`,
+                           zIndex: 2001
+                        };
+                        
+                        return (
+                            <TaskBlock
+                                key={`${task.id}_temp`}
+                                task={task}
+                                dateStr={dateStr}
+                                colorToApply={colorToApply}
+                                isCompleted={isCompleted}
+                                onEditTask={() => {}}
+                                onDeleteTask={() => {}}
+                                onToggleComplete={() => {}}
+                                layoutStyle={{}} // Layout is handled by tempStyle
+                                isLayoutEditing={true}
+                                onToggleLayoutEdit={() => {}}
+                                onDragStart={() => {}}
+                                tempStyle={tempLayoutStyle}
+                            />
+                        );
+                    })()
+                )}
+
                 {isCurrentWeekVisible && timeMarkerTop !== null && (
                   <div
                     className="absolute left-0 right-0 h-0.5 bg-red-500 pointer-events-none"
