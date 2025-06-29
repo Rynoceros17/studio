@@ -276,11 +276,11 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
   const [dragState, setDragState] = useState<{
     task: Task;
     type: 'move' | 'resize-top' | 'resize-bottom';
-    initialMouseX: number;
     initialMouseY: number;
     initialTop: number;
     initialHeight: number;
     dayIndex: number;
+    initialClientX: number;
   } | null>(null);
   const [modifiedTaskPosition, setModifiedTaskPosition] = useState<{ top: number; height: number; dayIndex: number; } | null>(null);
 
@@ -317,45 +317,46 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     setDragState({
         task,
         type,
-        initialMouseX: e.clientX,
         initialMouseY: e.clientY,
         initialTop: parseFloat(styles.top as string) * remToPx,
         initialHeight: parseFloat(styles.height as string) * remToPx,
-        dayIndex
+        dayIndex,
+        initialClientX: e.clientX,
     });
   }, [days, remToPx]);
   
   const handleDragMove = useCallback((e: MouseEvent) => {
     if (!dragState) return;
+    if (!gridRef.current) return;
 
     const deltaY = e.clientY - dragState.initialMouseY;
-    const minuteDelta = Math.round((deltaY / (remToPx * 1.05)) * 15 / 15) * 15;
-
-    let newTop = dragState.initialTop;
+    
+    let newTop = dragState.initialTop + deltaY;
     let newHeight = dragState.initialHeight;
 
+    const slotHeightPx = remToPx * 1.05 * 0.25; // 15-min slot height
+    
     if (dragState.type === 'resize-top') {
-        const originalStartMinutes = timeToMinutes(dragState.task.startTime!);
-        const originalEndMinutes = timeToMinutes(dragState.task.endTime!);
-        const newStartMinutes = Math.max(0, originalStartMinutes + minuteDelta);
-
-        if ((originalEndMinutes - newStartMinutes) >= 30) {
-            newTop = (newStartMinutes / 15) * (remToPx * 1.05);
-            newHeight = ((originalEndMinutes - newStartMinutes) / 15) * (remToPx * 1.05);
-        }
+      const originalEnd = dragState.initialTop + dragState.initialHeight;
+      newTop = Math.round(newTop / slotHeightPx) * slotHeightPx;
+      newHeight = originalEnd - newTop;
+      if (newHeight < (slotHeightPx * 2)) { // Min 30 mins
+        newTop = originalEnd - (slotHeightPx * 2);
+        newHeight = slotHeightPx * 2;
+      }
     } else if (dragState.type === 'resize-bottom') {
-        const originalStartMinutes = timeToMinutes(dragState.task.startTime!);
-        const originalEndMinutes = timeToMinutes(dragState.task.endTime!);
-        const newEndMinutes = Math.min(24 * 60, originalEndMinutes + minuteDelta);
-        if ((newEndMinutes - originalStartMinutes) >= 30) {
-            newHeight = ((newEndMinutes - originalStartMinutes) / 15) * (remToPx * 1.05);
-        }
-    } else if (dragState.type === 'move') {
-        const originalStartMinutes = timeToMinutes(dragState.task.startTime!);
-        newTop = ((originalStartMinutes + minuteDelta) / 15) * (remToPx * 1.05);
+      const newBottom = dragState.initialTop + dragState.initialHeight + deltaY;
+      const snappedBottom = Math.round(newBottom / slotHeightPx) * slotHeightPx;
+      newHeight = snappedBottom - dragState.initialTop;
+      if (newHeight < (slotHeightPx * 2)) {
+        newHeight = slotHeightPx * 2;
+      }
+      newTop = dragState.initialTop;
+    } else { // 'move'
+      newTop = Math.round(newTop / slotHeightPx) * slotHeightPx;
     }
     
-    const deltaX = e.clientX - dragState.initialMouseX;
+    const deltaX = e.clientX - dragState.initialClientX;
     const dayIndexDelta = Math.round(deltaX / dayWidth);
     const newDayIndex = Math.max(0, Math.min(6, dragState.dayIndex + dayIndexDelta));
     
@@ -673,17 +674,16 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                         let colorToApply = task.color;
                         if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
 
-                        const originalLayout = getDayLayout(tasksWithLayoutByDay[dateStr] || []).find(l => l.task.id === task.id)?.layout || {};
+                        const headerHeightRem = 76 / remToPx;
+
                         const tempLayoutStyle: React.CSSProperties = {
-                           ...originalLayout,
                            position: 'absolute',
-                           top: `${modifiedTaskPosition.top}rem`,
+                           top: `${modifiedTaskPosition.top + headerHeightRem}rem`,
                            height: `${modifiedTaskPosition.height}rem`,
                            left: `${modifiedTaskPosition.dayIndex * (100 / 7)}%`,
-                           width: `${100/7}%`,
-                           marginLeft: '0.25rem', // Small offset from day line
-                           marginRight: '0.25rem',
                            width: `calc(${100/7}% - 0.5rem)`,
+                           marginLeft: '0.25rem',
+                           marginRight: '0.25rem',
                            zIndex: 2001
                         };
                         
