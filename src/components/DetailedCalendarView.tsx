@@ -168,8 +168,15 @@ function TaskBlock({
     onToggleComplete: (taskId: string, dateStr: string) => void;
     layoutStyle: React.CSSProperties;
 }) {
+    const [isHovered, setIsHovered] = useState(false);
     const verticalStyle = getTaskVerticalStyle(task);
-    const style = { ...verticalStyle, ...layoutStyle, backgroundColor: colorToApply || 'hsl(var(--primary))' };
+    
+    const style = { 
+        ...verticalStyle, 
+        ...layoutStyle, 
+        backgroundColor: colorToApply || 'hsl(var(--primary))',
+        zIndex: isHovered ? 2000 : layoutStyle.zIndex,
+    };
     
     const { theme } = useTheme();
     const isDarkMode = theme === 'dark';
@@ -211,7 +218,7 @@ function TaskBlock({
         <div
             style={style}
             className={cn(
-                "absolute p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300 hover:z-50",
+                "absolute p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300",
                 "flex flex-col justify-between",
                 "border",
                 borderStyle,
@@ -220,6 +227,8 @@ function TaskBlock({
                 isShortTask && `hover:min-h-[3.75rem]`
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
             <div className="flex-grow cursor-pointer" onClick={() => onEditTask(task)}>
                 <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
