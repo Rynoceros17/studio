@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { addDays, subDays, startOfWeek, format, parseISO, isSameDay, isWithinInterval, endOfWeek, addMinutes, startOfDay } from 'date-fns';
-import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle, ArrowsUpDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle, ArrowUpDown } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn, parseISOStrict } from '@/lib/utils';
@@ -242,7 +242,7 @@ function TaskBlock({
                     {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                 </Button>
                 <Button variant="ghost" className={cn("h-4 w-4 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onToggleLayoutEdit(task.id, dateStr); }}>
-                    <ArrowsUpDown className="h-3 w-3" />
+                    <ArrowUpDown className="h-3 w-3" />
                 </Button>
                 <Button variant="ghost" className={cn("h-4 w-4 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
                     <Edit className="h-3 w-3" />
