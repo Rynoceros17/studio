@@ -112,14 +112,19 @@ const getDayLayout = (dailyTasksWithTime: Task[]) => {
         const myLayout = taskLayouts.get(task.id)!;
         const totalCols = collisions.reduce((max, c) => Math.max(max, taskLayouts.get(c.id)!.col), myLayout.col) + 1;
         
-        let width = 98;
-        let left = 1;
+        const columnPadding = 4; // 4% padding on each side
+        const contentWidth = 100 - (2 * columnPadding); // e.g., 92%
+
+        let width = contentWidth; // Full content width for a single task
+        let left = columnPadding; // Start after the left padding
 
         if (totalCols > 1) {
-            width = 75; // 3/4 width
-            const maxShift = 25; // This is 100 - 75
+            // Reduce width for overlapping tasks, e.g., 80% of the available content width
+            width = contentWidth * 0.8; 
+            // The remaining space is used for staggering the tasks
+            const maxShift = contentWidth - width;
             const leftShiftPerCol = totalCols > 1 ? maxShift / (totalCols - 1) : 0;
-            left = myLayout.col * leftShiftPerCol;
+            left = columnPadding + (myLayout.col * leftShiftPerCol);
         }
 
         const startTime = timeToMinutes(task.startTime!);
