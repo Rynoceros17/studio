@@ -9,8 +9,6 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  GoogleAuthProvider,
-  signInWithPopup,
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase'; // Import the initialized services
@@ -22,7 +20,6 @@ interface AuthContextType {
   firebaseError: AuthError | null;
   signInUser: (email: string, pass: string) => Promise<any>;
   signUpUser: (email: string, pass: string) => Promise<any>;
-  signInWithGoogle: () => Promise<any>;
   signOutUser: () => Promise<void>;
 }
 
@@ -117,11 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     performAuthOperation(() => createUserWithEmailAndPassword(auth!, email, password)),
   []);
 
-  const signInWithGoogle = useCallback(() => {
-    const provider = new GoogleAuthProvider();
-    return performAuthOperation(() => signInWithPopup(auth!, provider));
-  }, []);
-
   const signOutUser = useCallback(async () => {
     if (auth) {
       try {
@@ -140,9 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     firebaseError,
     signInUser,
     signUpUser,
-    signInWithGoogle,
     signOutUser,
-  }), [user, authLoading, firebaseError, signInUser, signUpUser, signInWithGoogle, signOutUser]);
+  }), [user, authLoading, firebaseError, signInUser, signUpUser, signOutUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
