@@ -24,6 +24,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle as FormDialogTitle,
   DialogTrigger,
@@ -33,7 +35,7 @@ import {
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
-    AlertDialogDescription,
+    AlertDialogDescription as AlertDesc, // Alias to avoid conflict
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle as AlertTitle,
@@ -50,7 +52,7 @@ import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, ArrowLeftCircle, ArrowRightCircle, Info } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
@@ -76,6 +78,7 @@ export default function Home() {
   const { user, authLoading } = useAuth();
   const isInitialLoad = useRef(true);
   const firestoreUnsubscribeRef = useRef<Unsubscribe | null>(null);
+  const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
 
   const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
 
@@ -858,6 +861,16 @@ export default function Home() {
         )}
       >
         <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <Button
+              variant="ghost"
+              className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10"
+              aria-label="Show welcome message"
+              onClick={() => setIsWelcomeOpen(true)}
+            >
+              <Info className="h-5 w-5" />
+            </Button>
+          </div>
           <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">
             WeekWise
           </h1>
@@ -869,7 +882,7 @@ export default function Home() {
         <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
             <Link
               href="/detailed-view"
-              className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-primary-foreground")}
+              className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
               aria-label="Go to detailed view"
             >
                 <LayoutDashboard className="h-5 w-5" />
@@ -877,7 +890,7 @@ export default function Home() {
             </Link>
             <Link
                href="/study-tracker"
-               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-primary-foreground")}
+               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
                aria-label="Go to study tracker"
             >
                 <BookOpen className="h-5 w-5" />
@@ -885,7 +898,7 @@ export default function Home() {
             </Link>
             <Link
               href="/goals"
-              className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-primary-foreground")}
+              className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
               aria-label="View goals"
             >
                 <Target className="h-5 w-5" />
@@ -893,7 +906,7 @@ export default function Home() {
             </Link>
             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                 <SheetTrigger asChild>
-                    <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-primary-foreground")} aria-label="View bookmarks">
+                    <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")} aria-label="View bookmarks">
                         <BookmarkIcon className="h-5 w-5" />
                         <span className="ml-2 hidden md:inline">Bookmarks</span>
                     </Button>
@@ -907,7 +920,7 @@ export default function Home() {
             </Sheet>
             <Button
                 variant="ghost"
-                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-primary-foreground")}
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
                 aria-label="Toggle Pomodoro Timer"
                 onClick={() => setIsTimerVisible(!isTimerVisible)}
             >
@@ -916,7 +929,7 @@ export default function Home() {
             </Button>
             <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
                 <SheetTrigger asChild>
-                    <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-primary-foreground")} aria-label="Open scratchpad">
+                    <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")} aria-label="Open scratchpad">
                         <List className="h-5 w-5" />
                         <span className="ml-2 hidden md:inline">Scratchpad</span>
                     </Button>
@@ -1032,9 +1045,9 @@ export default function Home() {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertTitle>Delete Recurring Task</AlertTitle>
-                    <AlertDialogDescription>
+                    <AlertDesc>
                         Do you want to delete only this occurrence of "{deleteConfirmation?.task?.name}" on {deleteConfirmation?.dateStr ? format(parseISOStrict(deleteConfirmation.dateStr) ?? new Date(), 'PPP') : ''}, or all future occurrences?
-                    </AlertDialogDescription>
+                    </AlertDesc>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
@@ -1058,10 +1071,10 @@ export default function Home() {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertTitle>Move Recurring Task</AlertTitle>
-                    <AlertDialogDescription>
+                    <AlertDesc>
                         You are moving the recurring task "{moveRecurringConfirmation?.task?.name}".
                         How would you like to move it from {moveRecurringConfirmation?.originalDateStr ? format(parseISOStrict(moveRecurringConfirmation.originalDateStr)!, 'PPP') : ''} to {moveRecurringConfirmation?.newDateStr ? format(parseISOStrict(moveRecurringConfirmation.newDateStr)!, 'PPP') : ''}?
-                    </AlertDialogDescription>
+                    </AlertDesc>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setMoveRecurringConfirmation(null)}>Cancel</AlertDialogCancel>
@@ -1086,7 +1099,23 @@ export default function Home() {
             onClose={() => setIsTodaysTasksDialogOpen(false)}
             tasks={todaysTasks}
         />
+
+        <Dialog open={isWelcomeOpen} onOpenChange={setIsWelcomeOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <FormDialogTitle>Welcome to WeekWise</FormDialogTitle>
+                    <DialogDescription>
+                        This is your personal planner to organize your life, track your goals, and manage your time effectively. Use the AI to quickly add tasks, view your schedule in different formats, and stay on top of your deadlines.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button onClick={() => setIsWelcomeOpen(false)}>Get Started</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </main>
     </DndContext>
   );
 }
+
+    
