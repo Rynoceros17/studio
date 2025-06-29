@@ -433,65 +433,75 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
-      <div className="flex flex-grow overflow-auto bg-background">
-        <div className="w-14 text-[10px] text-center shrink-0 bg-background z-20 sticky left-0">
-          <div className="h-12 pb-4" />
-          {timeSlots.map(time => <div key={time} className="h-[5rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
-        </div>
-        <div ref={scrollContainerRef} className="flex-grow overflow-y-auto">
-            <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none bg-secondary/30">
-            {days.map((day, dayIndex) => {
-                const dateStr = format(day, 'yyyy-MM-dd');
-                const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
-                const isToday = isSameDay(day, new Date());
-                return (
-                <div key={dateStr} className={cn("relative border-l", isToday && "bg-background")}>
-                    <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b">
-                    <p className="text-xs font-medium">{format(day, 'EEE')}</p>
-                    <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
+      <div ref={scrollContainerRef} className="flex-grow overflow-auto">
+        <div className="flex" style={{ minWidth: '100%' }}>
+            
+            <div className="w-14 text-[10px] text-center shrink-0 bg-background z-30 sticky left-0">
+                <div className="h-[76px]" />
+                {timeSlots.map(time => (
+                    <div key={time} className="h-[5rem] relative text-muted-foreground">
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span>
                     </div>
-                    <div className="relative">
-                    {timeSlots.map((_, hour) => (
-                        <div key={hour} className="h-[5rem] border-t relative">
-                        {Array.from({ length: 4 }).map((__, quarter) => {
-                            const cellId = getCellId(dayIndex, hour, quarter);
-                            return (
-                            <div
-                                key={quarter}
-                                className={cn("h-[1.25rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
-                                data-cell-id={cellId}
-                                onMouseDown={handleMouseDown}
-                                onMouseMove={handleMouseMove}
-                            />
-                            );
-                        })}
+                ))}
+            </div>
+
+            <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
+                {days.map((day, dayIndex) => {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
+                    const isToday = isSameDay(day, new Date());
+
+                    return (
+                        <div key={dateStr} className="relative border-l">
+                            
+                            <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b h-[76px]">
+                                <p className="text-xs font-medium">{format(day, 'EEE')}</p>
+                                <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
+                            </div>
+                            
+                            <div className={cn("relative", isToday ? "bg-background" : "bg-secondary/30")}>
+                                {timeSlots.map((_, hour) => (
+                                    <div key={hour} className="h-[5rem] border-t relative">
+                                        {Array.from({ length: 4 }).map((__, quarter) => {
+                                            const cellId = getCellId(dayIndex, hour, quarter);
+                                            return (
+                                                <div
+                                                    key={quarter}
+                                                    className={cn("h-[1.25rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                                                    data-cell-id={cellId}
+                                                    onMouseDown={handleMouseDown}
+                                                    onMouseMove={handleMouseMove}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+
+                                {dailyTasksWithLayout.map(({ task, layout }) => {
+                                    const completionKey = `${task.id}_${dateStr}`;
+                                    const isCompleted = completedTasks.has(completionKey);
+                                    const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
+                                    const isDarkMode = theme === 'dark';
+                                    let colorToApply = task.color;
+                                    if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
+                                    return (
+                                        <TaskBlock
+                                            key={`${task.id}_${dateStr}`}
+                                            task={task}
+                                            dateStr={dateStr}
+                                            colorToApply={colorToApply}
+                                            isCompleted={isCompleted}
+                                            onEditTask={onEditTask}
+                                            onDeleteTask={onDeleteTask}
+                                            onToggleComplete={onToggleComplete}
+                                            layoutStyle={layout}
+                                        />
+                                    );
+                                })}
+                            </div>
                         </div>
-                    ))}
-                    {dailyTasksWithLayout.map(({ task, layout }) => {
-                        const completionKey = `${task.id}_${dateStr}`;
-                        const isCompleted = completedTasks.has(completionKey);
-                        const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
-                        const isDarkMode = theme === 'dark';
-                        let colorToApply = task.color;
-                        if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
-                        return (
-                        <TaskBlock
-                            key={`${task.id}_${dateStr}`}
-                            task={task}
-                            dateStr={dateStr}
-                            colorToApply={colorToApply}
-                            isCompleted={isCompleted}
-                            onEditTask={onEditTask}
-                            onDeleteTask={onDeleteTask}
-                            onToggleComplete={onToggleComplete}
-                            layoutStyle={layout}
-                        />
-                        );
-                    })}
-                    </div>
-                </div>
-                );
-            })}
+                    );
+                })}
             </div>
         </div>
       </div>
