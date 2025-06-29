@@ -16,7 +16,7 @@ import {format} from 'date-fns';
 import { availableColorTags, colorTagDescriptions } from '@/lib/color-map'; // Import available color tags
 
 const ParseNaturalLanguageTaskInputSchema = z.object({
-  query: z.string().min(1, "Query cannot be empty.").max(100, "Query is too long.").describe("The natural language query from the user describing one or more tasks."),
+  query: z.string().min(1, "Query cannot be empty.").max(500, "Query is too long.").describe("The natural language query from the user describing one or more tasks."),
 });
 export type ParseNaturalLanguageTaskInput = z.infer<typeof ParseNaturalLanguageTaskInputSchema>;
 

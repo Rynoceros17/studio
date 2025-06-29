@@ -43,6 +43,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { parseNaturalLanguageTask, type SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
 import { colorTagToHexMap } from '@/lib/color-map';
 
@@ -404,7 +405,7 @@ export default function DetailedViewPage() {
     }
   };
 
-  const handleChatKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleChatKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSendChatMessage();
@@ -434,7 +435,7 @@ export default function DetailedViewPage() {
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Sparkles className="mr-2 h-4 w-4" />
-              AI Task Entry
+              AI Manager
             </Button>
             <Button variant="outline" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Target className="mr-2 h-4 w-4" />
@@ -455,30 +456,29 @@ export default function DetailedViewPage() {
           />
       </main>
 
-      {/* AI Task Generator Sheet */}
+      {/* AI Manager Sheet */}
       <Sheet open={isAiSheetOpen} onOpenChange={setIsAiSheetOpen}>
         <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
             <SheetHeader className="p-4 border-b shrink-0">
                 <SheetTitle className="text-primary flex items-center gap-2">
                    <Sparkles className="h-6 w-6" />
-                   AI Task Generator
+                   AI Manager
                 </SheetTitle>
             </SheetHeader>
             <div className="p-4 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                    Type a task description and let AI parse it into your calendar.
-                    e.g., "Important meeting tomorrow at 2pm #col1"
+                    Describe your week and let the AI assistant organize it for you. You can list multiple tasks, appointments, and recurring events.
                 </p>
                 <Card className="shadow-sm">
                     <CardContent className="p-3 flex flex-col space-y-2">
-                        <Input
+                        <Textarea
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="Type task details..."
-                            className="h-10 text-sm"
+                            placeholder="Describe your week and let the AI organize it! e.g., 'Team meeting Monday 10am, Dentist appointment Wednesday 3pm, Weekly gym session Friday at 6pm #col3'"
+                            className="min-h-[120px] text-sm"
                             onKeyPress={handleChatKeyPress}
                             disabled={isParsingTask}
-                            maxLength={100}
+                            maxLength={500}
                         />
                         <Button onClick={handleSendChatMessage} className="w-full" disabled={isParsingTask || !chatInput.trim()}>
                             {isParsingTask ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SendHorizonal className="mr-2 h-4 w-4" />}
