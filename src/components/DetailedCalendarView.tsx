@@ -290,23 +290,45 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
   } | null>(null);
   const [modifiedTaskPosition, setModifiedTaskPosition] = useState<{ top: number; height: number; dayIndex: number; } | null>(null);
 
+  const [isClient, setIsClient] = useState(false);
+  const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  const [currentDay, setCurrentDay] = useState(() => startOfDay(new Date()));
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+      if (!isClient) return;
+      const checkSize = () => {
+          const isPortrait = window.innerWidth < window.innerHeight;
+          setViewMode(isPortrait ? 'day' : 'week');
+      };
+      checkSize();
+      window.addEventListener('resize', checkSize);
+      return () => window.removeEventListener('resize', checkSize);
+  }, [isClient]);
+
   const remToPx = useMemo(() => {
     if (typeof window === 'undefined') return 16;
     return parseFloat(getComputedStyle(document.documentElement).fontSize);
   }, []);
 
   const days = useMemo(() => {
+    if (viewMode === 'day') {
+        return [currentDay];
+    }
     const week = [];
     for (let i = 0; i < 7; i++) {
       week.push(addDays(currentWeekStart, i));
     }
     return week;
-  }, [currentWeekStart]);
+  }, [currentWeekStart, viewMode, currentDay]);
   
   const dayWidth = useMemo(() => {
     if (!gridRef.current) return 0;
-    return gridRef.current.offsetWidth / 7;
-  }, [gridRef.current]);
+    return gridRef.current.offsetWidth / (viewMode === 'week' ? 7 : 1);
+  }, [gridRef.current, viewMode]);
 
   const weekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
   const isCurrentWeekVisible = useMemo(() => isWithinInterval(new Date(), { start: currentWeekStart, end: weekEnd }), [currentWeekStart, weekEnd]);
@@ -365,10 +387,10 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
     
     const deltaX = e.clientX - dragState.initialClientX;
     const dayIndexDelta = Math.round(deltaX / dayWidth);
-    const newDayIndex = Math.max(0, Math.min(6, dragState.dayIndex + dayIndexDelta));
+    const newDayIndex = Math.max(0, Math.min(viewMode === 'week' ? 6 : 0, dragState.dayIndex + dayIndexDelta));
     
     setModifiedTaskPosition({ top: newTop / remToPx, height: newHeight / remToPx, dayIndex: newDayIndex });
-  }, [dragState, remToPx, dayWidth]);
+  }, [dragState, remToPx, dayWidth, viewMode]);
   
   const handleDragEnd = useCallback(() => {
     document.body.style.cursor = 'default';
@@ -581,18 +603,43 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
     return finalLayouts;
   }, [tasks, days]);
 
+  const goToPrevious = () => {
+    if (viewMode === 'day') {
+        setCurrentDay(prev => subDays(prev, 1));
+    } else {
+        onWeekChange(subDays(currentWeekStart, 7));
+    }
+  };
+  
+  const goToNext = () => {
+      if (viewMode === 'day') {
+          setCurrentDay(prev => addDays(prev, 1));
+      } else {
+          onWeekChange(addDays(currentWeekStart, 7));
+      }
+  };
+
+  const headerTitle = useMemo(() => {
+      if (!isClient) return 'Loading...';
+      if (viewMode === 'day') {
+          return format(currentDay, 'MMMM do, yyyy');
+      }
+      return `${format(currentWeekStart, 'd MMMM')} - ${format(weekEnd, 'd MMMM, yyyy')}`;
+  }, [currentWeekStart, weekEnd, viewMode, currentDay, isClient]);
+
 
   return (
     <div className="flex flex-col h-full" onMouseUp={!dragState ? handleMouseUp : undefined} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
-      <header className="flex items-center justify-center relative p-2 border-b shrink-0 bg-background">
-        <h2 className="text-base font-semibold text-primary">
-          {`${format(currentWeekStart, 'd MMMM')} - ${format(weekEnd, 'd MMMM, yyyy')}`}
+      <header className="flex items-center justify-between p-2 border-b shrink-0 bg-background">
+        <Button variant="outline" size="icon" onClick={goToPrevious} className="h-8 w-8">
+            <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <h2 className="text-base font-semibold text-primary text-center px-4">
+            {headerTitle}
         </h2>
-        <div className="flex items-center gap-2 absolute right-2 top-1/2 -translate-y-1/2">
-          <Button variant="outline" size="icon" onClick={() => onWeekChange(subDays(currentWeekStart, 7))}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button variant="outline" size="sm" onClick={() => onWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
-          <Button variant="outline" size="icon" onClick={() => onWeekChange(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
-        </div>
+        <Button variant="outline" size="icon" onClick={goToNext} className="h-8 w-8">
+            <ChevronRight className="h-4 w-4" />
+        </Button>
       </header>
       <div ref={scrollContainerRef} className="flex-grow overflow-auto relative">
         <div className="flex" style={{ minWidth: '100%' }}>
@@ -606,7 +653,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
                 ))}
             </div>
 
-            <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none relative bg-secondary/30">
+            <div ref={gridRef} className={cn("grid flex-grow select-none relative bg-secondary/30", viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1')}>
                 {days.map((day, dayIndex) => {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
@@ -693,8 +740,8 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
                            position: 'absolute',
                            top: `${modifiedTaskPosition.top + headerHeightRem}rem`,
                            height: `${modifiedTaskPosition.height}rem`,
-                           left: `${modifiedTaskPosition.dayIndex * (100 / 7)}%`,
-                           width: `calc(${100/7}% - 0.5rem)`,
+                           left: `${modifiedTaskPosition.dayIndex * (100 / (viewMode === 'week' ? 7 : 1))}%`,
+                           width: `calc(${100/(viewMode === 'week' ? 7 : 1)}% - 0.5rem)`,
                            marginLeft: '0.25rem',
                            marginRight: '0.25rem',
                            zIndex: 2001

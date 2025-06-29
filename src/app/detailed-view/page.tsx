@@ -586,10 +586,6 @@ export default function DetailedViewPage() {
                       <span className="sr-only">Back to Main Calendar</span>
                   </Button>
               </Link>
-              <div>
-                  <h1 className="text-2xl font-semibold text-primary">Detailed Calendar View</h1>
-                  <p className="text-sm text-muted-foreground">Drag on the calendar to create a new task. Click tasks to edit.</p>
-              </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10">
