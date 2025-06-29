@@ -294,6 +294,17 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
     return gridRef.current.offsetWidth / 7;
   }, [gridRef.current]);
 
+  const days = useMemo(() => {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      week.push(addDays(currentWeekStart, i));
+    }
+    return week;
+  }, [currentWeekStart]);
+
+  const weekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
+  const isCurrentWeekVisible = useMemo(() => isWithinInterval(new Date(), { start: currentWeekStart, end: weekEnd }), [currentWeekStart, weekEnd]);
+
   const handleToggleLayoutEdit = useCallback((taskId: string, dateStr: string) => {
     setLayoutEditState(prev => (prev?.taskId === taskId ? null : { taskId, dateStr }));
   }, []);
@@ -313,7 +324,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
         dayIndex
     });
   }, [days, remToPx]);
-
+  
   const handleDragMove = useCallback((e: MouseEvent) => {
     if (!dragState) return;
 
@@ -420,17 +431,6 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
 
     return () => clearInterval(interval);
   }, [remToPx]);
-
-  const days = useMemo(() => {
-    const week = [];
-    for (let i = 0; i < 7; i++) {
-      week.push(addDays(currentWeekStart, i));
-    }
-    return week;
-  }, [currentWeekStart]);
-
-  const weekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
-  const isCurrentWeekVisible = useMemo(() => isWithinInterval(new Date(), { start: currentWeekStart, end: weekEnd }), [currentWeekStart, weekEnd]);
 
   const getCellId = (dayIndex: number, hour: number, quarter: number): string => `cell-${dayIndex}-${hour}-${quarter}`;
   const parseCellId = (cellId: string): { dayIndex: number; hour: number; quarter: number } | null => {
