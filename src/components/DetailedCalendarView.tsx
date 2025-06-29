@@ -55,8 +55,8 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
       const originalDuration = endTotalMinutes - startTotalMinutes;
       // For very short tasks, just render them without the gap to avoid them disappearing
       if (originalDuration > 0) {
-        const top = (startTotalMinutes / 15) * 0.9;
-        const height = (originalDuration / 15) * 0.9;
+        const top = (startTotalMinutes / 15) * 1.15;
+        const height = (originalDuration / 15) * 1.15;
         return {
           top: `${top}rem`,
           height: `${height}rem`,
@@ -67,8 +67,8 @@ const getTaskStyle = (task: Task, colorToApply: string | null | undefined): Reac
       return { display: 'none' };
   }
 
-  const top = (visualStartMinutes / 15) * 0.9;
-  const height = (visualDuration / 15) * 0.9;
+  const top = (visualStartMinutes / 15) * 1.15;
+  const height = (visualDuration / 15) * 1.15;
 
   return {
     top: `${top}rem`,
@@ -143,7 +143,7 @@ function TaskBlock({
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
-                isShortTask && `hover:min-h-[2.7rem]`
+                isShortTask && `hover:min-h-[3.45rem]`
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
         >
@@ -181,7 +181,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const sevenAmHourSlotPosition = 7 * (3.6 * 16); // 7 * (0.9rem * 4 slots) * 16px/rem
+      const sevenAmHourSlotPosition = 7 * (4.6 * 16); // 7 * (1.15rem * 4 slots) * 16px/rem
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
   }, []);
@@ -349,12 +349,12 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
-      <div ref={scrollContainerRef} className="flex flex-grow overflow-auto bg-background">
-        <div className="w-14 text-[10px] text-center shrink-0">
+      <div ref={scrollContainerRef} className="flex flex-grow overflow-auto bg-secondary/30">
+        <div className="w-14 text-[10px] text-center shrink-0 bg-background">
           <div className="h-12 pb-4" />
-          {timeSlots.map(time => <div key={time} className="h-[3.6rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
+          {timeSlots.map(time => <div key={time} className="h-[4.6rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
         </div>
-        <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none bg-secondary/30">
+        <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
           {days.map((day, dayIndex) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dailyTasks = tasksByDay[dateStr] || [];
@@ -367,13 +367,13 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                 </div>
                 <div className="relative">
                   {timeSlots.map((_, hour) => (
-                    <div key={hour} className="h-[3.6rem] border-t relative">
+                    <div key={hour} className="h-[4.6rem] border-t relative">
                       {Array.from({ length: 4 }).map((__, quarter) => {
                         const cellId = getCellId(dayIndex, hour, quarter);
                         return (
                           <div
                             key={quarter}
-                            className={cn("h-[0.9rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                            className={cn("h-[1.15rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                             data-cell-id={cellId}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
