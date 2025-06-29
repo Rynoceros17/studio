@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2 } from 'lucide-react';
+import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2, Undo2, Redo2 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { Task, Goal, WeekPreset } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
@@ -59,6 +59,64 @@ export default function DetailedViewPage() {
   const firestoreUnsubscribeRef = useRef<Unsubscribe | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
+  // --- History State Management ---
+  const history = useRef<{ tasks: Task[]; completedTaskIds: string[] }[]>([]);
+  const historyIndex = useRef(-1);
+  const isNavigatingHistory = useRef(false);
+  const [, forceUpdate] = useState(0); // To re-render and update button disabled states
+
+  const canUndo = historyIndex.current > 0;
+  const canRedo = historyIndex.current < history.current.length - 1;
+
+  // Effect to record changes to history
+  useEffect(() => {
+    if (isNavigatingHistory.current) {
+        isNavigatingHistory.current = false;
+        return;
+    }
+
+    if (isInitialLoad.current) return;
+
+    const lastStateInHistory = history.current[historyIndex.current];
+    if (
+        lastStateInHistory &&
+        JSON.stringify(lastStateInHistory.tasks) === JSON.stringify(tasks) &&
+        JSON.stringify(lastStateInHistory.completedTaskIds) === JSON.stringify(completedTaskIds)
+    ) {
+        return;
+    }
+
+    const newHistory = history.current.slice(0, historyIndex.current + 1);
+    newHistory.push({ tasks, completedTaskIds });
+    history.current = newHistory;
+    historyIndex.current = newHistory.length - 1;
+
+    forceUpdate(n => n + 1); // Re-render to update button states
+  }, [tasks, completedTaskIds]);
+
+  const undo = () => {
+    if (canUndo) {
+        isNavigatingHistory.current = true;
+        historyIndex.current--;
+        const prevState = history.current[historyIndex.current];
+        setTasks(prevState.tasks);
+        setCompletedTaskIds(prevState.completedTaskIds);
+        forceUpdate(n => n + 1);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+        isNavigatingHistory.current = true;
+        historyIndex.current++;
+        const nextState = history.current[historyIndex.current];
+        setTasks(nextState.tasks);
+        setCompletedTaskIds(nextState.completedTaskIds);
+        forceUpdate(n => n + 1);
+    }
+  };
+  // --- End History State Management ---
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<Task> | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -99,27 +157,25 @@ export default function DetailedViewPage() {
       firestoreUnsubscribeRef.current = null;
     }
     setIsDataLoaded(false);
-    isInitialLoad.current = true; // Prevent auto-saving during data load transition
+    isInitialLoad.current = true;
 
     if (user && db) {
-      // User is logged in. Clear local state and set up Firestore listener.
-      setTasks([]);
-      setCompletedTaskIds([]);
-      
       const userDocRef = doc(db, 'users', user.uid);
       firestoreUnsubscribeRef.current = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          const tasksData = userData.tasks || [];
-          const completedIdsData = userData.completedTaskIds || [];
+        const tasksData = docSnap.exists() ? (docSnap.data().tasks || []) : [];
+        const completedIdsData = docSnap.exists() ? (docSnap.data().completedTaskIds || []) : [];
+        
+        if (isInitialLoad.current) {
           setTasks(Array.isArray(tasksData) ? tasksData : []);
           setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+          history.current = [{ tasks: tasksData, completedTaskIds: completedIdsData }];
+          historyIndex.current = 0;
+          forceUpdate(n => n + 1);
+          isInitialLoad.current = false;
         } else {
-          // New user, Firestore doc will be created on first save. State is already empty.
-          setTasks([]);
-          setCompletedTaskIds([]);
+          setTasks(Array.isArray(tasksData) ? tasksData : []);
+          setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
         }
-        isInitialLoad.current = false;
         setIsDataLoaded(true);
       }, (error) => {
         console.error("Error with Firestore listener:", error);
@@ -127,17 +183,21 @@ export default function DetailedViewPage() {
         setIsDataLoaded(true);
       });
     } else if (!authLoading && !user) {
-      // No user, load from localStorage.
+      let localTasks: Task[] = [];
+      let localCompleted: string[] = [];
       try {
-        const localTasks = JSON.parse(localStorage.getItem('weekwise-tasks') || '[]');
-        const localCompleted = JSON.parse(localStorage.getItem('weekwise-completed-tasks') || '[]');
-        setTasks(localTasks);
-        setCompletedTaskIds(localCompleted);
+        localTasks = JSON.parse(localStorage.getItem('weekwise-tasks') || '[]');
+        localCompleted = JSON.parse(localStorage.getItem('weekwise-completed-tasks') || '[]');
       } catch (error) {
         console.warn("Could not parse local storage data.", error);
-        setTasks([]);
-        setCompletedTaskIds([]);
       }
+      setTasks(localTasks);
+      setCompletedTaskIds(localCompleted);
+      
+      history.current = [{ tasks: localTasks, completedTaskIds: localCompleted }];
+      historyIndex.current = 0;
+      forceUpdate(n => n + 1);
+      
       isInitialLoad.current = false;
       setIsDataLoaded(true);
     }
@@ -147,13 +207,14 @@ export default function DetailedViewPage() {
         firestoreUnsubscribeRef.current();
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading, toast]);
 
 
   // Effect to automatically save data
   useEffect(() => {
     // Skip saving on the very first load or while auth is resolving
-    if (isInitialLoad.current || authLoading) {
+    if (isInitialLoad.current || authLoading || isNavigatingHistory.current) {
       return;
     }
 
@@ -531,6 +592,12 @@ export default function DetailedViewPage() {
               </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10">
+                <Undo2 className="mr-2 h-4 w-4" /> Undo
+            </Button>
+            <Button variant="outline" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10">
+                <Redo2 className="mr-2 h-4 w-4" /> Redo
+            </Button>
             <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Save className="mr-2 h-4 w-4" />
               Save Preset
