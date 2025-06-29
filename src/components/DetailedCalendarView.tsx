@@ -235,7 +235,7 @@ function TaskBlock({
             onMouseLeave={() => setIsHovered(false)}
             onMouseDown={(e) => { if (isLayoutEditing) { onDragStart(e, task, dateStr, 'move'); }}}
         >
-            <div className="flex-grow cursor-pointer" onClick={() => !isLayoutEditing && onEditTask(task)}>
+            <div className="flex-grow cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggleLayoutEdit(task.id, dateStr); }}>
                 <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
                     <p className={cn("font-medium", isVeryShortTask ? 'line-clamp-1' : 'line-clamp-2')}>{task.name}</p>
                 </div>
