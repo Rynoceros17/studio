@@ -53,8 +53,8 @@ const getTaskVerticalStyle = (task: Task): React.CSSProperties => {
 
   if (duration <= 0) return { display: 'none' };
   
-  const top = (startTotalMinutes / 15) * 1.25;
-  const height = (duration / 15) * 1.25;
+  const top = (startTotalMinutes / 15) * 1.5;
+  const height = (duration / 15) * 1.5;
 
   return {
     top: `${top}rem`,
@@ -75,27 +75,27 @@ const getDayLayout = (dailyTasksWithTime: Task[]) => {
         return endA - endB;
     });
 
-    const columns: Task[][] = [];
     const taskLayouts = new Map<string, { col: number; totalCols: number }>();
 
     sortedTasks.forEach(task => {
-        let placed = false;
         const taskStart = timeToMinutes(task.startTime!);
+        let col = 0;
+        
+        // Find the first column where this task does not overlap
+        while (true) {
+            const lastTaskInCol = sortedTasks
+                .filter(t => taskLayouts.has(t.id) && taskLayouts.get(t.id)!.col === col)
+                .reduce((last, current) => {
+                    if (!last) return current;
+                    return timeToMinutes(current.endTime!) > timeToMinutes(last.endTime!) ? current : last;
+                }, null as Task | null);
 
-        for (const col of columns) {
-            const lastTaskInCol = col[col.length - 1];
-            if (timeToMinutes(lastTaskInCol.endTime!) <= taskStart) {
-                col.push(task);
-                taskLayouts.set(task.id, { col: columns.indexOf(col), totalCols: 0 });
-                placed = true;
+            if (!lastTaskInCol || timeToMinutes(lastTaskInCol.endTime!) <= taskStart) {
                 break;
             }
+            col++;
         }
-
-        if (!placed) {
-            columns.push([task]);
-            taskLayouts.set(task.id, { col: columns.length - 1, totalCols: 0 });
-        }
+        taskLayouts.set(task.id, { col, totalCols: 1 });
     });
 
     const finalLayouts: Array<{ task: Task; layout: React.CSSProperties }> = [];
@@ -109,27 +109,17 @@ const getDayLayout = (dailyTasksWithTime: Task[]) => {
             const oEnd = timeToMinutes(otherTask.endTime!);
             return Math.max(tStart, oStart) < Math.min(tEnd, oEnd);
         });
-
+        
         const myLayout = taskLayouts.get(task.id)!;
+        const totalCols = collisions.reduce((max, c) => Math.max(max, taskLayouts.get(c.id)!.col), myLayout.col) + 1;
         
-        let maxCol = myLayout.col;
-        collisions.forEach(collidingTask => {
-            const layout = taskLayouts.get(collidingTask.id);
-            if(layout) {
-                maxCol = Math.max(maxCol, layout.col);
-            }
-        });
-        
-        myLayout.totalCols = maxCol + 1;
-
         let width = 98;
         let left = 1;
 
-        if (myLayout.totalCols > 1) {
+        if (totalCols > 1) {
             width = 75; // 3/4 width
             const maxShift = 25; // This is 100 - 75
-            // Avoid division by zero if totalCols is 1, though the `if` prevents this.
-            const leftShiftPerCol = myLayout.totalCols > 1 ? maxShift / (myLayout.totalCols - 1) : 0;
+            const leftShiftPerCol = totalCols > 1 ? maxShift / (totalCols - 1) : 0;
             left = myLayout.col * leftShiftPerCol;
         }
 
@@ -140,7 +130,7 @@ const getDayLayout = (dailyTasksWithTime: Task[]) => {
             layout: {
                 width: `${width}%`,
                 left: `${left}%`,
-                zIndex: startTime, // Add zIndex based on start time
+                zIndex: startTime,
             }
         });
     });
@@ -224,7 +214,7 @@ function TaskBlock({
                 borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
-                isShortTask && `hover:min-h-[3.75rem]`
+                isShortTask && `hover:min-h-[4.5rem]`
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
             onMouseEnter={() => setIsHovered(true)}
@@ -264,7 +254,7 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const sevenAmHourSlotPosition = 7 * (5 * 16); // 7 * (1.25rem * 4 slots) * 16px/rem
+      const sevenAmHourSlotPosition = 7 * (6 * 16); // 7 * (1.5rem * 4 slots) * 16px/rem
       scrollContainerRef.current.scrollTop = sevenAmHourSlotPosition;
     }
   }, []);
@@ -433,13 +423,13 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
-      <div ref={scrollContainerRef} className="flex-grow overflow-auto">
+      <div ref={scrollContainerRef} className="flex-grow overflow-auto relative bg-secondary/30">
         <div className="flex" style={{ minWidth: '100%' }}>
             
             <div className="w-14 text-[10px] text-center shrink-0 bg-background z-30 sticky left-0">
-                <div className="h-[76px]" />
+                <div className="h-[76px] border-b bg-background" />
                 {timeSlots.map(time => (
-                    <div key={time} className="h-[5rem] relative text-muted-foreground">
+                    <div key={time} className="h-[6rem] relative text-muted-foreground">
                         <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span>
                     </div>
                 ))}
@@ -459,15 +449,15 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
                                 <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
                             </div>
                             
-                            <div className={cn("relative", isToday ? "bg-background" : "bg-secondary/30")}>
+                            <div className={cn("relative z-10")}>
                                 {timeSlots.map((_, hour) => (
-                                    <div key={hour} className="h-[5rem] border-t relative">
+                                    <div key={hour} className="h-[6rem] border-t relative">
                                         {Array.from({ length: 4 }).map((__, quarter) => {
                                             const cellId = getCellId(dayIndex, hour, quarter);
                                             return (
                                                 <div
                                                     key={quarter}
-                                                    className={cn("h-[1.25rem]", quarter === 3 ? "border-b border-solid border-border" : "border-b border-dashed border-border/40", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                                                    className={cn("h-[1.5rem]", quarter === 3 ? "border-b border-solid border-border/50" : "border-b border-dashed border-border/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                                                     data-cell-id={cellId}
                                                     onMouseDown={handleMouseDown}
                                                     onMouseMove={handleMouseMove}
