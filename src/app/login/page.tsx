@@ -146,7 +146,7 @@ export default function LoginPage() {
             Don't have an account? <Link href="/signup" className="text-primary hover:underline">Sign up</Link>
           </p>
           <Link href="/" passHref legacyBehavior>
-            <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary/10">
+            <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary/10 hover:text-primary-foreground">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Home
             </Button>

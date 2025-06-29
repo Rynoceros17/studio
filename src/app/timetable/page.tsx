@@ -1,3 +1,4 @@
+
 // src/app/timetable/page.tsx
 'use client';
 
@@ -367,7 +368,7 @@ export default function TimetablePage() {
           <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
             <div className="flex items-center gap-4">
                  <Link href="/" passHref legacyBehavior>
-                    <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10 flex-shrink-0">
+                    <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground h-10 w-10 flex-shrink-0">
                          <ArrowLeft className="h-5 w-5" />
                          <span className="sr-only">Back to Calendar</span>
                      </Button>
@@ -415,7 +416,7 @@ export default function TimetablePage() {
                           htmlFor="icsFile"
                           className={cn(
                           buttonVariants({ variant: "outline" }),
-                          "w-full cursor-pointer flex items-center justify-center gap-2 h-10 border-primary text-primary hover:bg-primary/10"
+                          "w-full cursor-pointer flex items-center justify-center gap-2 h-10 border-primary text-primary hover:bg-primary/10 hover:text-primary-foreground"
                           )}
                       >
                           <FileUp className="mr-2 h-4 w-4" />
@@ -465,11 +466,11 @@ export default function TimetablePage() {
                  Week of {format(currentWeekStart, "MMMM do, yyyy")}
                </CardTitle>
                <div className="flex space-x-2">
-                 <Button variant="outline" size="icon" onClick={goToPreviousWeek} disabled={!allEvents} className="border-primary text-primary hover:bg-primary/10">
+                 <Button variant="outline" size="icon" onClick={goToPreviousWeek} disabled={!allEvents} className="border-primary text-primary hover:bg-primary/10 hover:text-primary-foreground">
                    <ChevronLeft className="h-4 w-4" />
                    <span className="sr-only">Previous Week</span>
                  </Button>
-                 <Button variant="outline" size="icon" onClick={goToNextWeek} disabled={!allEvents} className="border-primary text-primary hover:bg-primary/10">
+                 <Button variant="outline" size="icon" onClick={goToNextWeek} disabled={!allEvents} className="border-primary text-primary hover:bg-primary/10 hover:text-primary-foreground">
                    <ChevronRight className="h-4 w-4" />
                    <span className="sr-only">Next Week</span>
                  </Button>

@@ -610,7 +610,7 @@ export default function DetailedViewPage() {
       <header className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
-                  <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 h-10 w-10">
+                  <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground h-10 w-10">
                       <ArrowLeft className="h-5 w-5" />
                       <span className="sr-only">Back to Main Calendar</span>
                   </Button>
@@ -620,27 +620,27 @@ export default function DetailedViewPage() {
                 )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10">
+            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground">
                 <Undo2 className="h-4 w-4" />
                 <span className="sr-only">Undo</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10">
+            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground">
                 <Redo2 className="h-4 w-4" />
                 <span className="sr-only">Redo</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground">
               <Save className="h-4 w-4 mr-2" />
               Save
             </Button>
-            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground">
               <Download className="h-4 w-4 mr-2" />
               Import
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground">
               <Sparkles className="h-4 w-4" />
               <span className="sr-only">AI Manager</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
+            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-primary-foreground">
               <Target className="h-4 w-4" />
               <span className="sr-only">View Goals</span>
             </Button>
