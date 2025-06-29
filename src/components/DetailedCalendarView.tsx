@@ -349,18 +349,18 @@ export function DetailedCalendarView({ tasks, onCreateTask, onEditTask, onDelete
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </header>
-      <div ref={scrollContainerRef} className="flex flex-grow overflow-auto">
+      <div ref={scrollContainerRef} className="flex flex-grow overflow-auto bg-background">
         <div className="w-14 text-[10px] text-center shrink-0">
           <div className="h-12 pb-4" />
           {timeSlots.map(time => <div key={time} className="h-[3.6rem] relative text-muted-foreground"><span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-background px-1 z-10">{time}</span></div>)}
         </div>
-        <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none">
+        <div ref={gridRef} className="grid grid-cols-7 flex-grow select-none bg-secondary/30">
           {days.map((day, dayIndex) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dailyTasks = tasksByDay[dateStr] || [];
             const isToday = isSameDay(day, new Date());
             return (
-              <div key={dateStr} className={cn("relative border-l", isToday && "bg-secondary/20")}>
+              <div key={dateStr} className={cn("relative border-l", isToday && "bg-background")}>
                 <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b">
                   <p className="text-xs font-medium">{format(day, 'EEE')}</p>
                   <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
