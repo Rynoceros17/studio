@@ -592,19 +592,21 @@ export default function DetailedViewPage() {
               </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10">
-                <Undo2 className="mr-2 h-4 w-4" /> Undo
+            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10">
+                <Undo2 className="h-4 w-4" />
+                <span className="sr-only">Undo</span>
             </Button>
-            <Button variant="outline" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10">
-                <Redo2 className="mr-2 h-4 w-4" /> Redo
+            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10">
+                <Redo2 className="h-4 w-4" />
+                <span className="sr-only">Redo</span>
             </Button>
             <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Save className="mr-2 h-4 w-4" />
-              Save Preset
+              Save
             </Button>
             <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Download className="mr-2 h-4 w-4" />
-              Import Preset
+              Import
             </Button>
             <Button variant="outline" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10">
               <Sparkles className="mr-2 h-4 w-4" />
