@@ -27,7 +27,7 @@ const SingleTaskSchema = z.object({
   description: z.string().nullable().describe("Include additional details ONLY if explicitly provided beyond the name and date/time. **This field MUST NOT contain any time information.** Time details must go in the startTime and endTime fields. If no extra details are given, this field MUST be an empty string or null."),
   startTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().describe("The start time in 24-hour HH:MM format. Extract from phrases like 'at 3pm' or 'from 2-4pm'. If a duration is given (e.g., 'for 2 hours'), calculate a start time. MUST be null if absolutely no time is specified."),
   endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().describe("The end time in 24-hour HH:MM format. If only a start time is given (e.g., 'at 3pm'), infer an end time 1 hour later. If a duration is given (e.g., 'from 2pm for 2 hours'), calculate the end time. MUST be null if absolutely no time is specified."),
-  recurring: z.boolean().describe("Set to `true` if the user's input for this task explicitly uses words like 'every week' or 'weekly'. Otherwise, this MUST be `false`. This field MUST always be present."),
+  recurring: z.boolean().describe("Set to `true` ONLY for single-day recurrences like 'every Tuesday'. For date ranges like 'every day this week', expand into individual tasks and set this to `false`. Otherwise, this MUST be `false`. This field MUST always be present."),
   highPriority: z.boolean().describe("Set to `true` if the user's input for this task explicitly uses words like 'important', 'priority', or 'urgent'. Otherwise, this MUST be `false`. This field MUST always be present."),
   color: z.string().regex(/^#col[1-6]$/).nullable().describe(`If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (these correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1'). Otherwise, this field MUST be null. This field MUST always be present.`)
 });
@@ -55,9 +55,10 @@ You must convert this query into an array of JSON objects.
 
 **CRITICAL RULES:**
 1.  **Current Date:** The current date is {{{currentDate}}}. When the user's query mentions 'today', you MUST use this value for the 'date' field. For 'tomorrow', use the day after. For 'yesterday', use the day before. This is your ONLY source for what "today" means.
-2.  **Field Integrity:** EACH task object in the output array MUST contain ALL of the following fields, even if the value is null or false: "name", "date", "description", "startTime", "endTime", "recurring", "highPriority", "color". DO NOT OMIT ANY FIELDS.
-3.  **Time Information:** All time-related information (like '3pm', 'from 2-4pm', 'for 2 hours') MUST be parsed into the \`startTime\` and \`endTime\` fields ONLY. The \`description\` field MUST NOT contain any time information.
-4.  **Strict JSON Output:** Your entire response must be ONLY the JSON array. Do not include any explanations, greetings, or other text outside of the JSON structure. If no tasks can be parsed, return an empty array \`[]\`.
+2.  **Date Expansion:** If a user specifies a date range like "every day this week", "from Monday to Friday", or "all next week", you MUST generate a separate, non-recurring task object for each individual day in that range. For "this week", assume the week starts on the Monday of the week containing \`currentDate\`. All properties (name, time, color, etc.) should be copied to each of these expanded tasks. The \`recurring\` field for these tasks MUST be \`false\`.
+3.  **Field Integrity:** EACH task object in the output array MUST contain ALL of the following fields, even if the value is null or false: "name", "date", "description", "startTime", "endTime", "recurring", "highPriority", "color". DO NOT OMIT ANY FIELDS.
+4.  **Time Information:** All time-related information (like '3pm', 'from 2-4pm', 'for 2 hours') MUST be parsed into the \`startTime\` and \`endTime\` fields ONLY. The \`description\` field MUST NOT contain any time information.
+5.  **Strict JSON Output:** Your entire response must be ONLY the JSON array. Do not include any explanations, greetings, or other text outside of the JSON structure. If no tasks can be parsed, return an empty array \`[]\`.
 
 **Field Definitions & Defaulting:**
 - "name": (String) A concise name for the task.
@@ -65,7 +66,7 @@ You must convert this query into an array of JSON objects.
 - "description": (String or Null) Include additional details ONLY if explicitly provided beyond the name and date/time. MUST NOT contain time info. If no details are given, this MUST be an empty string or null.
 - "startTime": (String 'HH:MM' or Null) The 24-hour start time. Infer from phrases like 'at 3pm' or 'from 2-4pm'. If only a start time is given, infer an end time 1 hour later. MUST be null if no time is specified.
 - "endTime": (String 'HH:MM' or Null) The 24-hour end time. MUST be null if no time is specified.
-- "recurring": (Boolean) Set to \`true\` if the task input uses words like 'every week' or 'weekly'. Otherwise, MUST be \`false\`.
+- "recurring": (Boolean) Set to \`true\` ONLY if the task input uses words like 'every week' or 'weekly' and applies to a single day (e.g., "every Saturday"). For ranges like "every day this week", you must expand them into individual tasks and set recurring to \`false\`. Otherwise, MUST be \`false\`.
 - "highPriority": (Boolean) Set to \`true\` if the task input uses words like 'important' or 'urgent'. Otherwise, MUST be \`false\`.
 - "color": (String tag like '#colX' or Null) If the user specifies a color tag from this list: ${availableColorTags.join(', ')}, include the exact tag (e.g., '#col1'). Otherwise, MUST be null.
 
@@ -109,6 +110,19 @@ Output (where dates are calculated from \`{{{currentDate}}}\`):
     "highPriority": false,
     "color": "#col2"
   }
+]
+
+**Example 3:**
+User Input: "Study every day this week from 4pm to 6pm"
+Output (assuming \`currentDate\` is within a week, expand to all 7 days of that week with the correct dates, starting from Monday):
+[
+  { "name": "Study", "date": "YYYY-MM-DD", "description": null, "startTime": "16:00", "endTime": "18:00", "recurring": false, "highPriority": false, "color": null },
+  { "name": "Study", "date": "YYYY-MM-DD", "description": null, "startTime": "16:00", "endTime": "18:00", "recurring": false, "highPriority": false, "color": null },
+  { "name": "Study", "date": "YYYY-MM-DD", "description": null, "startTime": "16:00", "endTime": "18:00", "recurring": false, "highPriority": false, "color": null },
+  { "name": "Study", "date": "YYYY-MM-DD", "description": null, "startTime": "16:00", "endTime": "18:00", "recurring": false, "highPriority": false, "color": null },
+  { "name": "Study", "date": "YYYY-MM-DD", "description": null, "startTime": "16:00", "endTime": "18:00", "recurring": false, "highPriority": false, "color": null },
+  { "name": "Study", "date": "YYYY-MM-DD", "description": null, "startTime": "16:00", "endTime": "18:00", "recurring": false, "highPriority": false, "color": null },
+  { "name": "Study", "date": "YYYY-MM-DD", "description": null, "startTime": "16:00", "endTime": "18:00", "recurring": false, "highPriority": false, "color": null }
 ]
 
 **Final Instruction:** Parse the user's query below. Remember to include EVERY field for EVERY task object.
