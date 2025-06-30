@@ -813,7 +813,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                 {isCurrentWeekVisible && timeMarkerTop !== null && (
                   <div
                     className="absolute left-0 right-0 h-0.5 bg-red-500 pointer-events-none"
-                    style={{ top: `${timeMarkerTop}rem`, zIndex: 30 }}
+                    style={{ top: `${timeMarkerTop}rem`, zIndex: 10 }}
                   >
                     <div className="absolute -left-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"></div>
                   </div>
