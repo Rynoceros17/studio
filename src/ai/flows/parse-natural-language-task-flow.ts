@@ -24,7 +24,7 @@ export type ParseNaturalLanguageTaskInput = z.infer<typeof ParseNaturalLanguageT
 const SingleTaskSchema = z.object({
   name: z.string().describe("A concise name for the task."),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format.").describe("The date for the task in YYYY-MM-DD format. When 'today' is mentioned, this MUST be the value of `currentDate`. Infer from other terms like 'tomorrow', 'next Monday', or specific dates."),
-  description: z.string().nullable().describe("Include additional details ONLY if explicitly provided beyond the name and date/time. **This field MUST NOT contain any time information.** Time details must go in the startTime and endTime fields. If no extra details are given, this field MUST be an empty string or null."),
+  description: z.string().nullable().describe("Include additional details ONLY if explicitly provided beyond the name and date/time. **This field MUST NOT contain any time information.** Time details must go in the startTime and endTime fields. If no extra details are given, this field MUST be null."),
   startTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().describe("The start time in 24-hour HH:MM format. Extract from phrases like 'at 3pm' or 'from 2-4pm'. If a duration is given (e.g., 'for 2 hours'), calculate a start time. MUST be null if absolutely no time is specified."),
   endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().describe("The end time in 24-hour HH:MM format. If only a start time is given (e.g., 'at 3pm'), infer an end time 1 hour later. If a duration is given (e.g., 'from 2pm for 2 hours'), calculate the end time. MUST be null if absolutely no time is specified."),
   recurring: z.boolean().describe("Set to `true` ONLY for single-day recurrences like 'every Tuesday'. For date ranges like 'every day this week', expand into individual tasks and set this to `false`. Otherwise, this MUST be `false`. This field MUST always be present."),
@@ -127,7 +127,8 @@ const parseNaturalLanguageTaskFlow = ai.defineFlow(
       .map(aiTask => ({
         name: aiTask.name, // Existence is guaranteed by filter
         date: aiTask.date, // Existence and format are guaranteed by filter
-        description: aiTask.description || null, // Default to null
+        // Check for the literal string "null" and convert it to the null value.
+        description: (aiTask.description && aiTask.description.toLowerCase() !== 'null') ? aiTask.description : null,
         startTime: aiTask.startTime || null,
         endTime: aiTask.endTime || null,
         recurring: aiTask.recurring ?? false,
