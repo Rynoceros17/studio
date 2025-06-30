@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
-import { addDays, subDays, startOfWeek, format, parseISO, isSameDay, isWithinInterval, endOfWeek, addMinutes, startOfDay } from 'date-fns';
+import { addDays, subDays, startOfWeek, format, parseISO, isSameDay, isWithinInterval, endOfWeek, addMinutes, startOfDay, differenceInMinutes } from 'date-fns';
 import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle, ArrowUpDown } from 'lucide-react';
 import type { Task, SingleTaskOutput } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -456,7 +456,8 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
 
     const updateLinePosition = () => {
       const now = new Date();
-      const minutes = now.getHours() * 60 + now.getMinutes();
+      const startOfToday = startOfDay(now);
+      const minutes = differenceInMinutes(now, startOfToday);
       const topRem = (minutes / 15) * 1.05; // 1.05rem per 15 minutes
       setTimeMarkerTop(topRem);
       return topRem;
