@@ -24,12 +24,12 @@ export type ParseNaturalLanguageTaskInput = z.infer<typeof ParseNaturalLanguageT
 const SingleTaskSchema = z.object({
   name: z.string().describe("A concise name for the task."),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format.").describe("The date for the task in YYYY-MM-DD format. When 'today' is mentioned, this MUST be the value of `currentDate`. Infer from other terms like 'tomorrow', 'next Monday', or specific dates."),
-  description: z.string().optional().nullable().describe("Include additional details ONLY if explicitly provided beyond the name and date/time. **This field MUST NOT contain any time information.** Time details must go in the startTime and endTime fields. If no extra details are given, this field should be an empty string or null."),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable().describe("The start time in 24-hour HH:MM format. Extract from phrases like 'at 3pm' or 'from 2-4pm'. If a duration is given (e.g., 'for 2 hours'), calculate a start time. MUST be null if absolutely no time is specified."),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable().describe("The end time in 24-hour HH:MM format. If only a start time is given (e.g., 'at 3pm'), infer an end time 1 hour later. If a duration is given (e.g., 'from 2pm for 2 hours'), calculate the end time. MUST be null if absolutely no time is specified."),
+  description: z.string().nullable().describe("Include additional details ONLY if explicitly provided beyond the name and date/time. **This field MUST NOT contain any time information.** Time details must go in the startTime and endTime fields. If no extra details are given, this field MUST be an empty string or null."),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().describe("The start time in 24-hour HH:MM format. Extract from phrases like 'at 3pm' or 'from 2-4pm'. If a duration is given (e.g., 'for 2 hours'), calculate a start time. MUST be null if absolutely no time is specified."),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().describe("The end time in 24-hour HH:MM format. If only a start time is given (e.g., 'at 3pm'), infer an end time 1 hour later. If a duration is given (e.g., 'from 2pm for 2 hours'), calculate the end time. MUST be null if absolutely no time is specified."),
   recurring: z.boolean().describe("Set to `true` if the user's input for this task explicitly uses words like 'every week' or 'weekly'. Otherwise, this MUST be `false`. This field MUST always be present."),
   highPriority: z.boolean().describe("Set to `true` if the user's input for this task explicitly uses words like 'important', 'priority', or 'urgent'. Otherwise, this MUST be `false`. This field MUST always be present."),
-  color: z.string().regex(/^#col[1-6]$/).optional().nullable().describe(`If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (these correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1'). Otherwise, this field MUST be null. This field MUST always be present.`)
+  color: z.string().regex(/^#col[1-6]$/).nullable().describe(`If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (these correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1'). Otherwise, this field MUST be null. This field MUST always be present.`)
 });
 export type SingleTaskOutput = z.infer<typeof SingleTaskSchema>;
 
@@ -55,14 +55,14 @@ You must convert this query into an array of JSON objects.
 
 **CRITICAL RULES:**
 1.  **Current Date:** The current date is {{{currentDate}}}. When the user's query mentions 'today', you MUST use this value for the 'date' field. For 'tomorrow', use the day after. For 'yesterday', use the day before. This is your ONLY source for what "today" means.
-2.  **Field Integrity:** EACH task object in the output array MUST contain ALL of the following fields, even if the value is null or false: "name", "date", "description", "startTime", "endTime", "recurring", "highPriority", "color".
+2.  **Field Integrity:** EACH task object in the output array MUST contain ALL of the following fields, even if the value is null or false: "name", "date", "description", "startTime", "endTime", "recurring", "highPriority", "color". DO NOT OMIT ANY FIELDS.
 3.  **Time Information:** All time-related information (like '3pm', 'from 2-4pm', 'for 2 hours') MUST be parsed into the \`startTime\` and \`endTime\` fields ONLY. The \`description\` field MUST NOT contain any time information.
 4.  **Strict JSON Output:** Your entire response must be ONLY the JSON array. Do not include any explanations, greetings, or other text outside of the JSON structure. If no tasks can be parsed, return an empty array \`[]\`.
 
-**Field Definitions:**
+**Field Definitions & Defaulting:**
 - "name": (String) A concise name for the task.
 - "date": (String) The date for the task in "YYYY-MM-DD" format. If the user says 'today', this MUST be exactly \`{{{currentDate}}}\`. Infer from terms like "tomorrow" or "next Monday".
-- "description": (String or Null) Include additional details ONLY if explicitly provided beyond the name and date/time. MUST NOT contain time info. If no details are given, this must be an empty string or null.
+- "description": (String or Null) Include additional details ONLY if explicitly provided beyond the name and date/time. MUST NOT contain time info. If no details are given, this MUST be an empty string or null.
 - "startTime": (String 'HH:MM' or Null) The 24-hour start time. Infer from phrases like 'at 3pm' or 'from 2-4pm'. If only a start time is given, infer an end time 1 hour later. MUST be null if no time is specified.
 - "endTime": (String 'HH:MM' or Null) The 24-hour end time. MUST be null if no time is specified.
 - "recurring": (Boolean) Set to \`true\` if the task input uses words like 'every week' or 'weekly'. Otherwise, MUST be \`false\`.
@@ -76,7 +76,7 @@ Output (where tomorrow's date is calculated from \`{{{currentDate}}}\`):
   {
     "name": "Call John",
     "date": "YYYY-MM-DD",
-    "description": "",
+    "description": null,
     "startTime": "15:00",
     "endTime": "16:00",
     "recurring": false,
@@ -92,7 +92,7 @@ Output (where dates are calculated from \`{{{currentDate}}}\`):
   {
     "name": "Dentist appointment",
     "date": "YYYY-MM-DD",
-    "description": "",
+    "description": null,
     "startTime": "11:00",
     "endTime": "12:00",
     "recurring": false,
@@ -102,7 +102,7 @@ Output (where dates are calculated from \`{{{currentDate}}}\`):
   {
     "name": "Grocery shopping",
     "date": "YYYY-MM-DD",
-    "description": "",
+    "description": null,
     "startTime": "10:00",
     "endTime": "11:00",
     "recurring": true,
@@ -110,6 +110,8 @@ Output (where dates are calculated from \`{{{currentDate}}}\`):
     "color": "#col2"
   }
 ]
+
+**Final Instruction:** Parse the user's query below. Remember to include EVERY field for EVERY task object.
 
 User Input: {{{query}}}
 `,
