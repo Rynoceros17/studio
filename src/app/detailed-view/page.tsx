@@ -570,10 +570,6 @@ export default function DetailedViewPage() {
     setIsAiProcessing(true);
     setChatInput('');
 
-    if (pendingAiTasks.length > 0) {
-        setPendingAiTasks([]);
-    }
-
     try {
         const parsedTasks = await parseNaturalLanguageTask({ query: userMessage.content as string });
 
