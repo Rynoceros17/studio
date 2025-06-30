@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2, Undo2, Redo2 } from 'lucide-react';
+import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2, Undo2, Redo2, Bot } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { Task, Goal, WeekPreset, SingleTaskOutput } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
@@ -49,8 +49,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
+import { chatWithAssistant } from '@/ai/flows/chat-assistant-flow';
 import { colorTagToHexMap } from '@/lib/color-map';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
+interface ChatMessage {
+    id: string;
+    role: 'user' | 'ai';
+    content: React.ReactNode;
+}
 
 export default function DetailedViewPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -128,11 +135,13 @@ export default function DetailedViewPage() {
   const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false);
   const [isAiSheetOpen, setIsAiSheetOpen] = useState(false);
 
-  // AI Task state
+  // AI Chat State
   const [chatInput, setChatInput] = useState('');
-  const [isParsingTask, setIsParsingTask] = useState(false);
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [pendingAiTasks, setPendingAiTasks] = useState<SingleTaskOutput[]>([]);
-  const [isAiConfirmOpen, setIsAiConfirmOpen] = useState(false);
+  const chatScrollAreaRef = useRef<HTMLDivElement>(null);
+
 
   // Preset state
   const [presets, setPresets] = useLocalStorage<WeekPreset[]>('weekwise-presets', []);
@@ -149,6 +158,15 @@ export default function DetailedViewPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (chatScrollAreaRef.current) {
+      chatScrollAreaRef.current.scrollTo({
+        top: chatScrollAreaRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [chatHistory]);
 
   useEffect(() => {
       if (!isClient) return;
@@ -327,7 +345,7 @@ export default function DetailedViewPage() {
         return updatedTasks;
     });
 
-    if (!isParsingTask) {
+    if (!isAiProcessing) {
         toast({
             title: "Task Added",
             description: `"${newTask.name}" added successfully.`,
@@ -336,7 +354,7 @@ export default function DetailedViewPage() {
     
     setIsFormOpen(false);
     setPrefilledTaskData(null);
-  }, [setTasks, toast, isParsingTask]);
+  }, [setTasks, toast, isAiProcessing]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
       setTasks(prevTasks => {
@@ -465,55 +483,86 @@ export default function DetailedViewPage() {
             });
             tasksAddedCount++;
         });
-
-        if (tasksAddedCount > 0) {
-            toast({
-                title: "Tasks Confirmed",
-                description: `${tasksAddedCount} task(s) have been added to your calendar.`,
-            });
-        }
+        
+        const confirmMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'ai',
+            content: `Great! I've added ${tasksAddedCount} task(s) to your calendar.`
+        };
+        setChatHistory(prev => [...prev.filter(m => m.role !== 'ai' || !m.content?.toString().includes('Confirm')), confirmMessage]);
         setPendingAiTasks([]);
-        setIsAiConfirmOpen(false);
-    }, [pendingAiTasks, addTask, toast]);
+    }, [pendingAiTasks, addTask]);
 
     const handleCancelAiTasks = useCallback(() => {
+        const cancelMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'ai',
+            content: "Okay, I've discarded those tasks. What would you like to do instead?"
+        };
+        setChatHistory(prev => [...prev.filter(m => m.role !== 'ai' || !m.content?.toString().includes('Confirm')), cancelMessage]);
         setPendingAiTasks([]);
-        setIsAiConfirmOpen(false);
-        toast({
-            title: "AI Suggestions Canceled",
-            description: "The suggested tasks have been discarded.",
-        });
-    }, [toast]);
+    }, []);
 
   const handleSendChatMessage = async () => {
-    if (chatInput.trim() && !isParsingTask) {
-      setIsParsingTask(true);
-      setPendingAiTasks([]);
-      try {
-        const parsedTasksArray: SingleTaskOutput[] = await parseNaturalLanguageTask({ query: chatInput.trim() });
+    if (!chatInput.trim() || isAiProcessing) return;
 
-        if (parsedTasksArray && parsedTasksArray.length > 0) {
-            setPendingAiTasks(parsedTasksArray);
-            setIsAiConfirmOpen(true);
-            setChatInput('');
-            setIsAiSheetOpen(false); // Close sheet on success
+    const userMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: chatInput.trim(),
+    };
+    setChatHistory(prev => [...prev, userMessage]);
+    setIsAiProcessing(true);
+    setChatInput('');
+
+    if (pendingAiTasks.length > 0) {
+        setPendingAiTasks([]);
+    }
+
+    try {
+        const parsedTasks = await parseNaturalLanguageTask({ query: userMessage.content as string });
+
+        if (parsedTasks && parsedTasks.length > 0) {
+            setPendingAiTasks(parsedTasks);
+            const summary = parsedTasks.map(t =>
+                `- ${t.name} on ${format(parseISOStrict(t.date)!, 'MMM d')}${t.startTime ? ` at ${t.startTime}` : ''}`
+            ).join('\n');
+
+            const aiResponse: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'ai',
+                content: (
+                    <div className="space-y-2">
+                        <p>OK! I've prepared the following task(s) for you:</p>
+                        <pre className="whitespace-pre-wrap font-sans text-sm bg-muted p-2 rounded-md border">{summary}</pre>
+                        <p>Should I add them to your calendar?</p>
+                        <div className="flex gap-2 pt-2">
+                            <Button size="sm" onClick={handleConfirmAiTasks}>Confirm</Button>
+                            <Button size="sm" variant="outline" onClick={handleCancelAiTasks}>Cancel</Button>
+                        </div>
+                    </div>
+                ),
+            };
+            setChatHistory(prev => [...prev, aiResponse]);
         } else {
-             toast({
-                title: "No Tasks Detected",
-                description: "The AI couldn't identify any tasks in your message. Try being more specific.",
-                variant: "destructive",
-            });
+            const response = await chatWithAssistant({ message: userMessage.content as string });
+            const aiResponse: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'ai',
+                content: response.reply,
+            };
+            setChatHistory(prev => [...prev, aiResponse]);
         }
-      } catch (error: any) {
-        console.error("Error parsing task with AI:", error);
-        toast({
-          title: "AI Processing Error",
-          description: error.message || "Could not process your request. Please try again or add manually.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsParsingTask(false);
-      }
+    } catch (error: any) {
+        console.error("Error in AI chat:", error);
+        const errorResponse: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'ai',
+            content: `Sorry, an error occurred: ${error.message || 'Please try again.'}`
+        };
+        setChatHistory(prev => [...prev, errorResponse]);
+    } finally {
+        setIsAiProcessing(false);
     }
   };
 
@@ -622,7 +671,7 @@ export default function DetailedViewPage() {
       <header className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
-                  <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground h-10 w-10">
+                  <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 dark:text-primary dark:hover:text-white dark:hover:bg-primary/10 h-10 w-10">
                       <ArrowLeft className="h-5 w-5" />
                       <span className="sr-only">Back to Main Calendar</span>
                   </Button>
@@ -632,27 +681,27 @@ export default function DetailedViewPage() {
                 )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10 dark:text-primary dark:hover:text-white dark:hover:bg-primary/10">
                 <Undo2 className="h-4 w-4" />
                 <span className="sr-only">Undo</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10 dark:text-primary dark:hover:text-white dark:hover:bg-primary/10">
                 <Redo2 className="h-4 w-4" />
                 <span className="sr-only">Redo</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:text-primary dark:hover:text-white dark:hover:bg-primary/10">
               <Save className="h-4 w-4 mr-2" />
               Save
             </Button>
-            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:text-primary dark:hover:text-white dark:hover:bg-primary/10">
               <Download className="h-4 w-4 mr-2" />
               Import
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:text-primary dark:hover:text-white dark:hover:bg-primary/10">
               <Sparkles className="h-4 w-4" />
               <span className="sr-only">AI Manager</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:text-primary dark:hover:text-white dark:hover:bg-primary/10">
               <Target className="h-4 w-4" />
               <span className="sr-only">View Goals</span>
             </Button>
@@ -676,34 +725,64 @@ export default function DetailedViewPage() {
 
       {/* AI Manager Sheet */}
       <Sheet open={isAiSheetOpen} onOpenChange={setIsAiSheetOpen}>
-        <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+        <SheetContent side="right" className="w-[300px] sm:w-[450px] p-0 flex flex-col">
             <SheetHeader className="p-4 border-b shrink-0">
                 <SheetTitle className="text-primary flex items-center gap-2">
                    <Sparkles className="h-6 w-6" />
-                   AI Manager
+                   AI Assistant
                 </SheetTitle>
             </SheetHeader>
-            <div className="p-4 space-y-4">
-                <p className="text-sm text-muted-foreground">
-                    Describe your week and let the AI assistant organize it for you. You can list multiple tasks, appointments, and recurring events.
-                </p>
-                <Card className="shadow-sm">
-                    <CardContent className="p-3 flex flex-col space-y-2">
-                        <Textarea
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="Describe your week and let the AI organize it! e.g., 'Team meeting Monday 10am, Dentist appointment Wednesday 3pm, Weekly gym session Friday at 6pm #col3'"
-                            className="min-h-[120px] text-sm"
-                            onKeyPress={handleChatKeyPress}
-                            disabled={isParsingTask}
-                            maxLength={500}
-                        />
-                        <Button onClick={handleSendChatMessage} className="w-full" disabled={isParsingTask || !chatInput.trim()}>
-                            {isParsingTask ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SendHorizonal className="mr-2 h-4 w-4" />}
-                            {isParsingTask ? "Parsing..." : "Add to Calendar"}
-                        </Button>
-                    </CardContent>
-                </Card>
+            <ScrollArea className="flex-grow" ref={chatScrollAreaRef}>
+                <div className="p-4 space-y-4">
+                    {chatHistory.map((msg) => (
+                        <div key={msg.id} className={cn("flex items-start gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                            {msg.role === 'ai' && (
+                                <Avatar className="h-8 w-8 border">
+                                    <AvatarFallback><Bot className="h-5 w-5 text-primary" /></AvatarFallback>
+                                </Avatar>
+                            )}
+                            <div className={cn(
+                                "max-w-[85%] rounded-lg p-3 text-sm",
+                                msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                            )}>
+                                {typeof msg.content === 'string' ? <p>{msg.content}</p> : msg.content}
+                            </div>
+                        </div>
+                    ))}
+                    {isAiProcessing && (
+                         <div className="flex items-start gap-3 justify-start">
+                            <Avatar className="h-8 w-8 border">
+                                <AvatarFallback><Bot className="h-5 w-5 text-primary" /></AvatarFallback>
+                            </Avatar>
+                             <div className="bg-muted rounded-lg p-3 text-sm">
+                                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                             </div>
+                         </div>
+                    )}
+                </div>
+            </ScrollArea>
+             <div className="p-4 border-t bg-background">
+                <div className="relative">
+                    <Textarea
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="Describe your week... e.g., 'Team meeting Monday 10am'"
+                        className="pr-16 min-h-[60px]"
+                        onKeyPress={handleChatKeyPress}
+                        disabled={isAiProcessing}
+                        maxLength={500}
+                    />
+                    <Button
+                        type="submit"
+                        size="icon"
+                        className="absolute right-2 bottom-2 h-10 w-10"
+                        onClick={handleSendChatMessage}
+                        disabled={isAiProcessing || !chatInput.trim()}
+                    >
+                        <SendHorizonal className="h-5 w-5" />
+                        <span className="sr-only">Send</span>
+                    </Button>
+                </div>
             </div>
         </SheetContent>
       </Sheet>
@@ -794,22 +873,6 @@ export default function DetailedViewPage() {
                     >
                         Delete All Occurrences
                     </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
-        {/* AI Task Confirmation Dialog */}
-        <AlertDialog open={isAiConfirmOpen} onOpenChange={setIsAiConfirmOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Confirm AI Tasks</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        The AI suggests adding {pendingAiTasks.length} task(s) to your calendar. Do you want to proceed?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={handleCancelAiTasks}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmAiTasks}>Confirm</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

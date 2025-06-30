@@ -1,9 +1,10 @@
 
 'use server';
 /**
- * @fileOverview A Genkit flow for a general chat assistant.
+ * @fileOverview A Genkit flow for a general chat assistant. This flow is intended as a fallback
+ * when the primary task parsing flow fails to identify any tasks.
  *
- * - chatWithAssistant - A function that takes a user's message and returns the AI's response.
+ * - chatWithAssistant - A function that takes a user's message and returns a helpful AI response.
  * - ChatAssistantInput - The input type for the flow.
  * - ChatAssistantOutput - The return type for the flow.
  */
@@ -26,16 +27,6 @@ export async function chatWithAssistant(input: ChatAssistantInput): Promise<Chat
   return chatAssistantFlow(input);
 }
 
-const chatPrompt = ai.definePrompt({
-  name: 'chatAssistantPrompt',
-  input: { schema: ChatAssistantInputSchema },
-  output: { schema: ChatAssistantOutputSchema },
-  prompt: `You are a helpful AI assistant. Respond to the user's message.
-
-User: {{{message}}}
-AI:`,
-});
-
 const chatAssistantFlow = ai.defineFlow(
   {
     name: 'chatAssistantFlow',
@@ -44,17 +35,21 @@ const chatAssistantFlow = ai.defineFlow(
   },
   async (input) => {
     const llmResponse = await ai.generate({
-        prompt: input.message, // Using the direct message for now, can be refined
-        model: 'googleai/gemini-2.0-flash', // Ensure this model is appropriate
+        prompt: `You are a helpful AI assistant for a calendar app. Your primary role is to help users create tasks.
+        Another AI, responsible for parsing structured tasks, was unable to understand the user's request.
+        Your job is to respond to the user in a friendly and helpful manner.
+
+        Politely inform the user that you couldn't identify any specific tasks in their message.
+        Suggest they try rephrasing their request, perhaps including more specific details like dates, times, or task names.
+        Keep your response concise and helpful.
+
+        User's original message: "${input.message}"`,
+        model: 'googleai/gemini-2.0-flash',
         config: {
-            // Add any specific configurations if needed, e.g., temperature
+            temperature: 0.5,
         },
-        // If using a structured prompt like above, you'd call it:
-        // const { output } = await chatPrompt(input);
-        // return { reply: output?.reply || "Sorry, I couldn't generate a response." };
     });
 
-    // For ai.generate with simple prompt:
-    return { reply: llmResponse.text || "Sorry, I couldn't generate a response." };
+    return { reply: llmResponse.text };
   }
 );
