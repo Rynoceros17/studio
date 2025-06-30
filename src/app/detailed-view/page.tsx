@@ -493,15 +493,43 @@ export default function DetailedViewPage() {
         setPendingAiTasks([]);
     }, [pendingAiTasks, addTask]);
 
-    const handleCancelAiTasks = useCallback(() => {
-        const cancelMessage: ChatMessage = {
-            id: crypto.randomUUID(),
-            role: 'ai',
-            content: "Okay, I've discarded those tasks. What would you like to do instead?"
-        };
-        setChatHistory(prev => [...prev.filter(m => m.role !== 'ai' || !m.content?.toString().includes('Confirm')), cancelMessage]);
+    const handleCancelAiTasks = useCallback(async () => {
+        setIsAiProcessing(true);
+        const userMessageContent = (chatHistory.findLast(m => m.role === 'user')?.content as string) || '';
+        const rejectedTasksSummary = pendingAiTasks.map(t =>
+            `- ${t.name} on ${format(parseISOStrict(t.date)!, 'MMM d')}${t.startTime ? ` at ${t.startTime}` : ''}`
+        ).join('\n');
+        
+        setChatHistory(prev => prev.filter(m => m.role !== 'ai' || !m.content?.toString().includes('Confirm')));
         setPendingAiTasks([]);
-    }, []);
+
+        try {
+            const response = await chatWithAssistant({
+                message: 'User cancelled task creation.',
+                cancellationContext: {
+                    originalQuery: userMessageContent,
+                    rejectedTasksSummary: rejectedTasksSummary
+                }
+            });
+
+            const aiResponse: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'ai',
+                content: response.reply,
+            };
+            setChatHistory(prev => [...prev, aiResponse]);
+        } catch (error: any) {
+            console.error("Error getting AI cancellation response:", error);
+            const errorResponse: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'ai',
+                content: "Okay, I've discarded those tasks. What would you like to do next?"
+            };
+            setChatHistory(prev => [...prev, errorResponse]);
+        } finally {
+            setIsAiProcessing(false);
+        }
+    }, [chatHistory, pendingAiTasks]);
 
   const handleSendChatMessage = async () => {
     if (!chatInput.trim() || isAiProcessing) return;

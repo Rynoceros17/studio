@@ -49,30 +49,27 @@ const parseTaskPrompt = ai.definePrompt({
   name: 'parseNaturalLanguageTaskPrompt',
   input: {schema: ParseNaturalLanguageTaskInputSchema.extend({currentDate: z.string()})},
   output: {schema: ParseNaturalLanguageTaskOutputSchema},
-  prompt: `You are an intelligent assistant that helps parse user requests to create calendar tasks from a single query which might contain multiple distinct tasks.
-The current date is {{{currentDate}}}. This is the ONLY source for what "today" means.
-Convert the user's query into an array of JSON objects. Each object in the array MUST represent a distinct task and MUST have the following fields: "name", "date", "description", "startTime", "endTime", "recurring", "highPriority", and "color".
+  prompt: `You are an intelligent assistant that parses user requests to create calendar tasks.
+The user will provide a query, which may contain multiple distinct tasks.
+You must convert this query into an array of JSON objects.
 
-**CRITICAL RULE: When the user's query contains the word 'today', you MUST use the value of \`{{{currentDate}}}\` for the 'date' field in the output JSON. Do not guess or use any other date.**
-For 'tomorrow', it must be the day after \`{{{currentDate}}}\`.
-For 'yesterday', it must be the day before \`{{{currentDate}}}\`.
+**CRITICAL RULES:**
+1.  **Current Date:** The current date is {{{currentDate}}}. When the user's query mentions 'today', you MUST use this value for the 'date' field. For 'tomorrow', use the day after. For 'yesterday', use the day before. This is your ONLY source for what "today" means.
+2.  **Field Integrity:** EACH task object in the output array MUST contain ALL of the following fields, even if the value is null or false: "name", "date", "description", "startTime", "endTime", "recurring", "highPriority", "color".
+3.  **Time Information:** All time-related information (like '3pm', 'from 2-4pm', 'for 2 hours') MUST be parsed into the \`startTime\` and \`endTime\` fields ONLY. The \`description\` field MUST NOT contain any time information.
+4.  **Strict JSON Output:** Your entire response must be ONLY the JSON array. Do not include any explanations, greetings, or other text outside of the JSON structure. If no tasks can be parsed, return an empty array \`[]\`.
 
+**Field Definitions:**
 - "name": (String) A concise name for the task.
-- "date": (String) The date for the task in "YYYY-MM-DD" format. If the user says 'today', this MUST be exactly \`{{{currentDate}}}\`. Infer this from other terms like "tomorrow", "next Monday", or specific dates relative to \`{{{currentDate}}}\`.
-- "description": (String or Null) Include additional details ONLY if explicitly provided beyond the name and date/time. **This field MUST NOT contain any time information.** Time details must go in the startTime and endTime fields. If no extra details are given, this field should be an empty string or null.
-- "startTime": (String 'HH:MM' or Null) The start time in 24-hour HH:MM format. Extract from phrases like 'at 3pm' or 'from 2-4pm'. If a duration is given (e.g., 'for 2 hours'), calculate a start time. MUST be null if absolutely no time is specified.
-- "endTime": (String 'HH:MM' or Null) The end time in 24-hour HH:MM format. If only a start time is given (e.g., 'at 3pm'), infer an end time 1 hour later. If a duration is given (e.g., 'from 2pm for 2 hours'), calculate the end time. MUST be null if absolutely no time is specified.
-- "recurring": (Boolean) Set to \`true\` if the user's input for this task explicitly uses words like 'every week' or 'weekly'. Otherwise, this MUST be \`false\`.
-- "highPriority": (Boolean) Set to \`true\` if the user's input for this task explicitly uses words like 'important', 'priority', or 'urgent'. Otherwise, this MUST be \`false\`.
-- "color": (String tag like '#colX' or Null) If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (these correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1'). Otherwise, this field MUST be null.
+- "date": (String) The date for the task in "YYYY-MM-DD" format. If the user says 'today', this MUST be exactly \`{{{currentDate}}}\`. Infer from terms like "tomorrow" or "next Monday".
+- "description": (String or Null) Include additional details ONLY if explicitly provided beyond the name and date/time. MUST NOT contain time info. If no details are given, this must be an empty string or null.
+- "startTime": (String 'HH:MM' or Null) The 24-hour start time. Infer from phrases like 'at 3pm' or 'from 2-4pm'. If only a start time is given, infer an end time 1 hour later. MUST be null if no time is specified.
+- "endTime": (String 'HH:MM' or Null) The 24-hour end time. MUST be null if no time is specified.
+- "recurring": (Boolean) Set to \`true\` if the task input uses words like 'every week' or 'weekly'. Otherwise, MUST be \`false\`.
+- "highPriority": (Boolean) Set to \`true\` if the task input uses words like 'important' or 'urgent'. Otherwise, MUST be \`false\`.
+- "color": (String tag like '#colX' or Null) If the user specifies a color tag from this list: ${availableColorTags.join(', ')}, include the exact tag (e.g., '#col1'). Otherwise, MUST be null.
 
-If the query contains multiple tasks, create a separate JSON object for each task in the array.
-If the query contains only one task, return an array with a single JSON object.
-If no tasks can be parsed, return an empty array.
-
-Strictly adhere to the JSON output format specified. Do not add any extra explanations or text outside the JSON array.
-
-Example 1:
+**Example 1:**
 User Input: "Important: Remind me to call John tomorrow from 3pm to 4pm with #col1"
 Output (where tomorrow's date is calculated from \`{{{currentDate}}}\`):
 [
@@ -88,7 +85,7 @@ Output (where tomorrow's date is calculated from \`{{{currentDate}}}\`):
   }
 ]
 
-Example 2:
+**Example 2:**
 User Input: "Dentist appointment next Tuesday at 11am and then Weekly grocery shopping on Saturday at 10am use #col2"
 Output (where dates are calculated from \`{{{currentDate}}}\`):
 [
@@ -114,26 +111,7 @@ Output (where dates are calculated from \`{{{currentDate}}}\`):
   }
 ]
 
-Example 3 (Task for "today"):
-User Input: "Schedule a team sync today from 2pm to 2:30pm #col4"
-Output:
-[
-  {
-    "name": "Team sync",
-    "date": "{{{currentDate}}}",
-    "description": "",
-    "startTime": "14:00",
-    "endTime": "14:30",
-    "recurring": false,
-    "highPriority": false,
-    "color": "#col4"
-  }
-]
-
-
 User Input: {{{query}}}
-Ensure your entire response is ONLY the JSON array. EACH task object in the array MUST contain all fields: "name", "date", "description", "startTime", "endTime", "recurring", "highPriority", and "color".
-Remember: if 'today' is mentioned, the date MUST be '{{{currentDate}}}'.
 `,
 });
 
