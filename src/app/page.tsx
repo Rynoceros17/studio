@@ -15,7 +15,7 @@ import {
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
-import type { Task, Goal, UpcomingItem } from '@/lib/types';
+import type { Task, Goal, UpcomingItem, SingleTaskOutput } from '@/lib/types';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -47,6 +47,7 @@ import {
   SheetTitle as SheetDialogTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { ToastAction } from "@/components/ui/toast";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
@@ -56,7 +57,6 @@ import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, Layou
 import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
-import type { SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { colorTagToHexMap } from '@/lib/color-map';
 import { db } from '@/lib/firebase/firebase';
@@ -99,6 +99,7 @@ export default function Home() {
 
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
+  const [pendingAiTasks, setPendingAiTasks] = useState<SingleTaskOutput[]>([]);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -626,56 +627,59 @@ export default function Home() {
     });
   }, [tasks, goals, isClient]);
 
+  const confirmAiTasks = useCallback(() => {
+    let tasksAddedCount = 0;
+    pendingAiTasks.forEach(parsedTask => {
+        const taskDate = parseISOStrict(parsedTask.date);
+        if (!taskDate || !isValid(taskDate)) {
+            console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
+            return;
+        }
+
+        const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
+          ? colorTagToHexMap[parsedTask.color]
+          : colorTagToHexMap['#col1'];
+
+        addTask({
+            name: parsedTask.name || "Unnamed Task",
+            date: parsedTask.date,
+            description: parsedTask.description || null,
+            recurring: parsedTask.recurring ?? false,
+            highPriority: parsedTask.highPriority ?? false,
+            color: finalColor,
+            startTime: parsedTask.startTime || null,
+            endTime: parsedTask.endTime || null,
+            details: '',
+            dueDate: undefined,
+            exceptions: []
+        });
+        tasksAddedCount++;
+    });
+    setPendingAiTasks([]); // Clear the pending tasks
+    
+    if (tasksAddedCount > 0) {
+        toast({
+            title: "Tasks Confirmed",
+            description: `${tasksAddedCount} task(s) have been added to your calendar.`,
+        });
+    }
+  }, [pendingAiTasks, addTask, toast]);
+
   const handleSendChatMessage = async () => {
     if (chatInput.trim() && !isParsingTask) {
       setIsParsingTask(true);
+      setPendingAiTasks([]); // Clear previous pending tasks
       try {
         const parsedTasksArray: SingleTaskOutput[] = await parseNaturalLanguageTask({ query: chatInput.trim() });
 
         if (parsedTasksArray && parsedTasksArray.length > 0) {
-            let tasksAddedCount = 0;
-            parsedTasksArray.forEach(parsedTask => {
-                const taskDate = parseISOStrict(parsedTask.date);
-                if (!taskDate || !isValid(taskDate)) {
-                    console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
-                    return;
-                }
-
-                const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
-                  ? colorTagToHexMap[parsedTask.color]
-                  : colorTagToHexMap['#col1'];
-
-
-                addTask({
-                    name: parsedTask.name || "Unnamed Task",
-                    date: parsedTask.date,
-                    description: parsedTask.description || null,
-                    recurring: parsedTask.recurring ?? false,
-                    highPriority: parsedTask.highPriority ?? false,
-                    color: finalColor,
-                    startTime: parsedTask.startTime || null,
-                    endTime: parsedTask.endTime || null,
-                    details: '',
-                    dueDate: undefined,
-                    exceptions: []
-                });
-                tasksAddedCount++;
+            setPendingAiTasks(parsedTasksArray);
+            toast({
+                title: "Confirm AI Tasks",
+                description: `The AI suggests adding ${parsedTasksArray.length} task(s).`,
+                action: <ToastAction altText="Confirm" onClick={confirmAiTasks}>Confirm</ToastAction>,
+                duration: 15000, // Give user 15s to confirm
             });
-
-            if (tasksAddedCount > 0) {
-                toast({
-                    title: tasksAddedCount === 1 ? "Task Added by AI" : `${tasksAddedCount} Tasks Added by AI`,
-                    description: tasksAddedCount === 1
-                        ? `Task "${parsedTasksArray.find(pt => pt.name)?.name || 'Unnamed Task'}" added to your calendar.`
-                        : `${tasksAddedCount} tasks parsed and added to your calendar.`,
-                });
-            } else {
-                 toast({
-                    title: "AI Parsing Issue",
-                    description: "The AI processed your request, but no valid tasks could be added. Please check your input or try rephrasing.",
-                    variant: "destructive",
-                });
-            }
             setChatInput('');
         } else {
              toast({
@@ -864,7 +868,7 @@ export default function Home() {
           <div className="absolute left-4 top-1/2 -translate-y-1/2">
             <Button
               variant="ghost"
-              className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10"
+              className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground"
               aria-label="Show welcome message"
               onClick={() => setIsWelcomeOpen(true)}
             >
@@ -974,6 +978,7 @@ export default function Home() {
         <div className="w-full max-w-7xl space-y-4">
           <CalendarView
             tasks={tasks}
+            pendingAiTasks={pendingAiTasks}
             requestDeleteTask={requestDeleteTask}
             updateTaskOrder={updateTaskOrder}
             toggleTaskCompletion={toggleTaskCompletion}

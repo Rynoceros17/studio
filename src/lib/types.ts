@@ -1,4 +1,5 @@
 
+
 export interface Task {
   id: string;
   name: string;
@@ -77,3 +78,16 @@ export interface WeekPreset {
   name: string;
   tasks: Array<Omit<Task, 'id' | 'date'> & { dayOfWeek: number }>; // 0=Mon, 6=Sun
 }
+
+// Type alias from Zod schema in parse-natural-language-task-flow.ts
+// This represents a task that has been parsed by the AI but not yet saved.
+export type SingleTaskOutput = {
+    name: string;
+    date: string;
+    description: string | null | undefined;
+    startTime: string | null | undefined;
+    endTime: string | null | undefined;
+    recurring: boolean;
+    highPriority: boolean;
+    color: string | null | undefined;
+};

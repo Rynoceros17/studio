@@ -51,7 +51,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Task } from '@/lib/types';
+import type { Task, SingleTaskOutput } from '@/lib/types';
 import { cn, truncateText, getMaxLength, parseISOStrict } from '@/lib/utils';
 
 import { EditTaskDialog } from './EditTaskDialog';
@@ -60,6 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface CalendarViewProps {
     tasks: Task[];
+    pendingAiTasks: SingleTaskOutput[];
     requestDeleteTask: (task: Task, dateStr: string) => void;
     updateTaskOrder: (date: string, orderedTaskIds: string[]) => void;
     toggleTaskCompletion: (taskId: string, dateStr: string) => void;
@@ -81,9 +82,10 @@ const dropAnimation: DropAnimation = {
   };
 
 interface SortableTaskProps {
-  task: Task;
+  task: Task & { isPending?: boolean };
   dateStr: string;
   isCompleted: boolean;
+  isPending?: boolean;
   toggleTaskCompletion: (taskId: string, dateStr: string) => void;
   requestDeleteTask: (task: Task, dateStr: string) => void;
   isDragging?: boolean;
@@ -102,7 +104,7 @@ const lightBackgroundColors = [
   'hsl(259 67% 82%)',
 ];
 
-function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
+function TaskItem({ task, isCompleted, isDragging, isPending }: SortableTaskProps) {
     const { theme } = useTheme();
     const [titleLimit, setTitleLimit] = useState(getMaxLength('title', 'calendar'));
     const [descLimit, setDescLimit] = useState(getMaxLength('desc', 'calendar'));
@@ -130,8 +132,11 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     let cardBorderStyle = 'border-border';
 
     const cardCustomStyle: React.CSSProperties = {};
-
-    if (isCompleted) {
+    
+    if (isPending) {
+        cardBgClass = 'bg-background/30 backdrop-blur-sm';
+        cardBorderStyle = 'border-dashed border-primary/50';
+    } else if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
@@ -208,7 +213,7 @@ function TaskItem({ task, isCompleted, isDragging }: SortableTaskProps) {
     );
 }
 
-function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, requestDeleteTask, onTaskClick, onEditClick, onMoveTask }: SortableTaskProps) {
+function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, requestDeleteTask, onTaskClick, onEditClick, onMoveTask, isPending }: SortableTaskProps) {
   const { theme } = useTheme();
   const [isCompletedAnim, setIsCompletedAnim] = useState(false);
   const {
@@ -218,7 +223,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: `${task.id}_${dateStr}` });
+  } = useSortable({ id: `${task.id}_${dateStr}`, disabled: isPending });
 
 
   const style = {
@@ -294,7 +299,10 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 
     const cardCustomStyle: React.CSSProperties = {};
 
-    if (isCompleted) {
+    if (isPending) {
+        cardBgClass = 'bg-background/30 backdrop-blur-sm';
+        cardBorderStyle = 'border-dashed border-primary/50';
+    } else if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60';
         textColorClass = 'text-muted-foreground';
         descColorClass = 'text-muted-foreground';
@@ -333,7 +341,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
     }
 
   const handleClick = (e: React.MouseEvent) => {
-    if (!isDragging) {
+    if (!isDragging && !isPending) {
         onTaskClick(task);
     } else {
         e.preventDefault();
@@ -347,27 +355,46 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         style={style}
         data-testid={`task-${task.id}_${dateStr}`}
         {...attributes}
-        className="mb-1 touch-none relative group"
+        className={cn("mb-1 touch-none relative", !isPending && "group")}
         onClick={handleClick}
     >
-        <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-                "absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100",
-                iconButtonClass
-            )}
-            onClick={(e) => handleMoveClick(e, 'prev')}
-            aria-label="Move task to previous day"
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-        >
-            <ArrowLeftCircle className="h-4 w-4" />
-        </Button>
+       {!isPending && (
+         <>
+            <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                    "absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100",
+                    iconButtonClass
+                )}
+                onClick={(e) => handleMoveClick(e, 'prev')}
+                aria-label="Move task to previous day"
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+            >
+                <ArrowLeftCircle className="h-4 w-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                    "absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100",
+                    iconButtonClass
+                    )}
+                onClick={(e) => handleMoveClick(e, 'next')}
+                aria-label="Move task to next day"
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+            >
+                <ArrowRightCircle className="h-4 w-4" />
+            </Button>
+         </>
+       )}
 
         <Card
             className={cn(
-                "p-2 rounded-md shadow-md w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5",
+                "p-2 rounded-md shadow-md w-full overflow-hidden h-auto min-h-[60px] flex flex-col justify-between break-words transition-all duration-200",
+                !isPending && "cursor-pointer hover:shadow-lg hover:-translate-y-0.5",
                 cardBorderStyle,
                 cardBgClass,
                 isCompletedAnim && 'animate-task-complete'
@@ -379,10 +406,12 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 {...listeners}
                 className={cn(
                     "cursor-grab pt-0.5 touch-none focus-visible:ring-1 focus-visible:ring-ring rounded shrink-0",
-                     iconButtonClass
+                     iconButtonClass,
+                     isPending && "cursor-not-allowed opacity-50"
                 )}
                 aria-label="Drag task"
                 onClick={(e) => e.stopPropagation()}
+                disabled={isPending}
               >
                 <GripVertical className="h-3 w-3" />
              </button>
@@ -407,6 +436,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 className={cn("h-5 w-5 focus-visible:ring-1 focus-visible:ring-ring rounded", completeIconClass, isCompleted && 'hover:text-green-700', !isCompleted && 'hover:text-foreground')}
                 onClick={handleToggleCompletion}
                 aria-label={isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
+                disabled={isPending}
               >
                 {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
               </Button>
@@ -416,6 +446,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                  className={cn("h-5 w-5 focus-visible:ring-1 focus-visible:ring-ring rounded", iconButtonClass)}
                 onClick={handleEditClickInternal}
                 aria-label="Edit task details"
+                disabled={isPending}
                >
                  <Edit className="h-3 w-3" />
                </Button>
@@ -425,27 +456,13 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 className={cn("h-5 w-5 text-destructive hover:text-destructive/80 focus-visible:ring-1 focus-visible:ring-ring rounded")}
                 onClick={handleDeleteTask}
                 aria-label="Delete task"
+                disabled={isPending}
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
             </div>
           </div>
         </Card>
-
-        <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-                "absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100",
-                iconButtonClass
-                )}
-            onClick={(e) => handleMoveClick(e, 'next')}
-            aria-label="Move task to next day"
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-        >
-            <ArrowRightCircle className="h-4 w-4" />
-        </Button>
     </div>
   );
 }
@@ -453,6 +470,7 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 
 export function CalendarView({
     tasks,
+    pendingAiTasks,
     requestDeleteTask,
     updateTaskOrder,
     toggleTaskCompletion,
@@ -519,7 +537,7 @@ export function CalendarView({
 
 
    const tasksByDay = useMemo(() => {
-       const groupedTasks: { [key: string]: Task[] } = {};
+       const groupedTasks: { [key: string]: (Task & { isPending?: boolean })[] } = {};
        if (!tasks || !Array.isArray(tasks)) {
            console.error("Tasks data is invalid:", tasks);
            return groupedTasks;
@@ -527,14 +545,9 @@ export function CalendarView({
 
        days.forEach(day => {
            const dateStr = format(day, 'yyyy-MM-dd');
-           if (isNaN(day.getTime())) {
-               console.error("Invalid day generated:", day);
-               groupedTasks[dateStr] = [];
-               return;
-           }
            const currentDayOfWeek = day.getDay();
-
-           groupedTasks[dateStr] = tasks
+           
+           const regularTasks = tasks
             .filter(task => {
                 if (!task || !task.date) return false;
                 const taskDate = parseISOStrict(task.date);
@@ -565,16 +578,32 @@ export function CalendarView({
                 if (originalAIndex === -1 || originalBIndex === -1) return 0;
                 return originalAIndex - originalBIndex;
             });
+            
+            const pendingTasksForDay = (pendingAiTasks || [])
+                .filter(task => task.date === dateStr)
+                .map((pendingTask, index) => ({
+                    ...pendingTask,
+                    id: `pending_${dateStr}_${index}`,
+                    isPending: true,
+                    details: null, 
+                    dueDate: undefined,
+                    exceptions: [],
+                }));
+
+            groupedTasks[dateStr] = [...regularTasks, ...pendingTasksForDay];
        });
        return groupedTasks;
-     }, [tasks, days, completedTasks]);
+     }, [tasks, pendingAiTasks, days, completedTasks]);
 
 
     const activeTask = useMemo(() => {
         if (!activeId) return null;
         const taskId = activeId.split('_')[0];
+        if (taskId.startsWith('pending')) {
+            return tasksByDay[activeId.split('_')[1]].find(t => t.id === activeId);
+        }
         return tasks.find(task => task && task.id === taskId);
-    }, [tasks, activeId]);
+    }, [activeId, tasks, tasksByDay]);
 
 
    const pointerSensor = useSensor(PointerSensor, {
@@ -826,6 +855,7 @@ export function CalendarView({
                                          task={task}
                                          dateStr={dateStr}
                                          isCompleted={completedTasks?.has(completionKey) ?? false}
+                                         isPending={task.isPending}
                                          toggleTaskCompletion={toggleTaskCompletion}
                                          requestDeleteTask={requestDeleteTask}
                                          onTaskClick={handleTaskClick}
@@ -854,6 +884,7 @@ export function CalendarView({
                         task={activeTask}
                         dateStr={activeDateStr}
                         isCompleted={isCompleted}
+                        isPending={activeTask.isPending}
                         isDragging
                         toggleTaskCompletion={() => {}}
                         requestDeleteTask={() => {}}
