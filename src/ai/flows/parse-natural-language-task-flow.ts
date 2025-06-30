@@ -49,26 +49,31 @@ const parseTaskPrompt = ai.definePrompt({
   name: 'parseNaturalLanguageTaskPrompt',
   input: {schema: ParseNaturalLanguageTaskInputSchema.extend({currentDate: z.string()})},
   output: {schema: ParseNaturalLanguageTaskOutputSchema},
-  prompt: `You are an intelligent assistant that parses user requests to create calendar tasks.
-The user will provide a query, which may contain multiple distinct tasks.
-You must convert this query into an array of JSON objects.
+  prompt: `You are an expert personal assistant specializing in calendar management. 
+Your task is to interpret a user's natural language request and convert it into one or more structured JSON objects for calendar events.
 
-**CRITICAL RULES:**
-1.  **Current Date:** The current date is {{{currentDate}}}. When the user's query mentions 'today', you MUST use this value for the 'date' field. For 'tomorrow', use the day after. For 'yesterday', use the day before. This is your ONLY source for what "today" means.
-2.  **Date Expansion:** If a user specifies a date range like "every day this week", "from Monday to Friday", or "all next week", you MUST generate a separate, non-recurring task object for each individual day in that range. For "this week", assume the week starts on the Monday of the week containing \`currentDate\`. All properties (name, time, color, etc.) should be copied to each of these expanded tasks. The \`recurring\` field for these tasks MUST be \`false\`.
-3.  **Field Integrity:** EACH task object in the output array MUST contain ALL of the following fields, even if the value is null or false: "name", "date", "description", "startTime", "endTime", "recurring", "highPriority", "color". DO NOT OMIT ANY FIELDS.
-4.  **Time Information:** All time-related information (like '3pm', 'from 2-4pm', 'for 2 hours') MUST be parsed into the \`startTime\` and \`endTime\` fields ONLY. The \`description\` field MUST NOT contain any time information.
-5.  **Strict JSON Output:** Your entire response must be ONLY the JSON array. Do not include any explanations, greetings, or other text outside of the JSON structure. If no tasks can be parsed, return an empty array \`[]\`.
+**Context:**
+- The current date is {{{currentDate}}}. Use this to resolve relative dates like 'today', 'tomorrow', and 'next week'.
 
-**Field Definitions & Defaulting:**
+**Instructions:**
+1.  **Analyze the Query:** Carefully read the user's input to identify all distinct tasks.
+2.  **Extract Details:** For each task, determine the name, date, start time, end time, and other attributes based on the user's language.
+3.  **Handle Ranges:** If a request spans multiple days (e.g., "meeting every day this week"), you must generate a separate, non-recurring task object for each individual day.
+4.  **Infer and Default:**
+    - If only a start time is given, assume a 1-hour duration for the end time.
+    - If no specific time is mentioned, startTime and endTime should be null.
+    - Only mark a task as recurring if it repeats on a specific day of the week indefinitely (e.g., "every Tuesday").
+5.  **Output Format:** Your response MUST be a valid JSON array of task objects. Adhere strictly to the output schema. Do not include any text, explanations, or markdown formatting outside of the JSON array. If you cannot parse any tasks from the query, return an empty array \`[]\`.
+
+**Output Schema Fields:**
 - "name": (String) A concise name for the task.
-- "date": (String) The date for the task in "YYYY-MM-DD" format. If the user says 'today', this MUST be exactly \`{{{currentDate}}}\`. Infer from terms like "tomorrow" or "next Monday".
-- "description": (String or Null) Include additional details ONLY if explicitly provided beyond the name and date/time. MUST NOT contain time info. If no details are given, this MUST be an empty string or null.
-- "startTime": (String 'HH:MM' or Null) The 24-hour start time. Infer from phrases like 'at 3pm' or 'from 2-4pm'. If only a start time is given, infer an end time 1 hour later. MUST be null if no time is specified.
-- "endTime": (String 'HH:MM' or Null) The 24-hour end time. MUST be null if no time is specified.
-- "recurring": (Boolean) Set to \`true\` ONLY if the task input uses words like 'every week' or 'weekly' and applies to a single day (e.g., "every Saturday"). For ranges like "every day this week", you must expand them into individual tasks and set recurring to \`false\`. Otherwise, MUST be \`false\`.
-- "highPriority": (Boolean) Set to \`true\` if the task input uses words like 'important' or 'urgent'. Otherwise, MUST be \`false\`.
-- "color": (String tag like '#colX' or Null) If the user specifies a color tag from this list: ${availableColorTags.join(', ')}, include the exact tag (e.g., '#col1'). Otherwise, MUST be null.
+- "date": (String) The date in "YYYY-MM-DD" format.
+- "description": (String or Null) Additional details, but no time information.
+- "startTime": (String 'HH:MM' or Null) 24-hour start time.
+- "endTime": (String 'HH:MM' or Null) 24-hour end time.
+- "recurring": (Boolean) True only for weekly repeats on a specific day.
+- "highPriority": (Boolean) True if words like 'important' or 'urgent' are used.
+- "color": (String tag like '#colX' or Null) If a color tag like '#col1' through '#col6' is mentioned.
 
 **Example 1:**
 User Input: "Important: Remind me to call John tomorrow from 3pm to 4pm with #col1"
@@ -87,32 +92,6 @@ Output (where tomorrow's date is calculated from \`{{{currentDate}}}\`):
 ]
 
 **Example 2:**
-User Input: "Dentist appointment next Tuesday at 11am and then Weekly grocery shopping on Saturday at 10am use #col2"
-Output (where dates are calculated from \`{{{currentDate}}}\`):
-[
-  {
-    "name": "Dentist appointment",
-    "date": "YYYY-MM-DD",
-    "description": null,
-    "startTime": "11:00",
-    "endTime": "12:00",
-    "recurring": false,
-    "highPriority": false,
-    "color": null
-  },
-  {
-    "name": "Grocery shopping",
-    "date": "YYYY-MM-DD",
-    "description": null,
-    "startTime": "10:00",
-    "endTime": "11:00",
-    "recurring": true,
-    "highPriority": false,
-    "color": "#col2"
-  }
-]
-
-**Example 3:**
 User Input: "Study every day this week from 4pm to 6pm"
 Output (assuming \`currentDate\` is within a week, expand to all 7 days of that week with the correct dates, starting from Monday):
 [
@@ -125,9 +104,8 @@ Output (assuming \`currentDate\` is within a week, expand to all 7 days of that 
   { "name": "Study", "date": "YYYY-MM-DD", "description": null, "startTime": "16:00", "endTime": "18:00", "recurring": false, "highPriority": false, "color": null }
 ]
 
-**Final Instruction:** Parse the user's query below. Remember to include EVERY field for EVERY task object.
-
-User Input: {{{query}}}
+**User's Request to Parse:**
+{{{query}}}
 `,
 });
 
