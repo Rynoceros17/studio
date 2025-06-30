@@ -133,7 +133,7 @@ const parseNaturalLanguageTaskFlow = ai.defineFlow(
         endTime: aiTask.endTime || null,
         recurring: aiTask.recurring ?? false,
         highPriority: aiTask.highPriority ?? false,
-        color: aiTask.color || null,
+        color: aiTask.color || availableColorTags[Math.floor(Math.random() * availableColorTags.length)],
     }));
   }
 );
