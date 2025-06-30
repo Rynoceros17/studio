@@ -458,7 +458,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
       const now = new Date();
       const startOfToday = startOfDay(now);
       const minutes = differenceInMinutes(now, startOfToday);
-      const topRem = (minutes / 15) * 1.05; // 1.05rem per 15 minutes
+      const topRem = ((minutes + 60) / 15) * 1.05;
       setTimeMarkerTop(topRem);
       return topRem;
     };
