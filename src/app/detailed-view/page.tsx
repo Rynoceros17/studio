@@ -459,39 +459,66 @@ export default function DetailedViewPage() {
   }, [tasks, setCompletedTaskIds, toast]);
 
     const handleConfirmAiTasks = useCallback(() => {
-        let tasksAddedCount = 0;
-        pendingAiTasks.forEach(parsedTask => {
-            const taskDate = parseISOStrict(parsedTask.date);
-            if (!taskDate || !isValid(taskDate)) {
-                console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
-                return;
-            }
+        const tasksToAdd: Task[] = pendingAiTasks
+            .map(parsedTask => {
+                const taskDate = parseISOStrict(parsedTask.date);
+                if (!taskDate || !isValid(taskDate)) {
+                    console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
+                    return null;
+                }
 
-            const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
-              ? colorTagToHexMap[parsedTask.color]
-              : colorTagToHexMap['#col1'];
+                const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
+                  ? colorTagToHexMap[parsedTask.color]
+                  : colorTagToHexMap['#col1'];
 
-            addTask({
-                name: parsedTask.name || "Unnamed Task",
-                date: parsedTask.date,
-                description: parsedTask.description || null,
-                recurring: parsedTask.recurring ?? false,
-                highPriority: parsedTask.highPriority ?? false,
-                color: finalColor,
-                startTime: parsedTask.startTime || null,
-                endTime: parsedTask.endTime || null,
+                return {
+                    id: crypto.randomUUID(),
+                    name: parsedTask.name || "Unnamed Task",
+                    date: parsedTask.date,
+                    description: parsedTask.description || null,
+                    recurring: parsedTask.recurring ?? false,
+                    highPriority: parsedTask.highPriority ?? false,
+                    color: finalColor,
+                    startTime: parsedTask.startTime || null,
+                    endTime: parsedTask.endTime || null,
+                    details: null,
+                    dueDate: null,
+                    exceptions: [],
+                };
+            })
+            .filter((task): task is Task => task !== null);
+
+        if (tasksToAdd.length > 0) {
+            setTasks(prevTasks => {
+                const updatedTasks = [...prevTasks, ...tasksToAdd];
+                updatedTasks.sort((a, b) => {
+                    const dateA = parseISOStrict(a.date);
+                    const dateB = parseISOStrict(b.date);
+
+                    if (!dateA && !dateB) return 0;
+                    if (!dateA) return 1;
+                    if (!dateB) return -1;
+
+                    const dateComparison = dateA.getTime() - dateB.getTime();
+                    if (dateComparison !== 0) return dateComparison;
+
+                    if (a.highPriority !== b.highPriority) {
+                        return a.highPriority ? -1 : 1;
+                    }
+                    return 0;
+                });
+                return updatedTasks;
             });
-            tasksAddedCount++;
-        });
+        }
         
         const confirmMessage: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'ai',
-            content: `Great! I've added ${tasksAddedCount} task(s) to your calendar.`
+            content: `Great! I've added ${tasksToAdd.length} task(s) to your calendar.`
         };
         setChatHistory(prev => [...prev.filter(m => m.role !== 'ai' || !m.content?.toString().includes('Confirm')), confirmMessage]);
         setPendingAiTasks([]);
-    }, [pendingAiTasks, addTask]);
+    }, [pendingAiTasks, setTasks]);
 
     const handleCancelAiTasks = useCallback(async () => {
         setIsAiProcessing(true);
