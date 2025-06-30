@@ -49,6 +49,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
+import { adjustTasks } from '@/ai/flows/adjust-tasks-flow';
 import { chatWithAssistant } from '@/ai/flows/chat-assistant-flow';
 import { colorTagToHexMap } from '@/lib/color-map';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -537,47 +538,40 @@ export default function DetailedViewPage() {
             role: 'ai',
             content: `Great! I've added ${tasksToAdd.length} task(s) to your calendar.`
         };
-        setChatHistory(prev => [...prev.filter(m => m.role !== 'ai' || !m.content?.toString().includes('Confirm')), confirmMessage]);
+        setChatHistory(prev => [...prev.filter(m => typeof m.content === 'string'), confirmMessage]);
         setPendingAiTasks([]);
     }, [setTasks, setChatHistory]);
 
-    const handleCancelAiTasks = useCallback(async () => {
-        setIsAiProcessing(true);
-        const userMessageContent = (chatHistory.findLast(m => m.role === 'user')?.content as string) || '';
-        const rejectedTasksSummary = pendingAiTasksRef.current.map(t =>
-            `- ${t.name} on ${format(parseISOStrict(t.date)!, 'MMM d')}${t.startTime ? ` at ${t.startTime}` : ''}`
-        ).join('\n');
-        
-        setChatHistory(prev => prev.filter(m => m.role !== 'ai' || !m.content?.toString().includes('Confirm')));
-        setPendingAiTasks([]);
+  const createConfirmationPrompt = useCallback((tasksToConfirm: SingleTaskOutput[], isAdjustment: boolean): ChatMessage => {
+      const summary = tasksToConfirm.map(t => {
+          let details = [];
+          if (t.startTime) {
+              let time = t.startTime;
+              if (t.endTime) time += ` - ${t.endTime}`;
+              details.push(time);
+          }
+          if (t.recurring) details.push('repeats weekly');
+          if (t.highPriority) details.push('high priority');
+          if (t.color) details.push(`color: ${t.color}`);
+          const detailsString = details.length > 0 ? ` (${details.join(', ')})` : '';
+          return `- ${t.name} on ${format(parseISOStrict(t.date)!, 'MMM d')}${detailsString}`;
+      }).join('\n');
 
-        try {
-            const response = await chatWithAssistant({
-                message: 'User cancelled task creation.',
-                cancellationContext: {
-                    originalQuery: userMessageContent,
-                    rejectedTasksSummary: rejectedTasksSummary
-                }
-            });
-
-            const aiResponse: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'ai',
-                content: response.reply,
-            };
-            setChatHistory(prev => [...prev, aiResponse]);
-        } catch (error: any) {
-            console.error("Error getting AI cancellation response:", error);
-            const errorResponse: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'ai',
-                content: "Okay, I've discarded those tasks. What would you like to do next?"
-            };
-            setChatHistory(prev => [...prev, errorResponse]);
-        } finally {
-            setIsAiProcessing(false);
-        }
-    }, [chatHistory, setChatHistory]);
+      return {
+          id: crypto.randomUUID(),
+          role: 'ai',
+          content: (
+              <div className="space-y-2">
+                  <p>{isAdjustment ? "OK, here are the adjusted tasks:" : "OK! I've prepared the following task(s) for you:"}</p>
+                  <pre className="whitespace-pre-wrap font-sans text-sm bg-muted p-2 rounded-md border">{summary}</pre>
+                  <p>Should I add them to your calendar? You can also tell me to make more changes.</p>
+                  <div className="flex gap-2 pt-2">
+                      <Button size="sm" onClick={handleConfirmAiTasks}>Confirm</Button>
+                  </div>
+              </div>
+          )
+      };
+  }, [handleConfirmAiTasks]);
 
   const handleSendChatMessage = async () => {
     if (!chatInput.trim() || isAiProcessing) return;
@@ -587,57 +581,45 @@ export default function DetailedViewPage() {
         role: 'user',
         content: chatInput.trim(),
     };
-    setChatHistory(prev => [...prev, userMessage]);
+    
+    // Filter out old confirmation prompts before adding new message
+    setChatHistory(prev => [...prev.filter(m => typeof m.content === 'string'), userMessage]);
+
     setIsAiProcessing(true);
     setChatInput('');
 
     try {
-        const parsedTasks = await parseNaturalLanguageTask({ query: userMessage.content as string });
+        const currentPendingTasks = pendingAiTasksRef.current;
+        const isAdjusting = currentPendingTasks && currentPendingTasks.length > 0;
+        let newTasks: SingleTaskOutput[];
 
-        if (parsedTasks && parsedTasks.length > 0) {
-            setPendingAiTasks(parsedTasks);
-            const summary = parsedTasks.map(t => {
-                let details = [];
-                if (t.startTime) {
-                    let time = t.startTime;
-                    if (t.endTime) {
-                        time += ` - ${t.endTime}`;
-                    }
-                    details.push(time);
-                }
-                if (t.recurring) details.push('repeats weekly');
-                if (t.highPriority) details.push('high priority');
-                if (t.color) details.push(`color: ${t.color}`);
-
-                const detailsString = details.length > 0 ? ` (${details.join(', ')})` : '';
-                return `- ${t.name} on ${format(parseISOStrict(t.date)!, 'MMM d')}${detailsString}`;
-            }).join('\n');
-
-
-            const aiResponse: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'ai',
-                content: (
-                    <div className="space-y-2">
-                        <p>OK! I've prepared the following task(s) for you:</p>
-                        <pre className="whitespace-pre-wrap font-sans text-sm bg-muted p-2 rounded-md border">{summary}</pre>
-                        <p>Should I add them to your calendar?</p>
-                        <div className="flex gap-2 pt-2">
-                            <Button size="sm" onClick={handleConfirmAiTasks}>Confirm</Button>
-                            <Button size="sm" variant="outline" onClick={handleCancelAiTasks}>Cancel</Button>
-                        </div>
-                    </div>
-                ),
-            };
-            setChatHistory(prev => [...prev, aiResponse]);
+        if (isAdjusting) {
+            newTasks = await adjustTasks({
+                pendingTasks: currentPendingTasks,
+                query: userMessage.content as string,
+            });
         } else {
-            const response = await chatWithAssistant({ message: userMessage.content as string });
-            const aiResponse: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'ai',
-                content: response.reply,
-            };
-            setChatHistory(prev => [...prev, aiResponse]);
+            newTasks = await parseNaturalLanguageTask({ query: userMessage.content as string });
+        }
+
+        if (newTasks && newTasks.length > 0) {
+            setPendingAiTasks(newTasks);
+            const confirmationMessage = createConfirmationPrompt(newTasks, isAdjusting);
+            setChatHistory(prev => [...prev, confirmationMessage]);
+        } else {
+            if (isAdjusting) {
+                const failureMessage: ChatMessage = {
+                    id: crypto.randomUUID(),
+                    role: 'ai',
+                    content: "Sorry, I didn't understand that adjustment. Here are the tasks I had before. You can confirm them or try rephrasing your change."
+                };
+                const oldConfirmationMessage = createConfirmationPrompt(currentPendingTasks, true);
+                setChatHistory(prev => [...prev, failureMessage, oldConfirmationMessage]);
+            } else {
+                const response = await chatWithAssistant({ message: userMessage.content as string });
+                const aiResponse: ChatMessage = { id: crypto.randomUUID(), role: 'ai', content: response.reply };
+                setChatHistory(prev => [...prev, aiResponse]);
+            }
         }
     } catch (error: any) {
         console.error("Error in AI chat:", error);
