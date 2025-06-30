@@ -141,6 +141,10 @@ export default function DetailedViewPage() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [pendingAiTasks, setPendingAiTasks] = useState<SingleTaskOutput[]>([]);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
+  const pendingAiTasksRef = useRef(pendingAiTasks);
+  useEffect(() => {
+      pendingAiTasksRef.current = pendingAiTasks;
+  }, [pendingAiTasks]);
 
 
   // Preset state
@@ -459,7 +463,7 @@ export default function DetailedViewPage() {
   }, [tasks, setCompletedTaskIds, toast]);
 
     const handleConfirmAiTasks = useCallback(() => {
-        const tasksToAdd: Task[] = pendingAiTasks
+        const tasksToAdd: Task[] = pendingAiTasksRef.current
             .map(parsedTask => {
                 const taskDate = parseISOStrict(parsedTask.date);
                 if (!taskDate || !isValid(taskDate)) {
@@ -518,12 +522,12 @@ export default function DetailedViewPage() {
         };
         setChatHistory(prev => [...prev.filter(m => m.role !== 'ai' || !m.content?.toString().includes('Confirm')), confirmMessage]);
         setPendingAiTasks([]);
-    }, [pendingAiTasks, setTasks]);
+    }, [setTasks, setChatHistory]);
 
     const handleCancelAiTasks = useCallback(async () => {
         setIsAiProcessing(true);
         const userMessageContent = (chatHistory.findLast(m => m.role === 'user')?.content as string) || '';
-        const rejectedTasksSummary = pendingAiTasks.map(t =>
+        const rejectedTasksSummary = pendingAiTasksRef.current.map(t =>
             `- ${t.name} on ${format(parseISOStrict(t.date)!, 'MMM d')}${t.startTime ? ` at ${t.startTime}` : ''}`
         ).join('\n');
         
@@ -556,7 +560,7 @@ export default function DetailedViewPage() {
         } finally {
             setIsAiProcessing(false);
         }
-    }, [chatHistory, pendingAiTasks]);
+    }, [chatHistory, setChatHistory]);
 
   const handleSendChatMessage = async () => {
     if (!chatInput.trim() || isAiProcessing) return;
