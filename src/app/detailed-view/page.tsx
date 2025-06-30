@@ -5,7 +5,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link';
 import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2, Undo2, Redo2 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
-import type { Task, Goal, WeekPreset } from '@/lib/types';
+import type { Task, Goal, WeekPreset, SingleTaskOutput } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
 import { TaskForm } from '@/components/TaskForm';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
@@ -34,6 +34,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { format, isValid, isSameDay, addDays, startOfWeek, endOfWeek, isWithinInterval, startOfDay } from 'date-fns';
 import { cn, parseISOStrict, calculateGoalProgress } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,7 +48,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { parseNaturalLanguageTask, type SingleTaskOutput } from '@/ai/flows/parse-natural-language-task-flow';
+import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
 import { colorTagToHexMap } from '@/lib/color-map';
 
 
@@ -130,6 +131,7 @@ export default function DetailedViewPage() {
   // AI Task state
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
+  const [pendingAiTasks, setPendingAiTasks] = useState<SingleTaskOutput[]>([]);
 
   // Preset state
   const [presets, setPresets] = useLocalStorage<WeekPreset[]>('weekwise-presets', []);
@@ -437,52 +439,56 @@ export default function DetailedViewPage() {
       });
   }, [tasks, setCompletedTaskIds, toast]);
 
+    const confirmAiTasks = useCallback(() => {
+        let tasksAddedCount = 0;
+        pendingAiTasks.forEach(parsedTask => {
+            const taskDate = parseISOStrict(parsedTask.date);
+            if (!taskDate || !isValid(taskDate)) {
+                console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
+                return;
+            }
+
+            const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
+              ? colorTagToHexMap[parsedTask.color]
+              : colorTagToHexMap['#col1'];
+
+            addTask({
+                name: parsedTask.name || "Unnamed Task",
+                date: parsedTask.date,
+                description: parsedTask.description || null,
+                recurring: parsedTask.recurring ?? false,
+                highPriority: parsedTask.highPriority ?? false,
+                color: finalColor,
+                startTime: parsedTask.startTime || null,
+                endTime: parsedTask.endTime || null,
+            });
+            tasksAddedCount++;
+        });
+
+        if (tasksAddedCount > 0) {
+            toast({
+                title: "Tasks Confirmed",
+                description: `${tasksAddedCount} task(s) have been added to your calendar.`,
+            });
+        }
+        setPendingAiTasks([]);
+    }, [pendingAiTasks, addTask, toast]);
+
   const handleSendChatMessage = async () => {
     if (chatInput.trim() && !isParsingTask) {
       setIsParsingTask(true);
+      setPendingAiTasks([]);
       try {
         const parsedTasksArray: SingleTaskOutput[] = await parseNaturalLanguageTask({ query: chatInput.trim() });
 
         if (parsedTasksArray && parsedTasksArray.length > 0) {
-            let tasksAddedCount = 0;
-            parsedTasksArray.forEach(parsedTask => {
-                const taskDate = parseISOStrict(parsedTask.date);
-                if (!taskDate || !isValid(taskDate)) {
-                    console.warn("AI returned an invalid date for a task, skipping:", parsedTask);
-                    return;
-                }
-
-                const finalColor = parsedTask.color && colorTagToHexMap[parsedTask.color]
-                  ? colorTagToHexMap[parsedTask.color]
-                  : colorTagToHexMap['#col1']; // Default to color 1 (white/purple)
-
-                addTask({
-                    name: parsedTask.name || "Unnamed Task",
-                    date: parsedTask.date,
-                    description: parsedTask.description || null,
-                    recurring: parsedTask.recurring ?? false,
-                    highPriority: parsedTask.highPriority ?? false,
-                    color: finalColor,
-                    startTime: parsedTask.startTime || null,
-                    endTime: parsedTask.endTime || null,
-                });
-                tasksAddedCount++;
+            setPendingAiTasks(parsedTasksArray);
+            toast({
+                title: "Confirm AI Tasks",
+                description: `The AI suggests adding ${parsedTasksArray.length} task(s) to your calendar.`,
+                action: <ToastAction altText="Confirm" onClick={confirmAiTasks}>Confirm</ToastAction>,
+                duration: 15000,
             });
-
-            if (tasksAddedCount > 0) {
-                toast({
-                    title: tasksAddedCount === 1 ? "Task Added by AI" : `${tasksAddedCount} Tasks Added by AI`,
-                    description: tasksAddedCount === 1
-                        ? `Task "${parsedTasksArray.find(pt => pt.name)?.name || 'Unnamed Task'}" added to your calendar.`
-                        : `${tasksAddedCount} tasks parsed and added to your calendar.`,
-                });
-            } else {
-                 toast({
-                    title: "AI Parsing Issue",
-                    description: "The AI processed your request, but no valid tasks could be added. Please check your input or try rephrasing.",
-                    variant: "destructive",
-                });
-            }
             setChatInput('');
             setIsAiSheetOpen(false); // Close sheet on success
         } else {
@@ -610,7 +616,7 @@ export default function DetailedViewPage() {
       <header className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
-                  <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground h-10 w-10">
+                  <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white h-10 w-10">
                       <ArrowLeft className="h-5 w-5" />
                       <span className="sr-only">Back to Main Calendar</span>
                   </Button>
@@ -620,27 +626,27 @@ export default function DetailedViewPage() {
                 )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
                 <Undo2 className="h-4 w-4" />
                 <span className="sr-only">Undo</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
                 <Redo2 className="h-4 w-4" />
                 <span className="sr-only">Redo</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
               <Save className="h-4 w-4 mr-2" />
               Save
             </Button>
-            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
               <Download className="h-4 w-4 mr-2" />
               Import
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
               <Sparkles className="h-4 w-4" />
               <span className="sr-only">AI Manager</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
+            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
               <Target className="h-4 w-4" />
               <span className="sr-only">View Goals</span>
             </Button>
@@ -651,7 +657,8 @@ export default function DetailedViewPage() {
           <DetailedCalendarView 
               currentWeekStart={currentDisplayDate}
               onWeekChange={setCurrentDisplayDate}
-              tasks={isClient ? tasks : []} 
+              tasks={isClient ? tasks : []}
+              pendingAiTasks={isClient ? pendingAiTasks : []}
               onCreateTask={handleCreateTask}
               onEditTask={(task) => setEditingTask(task)}
               onDeleteTask={requestDeleteTask}
@@ -848,5 +855,3 @@ export default function DetailedViewPage() {
     </div>
   );
 }
-
-    

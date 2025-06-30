@@ -5,7 +5,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useTheme } from 'next-themes';
 import { addDays, subDays, startOfWeek, format, parseISO, isSameDay, isWithinInterval, endOfWeek, addMinutes, startOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Edit, Trash2, CheckCircle, Circle, ArrowUpDown } from 'lucide-react';
-import type { Task } from '@/lib/types';
+import type { Task, SingleTaskOutput } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn, parseISOStrict } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ interface DetailedCalendarViewProps {
   currentWeekStart: Date;
   onWeekChange: (newWeekStart: Date) => void;
   tasks: Task[];
+  pendingAiTasks: SingleTaskOutput[];
   onCreateTask: (taskData: Partial<Task>) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (task: Task, dateStr: string) => void;
@@ -46,7 +47,7 @@ const timeToMinutes = (timeStr: string): number => {
 };
 
 // Calculates the vertical position and height of a task
-const getTaskVerticalStyle = (task: Task): React.CSSProperties => {
+const getTaskVerticalStyle = (task: Task | SingleTaskOutput): React.CSSProperties => {
   if (!task.startTime || !task.endTime) return { display: 'none' };
   const startTotalMinutes = timeToMinutes(task.startTime);
   const endTotalMinutes = timeToMinutes(task.endTime);
@@ -64,7 +65,7 @@ const getTaskVerticalStyle = (task: Task): React.CSSProperties => {
 };
 
 // New function to calculate side-by-side layout for overlapping tasks
-const getDayLayout = (dailyTasksWithTime: Task[]) => {
+const getDayLayout = (dailyTasksWithTime: (Task | SingleTaskOutput)[]) => {
     if (!dailyTasksWithTime || dailyTasksWithTime.length === 0) return [];
 
     const sortedTasks = [...dailyTasksWithTime].sort((a, b) => {
@@ -85,25 +86,25 @@ const getDayLayout = (dailyTasksWithTime: Task[]) => {
         // Find the first column where this task does not overlap
         while (true) {
             const lastTaskInCol = sortedTasks
-                .filter(t => taskLayouts.has(t.id) && taskLayouts.get(t.id)!.col === col)
+                .filter(t => taskLayouts.has((t as Task).id) && taskLayouts.get((t as Task).id)!.col === col)
                 .reduce((last, current) => {
                     if (!last) return current;
                     return timeToMinutes(current.endTime!) > timeToMinutes(last.endTime!) ? current : last;
-                }, null as Task | null);
+                }, null as (Task | SingleTaskOutput) | null);
 
             if (!lastTaskInCol || timeToMinutes(lastTaskInCol.endTime!) <= taskStart) {
                 break;
             }
             col++;
         }
-        taskLayouts.set(task.id, { col, totalCols: 1 });
+        taskLayouts.set((task as Task).id, { col, totalCols: 1 });
     });
 
-    const finalLayouts: Array<{ task: Task; layout: React.CSSProperties }> = [];
+    const finalLayouts: Array<{ task: Task | SingleTaskOutput; layout: React.CSSProperties }> = [];
 
     sortedTasks.forEach(task => {
         const collisions = sortedTasks.filter(otherTask => {
-            if (task.id === otherTask.id) return false;
+            if ((task as Task).id === (otherTask as Task).id) return false;
             const tStart = timeToMinutes(task.startTime!);
             const tEnd = timeToMinutes(task.endTime!);
             const oStart = timeToMinutes(otherTask.startTime!);
@@ -111,8 +112,8 @@ const getDayLayout = (dailyTasksWithTime: Task[]) => {
             return Math.max(tStart, oStart) < Math.min(tEnd, oEnd);
         });
         
-        const myLayout = taskLayouts.get(task.id)!;
-        const totalCols = collisions.reduce((max, c) => Math.max(max, taskLayouts.get(c.id)!.col), myLayout.col) + 1;
+        const myLayout = taskLayouts.get((task as Task).id)!;
+        const totalCols = collisions.reduce((max, c) => Math.max(max, taskLayouts.get((c as Task).id)!.col), myLayout.col) + 1;
         
         const columnPadding = 4; // 4% padding on each side
         const contentWidth = 100 - (2 * columnPadding); // e.g., 92%
@@ -150,6 +151,7 @@ function TaskBlock({
     dateStr,
     colorToApply,
     isCompleted,
+    isPending,
     onEditTask,
     onDeleteTask,
     onToggleComplete,
@@ -159,10 +161,11 @@ function TaskBlock({
     onDragStart,
     tempStyle
 }: {
-    task: Task;
+    task: Task & { isPending?: boolean };
     dateStr: string;
     colorToApply: string | null;
     isCompleted: boolean;
+    isPending: boolean;
     onEditTask: (task: Task) => void;
     onDeleteTask: (task: Task, dateStr: string) => void;
     onToggleComplete: (taskId: string, dateStr: string) => void;
@@ -182,6 +185,9 @@ function TaskBlock({
         zIndex: isHovered || isLayoutEditing ? 2000 : layoutStyle.zIndex,
         ...tempStyle
     };
+    if (isPending) {
+      combinedStyle.backgroundColor = 'transparent';
+    }
     
     const { theme } = useTheme();
     const isDarkMode = theme === 'dark';
@@ -226,18 +232,18 @@ function TaskBlock({
                 "absolute p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300",
                 "flex flex-col justify-between",
                 "border",
-                borderStyle,
+                isPending ? 'bg-card/60 backdrop-blur-sm border-dashed border-primary/50' : borderStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
                 isShortTask && !isLayoutEditing && `hover:min-h-[3rem]`,
-                isLayoutEditing && 'ring-2 ring-primary ring-offset-2 cursor-move'
+                isLayoutEditing && !isPending && 'ring-2 ring-primary ring-offset-2 cursor-move'
             )}
             title={`${task.name}\n${task.startTime} - ${task.endTime}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            onMouseDown={(e) => { if (isLayoutEditing) { onDragStart(e, task, dateStr, 'move'); }}}
+            onMouseDown={(e) => { if (isLayoutEditing && !isPending) { onDragStart(e, task, dateStr, 'move'); }}}
         >
-            <div className="flex-grow cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggleLayoutEdit(task.id, dateStr); }}>
+            <div className="flex-grow cursor-pointer" onClick={(e) => { e.stopPropagation(); if (!isPending) onToggleLayoutEdit(task.id, dateStr); }}>
                 <div className={cn("flex items-center gap-1", isCompleted && "line-through")}>
                     <p className={cn("font-medium", isVeryShortTask ? 'line-clamp-1' : 'line-clamp-2')}>{task.name}</p>
                 </div>
@@ -245,21 +251,21 @@ function TaskBlock({
             </div>
 
             <div className="flex justify-end items-center space-x-0.5 mt-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" className={cn("h-4 w-4 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }}>
+                <Button variant="ghost" className={cn("h-4 w-4 p-0", checkmarkIconClass)} onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, dateStr); }} disabled={isPending}>
                     {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                 </Button>
-                <Button variant="ghost" className={cn("h-4 w-4 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onToggleLayoutEdit(task.id, dateStr); }}>
+                <Button variant="ghost" className={cn("h-4 w-4 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onToggleLayoutEdit(task.id, dateStr); }} disabled={isPending}>
                     <ArrowUpDown className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" className={cn("h-4 w-4 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }}>
+                <Button variant="ghost" className={cn("h-4 w-4 p-0", iconColorClass)} onClick={(e) => { e.stopPropagation(); onEditTask(task); }} disabled={isPending}>
                     <Edit className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" className={cn("h-4 w-4 p-0 text-destructive/80 hover:bg-destructive/10")} onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }}>
+                <Button variant="ghost" className={cn("h-4 w-4 p-0 text-destructive/80 hover:bg-destructive/10")} onClick={(e) => { e.stopPropagation(); onDeleteTask(task, dateStr); }} disabled={isPending}>
                     <Trash2 className="h-3 w-3" />
                 </Button>
             </div>
             
-            {isLayoutEditing && (
+            {isLayoutEditing && !isPending && (
                 <>
                     <div className="absolute -top-1 left-0 w-full h-2 cursor-ns-resize" onMouseDown={(e) => { e.stopPropagation(); onDragStart(e, task, dateStr, 'resize-top'); }} />
                     <div className="absolute -bottom-1 left-0 w-full h-2 cursor-ns-resize" onMouseDown={(e) => { e.stopPropagation(); onDragStart(e, task, dateStr, 'resize-bottom'); }} />
@@ -269,7 +275,7 @@ function TaskBlock({
     );
 }
 
-export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks, updateTask }: DetailedCalendarViewProps) {
+export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pendingAiTasks, onCreateTask, onEditTask, onDeleteTask, onToggleComplete, completedTasks, updateTask }: DetailedCalendarViewProps) {
   const { theme } = useTheme();
   const [selection, setSelection] = useState<{ startCell: string | null; endCell: string | null }>({ startCell: null, endCell: null });
   const [isSelecting, setIsSelecting] = useState(false);
@@ -329,7 +335,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
   const dayWidth = useMemo(() => {
     if (!gridRef.current) return 0;
     return gridRef.current.offsetWidth / (viewMode === 'week' ? 7 : 1);
-  }, [gridRef.current, viewMode]);
+  }, [gridRef, viewMode]);
 
   const weekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
   const isCurrentWeekVisible = useMemo(() => isWithinInterval(new Date(), { start: currentWeekStart, end: weekEnd }), [currentWeekStart, weekEnd]);
@@ -585,13 +591,15 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
   };
   
   const tasksWithLayoutByDay = useMemo(() => {
-    const groupedByDay: { [key: string]: Task[] } = {};
+    const combinedTasksByDay: { [key: string]: (Task & { isPending?: boolean })[] } = {};
+
     days.forEach(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
         const currentDayOfWeek = day.getDay();
 
-        groupedByDay[dateStr] = tasks.filter(task => {
-            if (!task.date || !task.startTime || !task.endTime) return false;
+        // Filter regular tasks for the day
+        const regularTasks: (Task & { isPending?: boolean })[] = tasks.filter(task => {
+            if (!task.date) return false;
             const taskDate = parseISOStrict(task.date);
             if (!taskDate) return false;
 
@@ -604,14 +612,30 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
                 return isSameDay(taskDate, day);
             }
         });
+
+        // Filter and map pending tasks for the day
+        const pendingTasksForDay: (Task & { isPending?: boolean })[] = (pendingAiTasks || [])
+            .filter(task => task.date === dateStr)
+            .map((pendingTask, index) => ({
+                ...(pendingTask as SingleTaskOutput), // cast to satisfy properties
+                id: `pending_${dateStr}_${index}`,
+                isPending: true,
+                details: null, 
+                dueDate: undefined,
+                exceptions: [],
+            }));
+
+        combinedTasksByDay[dateStr] = [...regularTasks, ...pendingTasksForDay];
     });
 
-    const finalLayouts: { [key: string]: Array<{ task: Task; layout: React.CSSProperties }> } = {};
-    for (const dateStr in groupedByDay) {
-        finalLayouts[dateStr] = getDayLayout(groupedByDay[dateStr]);
+    const finalLayouts: { [key: string]: Array<{ task: (Task & { isPending?: boolean }); layout: React.CSSProperties }> } = {};
+    for (const dateStr in combinedTasksByDay) {
+        // Only get layout for tasks that have a time
+        const tasksWithTime = combinedTasksByDay[dateStr].filter(t => t.startTime && t.endTime);
+        finalLayouts[dateStr] = getDayLayout(tasksWithTime);
     }
     return finalLayouts;
-  }, [tasks, days]);
+  }, [tasks, days, pendingAiTasks]);
 
   const goToPrevious = () => {
     if (viewMode === 'day') {
@@ -707,6 +731,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
 
                                     const completionKey = `${task.id}_${dateStr}`;
                                     const isCompleted = completedTasks.has(completionKey);
+                                    const isPending = !!task.isPending;
                                     const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
                                     const isDarkMode = theme === 'dark';
                                     let colorToApply = task.color;
@@ -718,6 +743,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
                                             dateStr={dateStr}
                                             colorToApply={colorToApply}
                                             isCompleted={isCompleted}
+                                            isPending={isPending}
                                             onEditTask={onEditTask}
                                             onDeleteTask={onDeleteTask}
                                             onToggleComplete={onToggleComplete}
@@ -764,6 +790,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, on
                                 dateStr={dateStr}
                                 colorToApply={colorToApply}
                                 isCompleted={isCompleted}
+                                isPending={false}
                                 onEditTask={() => {}}
                                 onDeleteTask={() => {}}
                                 onToggleComplete={() => {}}
