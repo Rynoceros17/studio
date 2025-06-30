@@ -458,27 +458,34 @@ export default function DetailedViewPage() {
   }, [tasks, setTasks, setCompletedTaskIds, toast]);
 
   const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
-      const completionKey = `${taskId}_${dateStr}`;
-      setCompletedTaskIds((prevIds) => {
-          const currentCompletedKeys = new Set(prevIds);
-          if (currentCompletedKeys.has(completionKey)) {
-              currentCompletedKeys.delete(completionKey);
-              toast({
-                  title: "Task Incomplete",
-                  description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as incomplete.`,
-              });
-          } else {
-              currentCompletedKeys.add(completionKey);
-              toast({
-                  title: "Task Completed!",
-                  description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as complete.`,
-              });
-          }
-          return Array.from(currentCompletedKeys);
-      });
-  }, [tasks, setCompletedTaskIds, toast]);
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const completionKey = `${taskId}_${dateStr}`;
+    const wasCompleted = completedTasks.has(completionKey);
+
+    setCompletedTaskIds(prevIds => {
+        const currentCompletedKeys = new Set(prevIds);
+        if (wasCompleted) {
+            currentCompletedKeys.delete(completionKey);
+        } else {
+            currentCompletedKeys.add(completionKey);
+        }
+        return Array.from(currentCompletedKeys);
+    });
+
+    if (wasCompleted) {
+        toast({
+            title: "Task Incomplete",
+            description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as incomplete.`,
+        });
+    } else {
+        toast({
+            title: "Task Completed!",
+            description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as complete.`,
+        });
+    }
+  }, [tasks, completedTasks, setCompletedTaskIds, toast]);
 
     const handleConfirmAiTasks = useCallback(() => {
         const tasksToAdd: Task[] = pendingAiTasksRef.current
