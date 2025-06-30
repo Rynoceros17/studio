@@ -762,6 +762,11 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                 {dragState && modifiedTaskPosition && (
                      (() => {
                         const { task } = dragState;
+                        if (!days || !days[modifiedTaskPosition.dayIndex]) {
+                            // This can happen in a race condition if the view changes during a drag.
+                            // Silently returning null prevents a crash.
+                            return null;
+                        }
                         const dateStr = format(days[modifiedTaskPosition.dayIndex], 'yyyy-MM-dd');
                         const completionKey = `${task.id}_${dateStr}`;
                         const isCompleted = completedTasks.has(completionKey);
