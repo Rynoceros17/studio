@@ -10,17 +10,16 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-// Import the shared schema from the other flow file.
-import { SingleTaskSchema, ParseNaturalLanguageTaskOutputSchema, availableColorTags } from './parse-natural-language-task-flow';
+import { TaskArraySchema, type TaskArrayOutput } from './task-schemas';
 
 const AdjustTasksInputSchema = z.object({
-  pendingTasks: ParseNaturalLanguageTaskOutputSchema.describe("The array of task objects that need to be adjusted."),
+  pendingTasks: TaskArraySchema.describe("The array of task objects that need to be adjusted."),
   query: z.string().min(1, "Query cannot be empty.").describe("The user's instruction on how to adjust the tasks."),
 });
 export type AdjustTasksInput = z.infer<typeof AdjustTasksInputSchema>;
 
 // The output is the same as the parse flow output
-export type AdjustTasksOutput = z.infer<typeof ParseNaturalLanguageTaskOutputSchema>;
+export type AdjustTasksOutput = TaskArrayOutput;
 
 export async function adjustTasks(input: AdjustTasksInput): Promise<AdjustTasksOutput> {
   // Need to stringify the tasks for the prompt
@@ -34,7 +33,7 @@ export async function adjustTasks(input: AdjustTasksInput): Promise<AdjustTasksO
 const adjustTaskPrompt = ai.definePrompt({
     name: 'adjustTasksPrompt',
     input: {schema: z.object({ pendingTasksJson: z.string(), query: z.string() })},
-    output: {schema: ParseNaturalLanguageTaskOutputSchema},
+    output: {schema: TaskArraySchema},
     prompt: `You are an expert personal assistant specializing in calendar management.
 The user wants to make changes to a list of tasks you previously generated.
 
@@ -58,7 +57,7 @@ const adjustTasksFlow = ai.defineFlow(
   {
     name: 'adjustTasksFlow',
     inputSchema: z.object({ pendingTasksJson: z.string(), query: z.string() }),
-    outputSchema: ParseNaturalLanguageTaskOutputSchema,
+    outputSchema: TaskArraySchema,
   },
   async (promptData) => {
     const {output} = await adjustTaskPrompt(promptData);

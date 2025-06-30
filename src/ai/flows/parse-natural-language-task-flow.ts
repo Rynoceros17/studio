@@ -6,36 +6,22 @@
  *
  * - parseNaturalLanguageTask - A function that takes a user's query and returns an array of parsed tasks.
  * - ParseNaturalLanguageTaskInput - The input type for the flow.
- * - SingleTaskOutput - The type for a single parsed task object.
  * - ParseNaturalLanguageTaskOutput - The return type for the flow (an array of SingleTaskOutput).
  */
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
 import {format} from 'date-fns';
-import { availableColorTags, colorTagDescriptions } from '@/lib/color-map'; // Import available color tags
+import { availableColorTags } from '@/lib/color-map';
+import { TaskArraySchema, type TaskArrayOutput } from './task-schemas';
 
 const ParseNaturalLanguageTaskInputSchema = z.object({
   query: z.string().min(1, "Query cannot be empty.").max(500, "Query is too long.").describe("The natural language query from the user describing one or more tasks."),
 });
 export type ParseNaturalLanguageTaskInput = z.infer<typeof ParseNaturalLanguageTaskInputSchema>;
 
-// Schema for a single task
-const SingleTaskSchema = z.object({
-  name: z.string().describe("A concise name for the task."),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format.").describe("The date for the task in YYYY-MM-DD format. When 'today' is mentioned, this MUST be the value of `currentDate`. Infer from other terms like 'tomorrow', 'next Monday', or specific dates."),
-  description: z.string().nullable().describe("Include additional details ONLY if explicitly provided beyond the name and date/time. **This field MUST NOT contain any time information.** Time details must go in the startTime and endTime fields. If no extra details are given, this field MUST be null."),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().describe("The start time in 24-hour HH:MM format. Extract from phrases like 'at 3pm' or 'from 2-4pm'. If a duration is given (e.g., 'for 2 hours'), calculate a start time. MUST be null if absolutely no time is specified."),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().describe("The end time in 24-hour HH:MM format. If only a start time is given (e.g., 'at 3pm'), infer an end time 1 hour later. If a duration is given (e.g., 'from 2pm for 2 hours'), calculate the end time. MUST be null if absolutely no time is specified."),
-  recurring: z.boolean().describe("Set to `true` ONLY for single-day recurrences like 'every Tuesday'. For date ranges like 'every day this week', expand into individual tasks and set this to `false`. Otherwise, this MUST be `false`. This field MUST always be present."),
-  highPriority: z.boolean().describe("Set to `true` if the user's input for this task explicitly uses words like 'important', 'priority', or 'urgent'. Otherwise, this MUST be `false`. This field MUST always be present."),
-  color: z.string().regex(/^#col[1-6]$/).nullable().describe(`If the user's input for this task explicitly specifies a color tag from the list: ${availableColorTags.join(', ')} (these correspond to: ${colorTagDescriptions.join('; ')}), include that exact tag here (e.g., '#col1'). Otherwise, this field MUST be null. This field MUST always be present.`)
-});
-export type SingleTaskOutput = z.infer<typeof SingleTaskSchema>;
-
 // Output schema is an array of single tasks
-const ParseNaturalLanguageTaskOutputSchema = z.array(SingleTaskSchema);
-export type ParseNaturalLanguageTaskOutput = z.infer<typeof ParseNaturalLanguageTaskOutputSchema>;
+export type ParseNaturalLanguageTaskOutput = TaskArrayOutput;
 
 
 export async function parseNaturalLanguageTask(input: ParseNaturalLanguageTaskInput): Promise<ParseNaturalLanguageTaskOutput> {
@@ -48,7 +34,7 @@ export async function parseNaturalLanguageTask(input: ParseNaturalLanguageTaskIn
 const parseTaskPrompt = ai.definePrompt({
   name: 'parseNaturalLanguageTaskPrompt',
   input: {schema: ParseNaturalLanguageTaskInputSchema.extend({currentDate: z.string()})},
-  output: {schema: ParseNaturalLanguageTaskOutputSchema},
+  output: {schema: TaskArraySchema},
   prompt: `You are an expert personal assistant specializing in calendar management. 
 Your task is to interpret a user's natural language request and convert it into one or more structured JSON objects for calendar events.
 
@@ -113,7 +99,7 @@ const parseNaturalLanguageTaskFlow = ai.defineFlow(
   {
     name: 'parseNaturalLanguageTaskFlow',
     inputSchema: ParseNaturalLanguageTaskInputSchema.extend({currentDate: z.string()}),
-    outputSchema: ParseNaturalLanguageTaskOutputSchema,
+    outputSchema: TaskArraySchema,
   },
   async (promptData) => {
     const {output} = await parseTaskPrompt(promptData);
