@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2, Undo2, Redo2, Bot } from 'lucide-react';
+import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2, Undo2, Redo2, Bot, Clock } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { Task, Goal, WeekPreset, SingleTaskOutput } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
@@ -156,12 +156,29 @@ export default function DetailedViewPage() {
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
 
+  // New state for current time
+  const [currentTime, setCurrentTime] = useState('');
+
   // Fetch goals from local storage
   const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // New useEffect for the clock
+  useEffect(() => {
+    if (!isClient) return;
+
+    const updateClock = () => {
+      setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+    };
+
+    updateClock(); // Set initial time
+    const timerId = setInterval(updateClock, 1000 * 30); // Update every 30 seconds
+
+    return () => clearInterval(timerId); // Cleanup on unmount
+  }, [isClient]);
 
   useEffect(() => {
     if (chatScrollAreaRef.current) {
@@ -746,7 +763,15 @@ export default function DetailedViewPage() {
                   </Button>
               </Link>
                {viewMode === 'week' && (
-                    <h1 className="text-xl font-semibold text-primary hidden md:block">Detailed Calendar</h1>
+                    <div className="flex items-baseline gap-3">
+                        <h1 className="text-xl font-semibold text-primary hidden md:block">Detailed Calendar</h1>
+                        {currentTime && (
+                             <span className="text-sm font-mono text-muted-foreground hidden md:flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5"/>
+                                {currentTime}
+                            </span>
+                        )}
+                    </div>
                 )}
           </div>
           <div className="flex items-center gap-2">
