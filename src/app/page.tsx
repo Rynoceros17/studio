@@ -27,7 +27,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle as FormDialogTitle,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -35,10 +35,10 @@ import {
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
-    AlertDialogDescription as AlertDesc, // Alias to avoid conflict
+    AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle as AlertTitle,
+    AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
   Sheet,
@@ -47,7 +47,6 @@ import {
   SheetTitle as SheetDialogTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ToastAction } from "@/components/ui/toast";
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
@@ -100,6 +99,7 @@ export default function Home() {
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
   const [pendingAiTasks, setPendingAiTasks] = useState<SingleTaskOutput[]>([]);
+  const [isAiConfirmOpen, setIsAiConfirmOpen] = useState(false);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -627,7 +627,7 @@ export default function Home() {
     });
   }, [tasks, goals, isClient]);
 
-  const confirmAiTasks = useCallback(() => {
+  const handleConfirmAiTasks = useCallback(() => {
     let tasksAddedCount = 0;
     pendingAiTasks.forEach(parsedTask => {
         const taskDate = parseISOStrict(parsedTask.date);
@@ -663,7 +663,17 @@ export default function Home() {
             description: `${tasksAddedCount} task(s) have been added to your calendar.`,
         });
     }
+    setIsAiConfirmOpen(false);
   }, [pendingAiTasks, addTask, toast]);
+
+  const handleCancelAiTasks = useCallback(() => {
+    setPendingAiTasks([]);
+    setIsAiConfirmOpen(false);
+    toast({
+        title: "AI Suggestions Canceled",
+        description: "The suggested tasks have been discarded.",
+    });
+  }, [toast]);
 
   const handleSendChatMessage = async () => {
     if (chatInput.trim() && !isParsingTask) {
@@ -674,12 +684,7 @@ export default function Home() {
 
         if (parsedTasksArray && parsedTasksArray.length > 0) {
             setPendingAiTasks(parsedTasksArray);
-            toast({
-                title: "Confirm AI Tasks",
-                description: `The AI suggests adding ${parsedTasksArray.length} task(s).`,
-                action: <ToastAction altText="Confirm" onClick={confirmAiTasks}>Confirm</ToastAction>,
-                duration: 15000, // Give user 15s to confirm
-            });
+            setIsAiConfirmOpen(true);
             setChatInput('');
         } else {
              toast({
@@ -1012,7 +1017,7 @@ export default function Home() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                   <FormDialogTitle className="text-primary">Add New Task</FormDialogTitle>
+                   <DialogTitle className="text-primary">Add New Task</DialogTitle>
                 </DialogHeader>
                 <TaskForm
                    addTask={addTask}
@@ -1049,10 +1054,10 @@ export default function Home() {
         <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertTitle>Delete Recurring Task</AlertTitle>
-                    <AlertDesc>
+                    <AlertDialogTitle>Delete Recurring Task</AlertDialogTitle>
+                    <AlertDialogDescription>
                         Do you want to delete only this occurrence of "{deleteConfirmation?.task?.name}" on {deleteConfirmation?.dateStr ? format(parseISOStrict(deleteConfirmation.dateStr) ?? new Date(), 'PPP') : ''}, or all future occurrences?
-                    </AlertDesc>
+                    </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
@@ -1075,11 +1080,11 @@ export default function Home() {
         <AlertDialog open={!!moveRecurringConfirmation} onOpenChange={(open) => !open && setMoveRecurringConfirmation(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertTitle>Move Recurring Task</AlertTitle>
-                    <AlertDesc>
+                    <AlertDialogTitle>Move Recurring Task</AlertDialogTitle>
+                    <AlertDialogDescription>
                         You are moving the recurring task "{moveRecurringConfirmation?.task?.name}".
                         How would you like to move it from {moveRecurringConfirmation?.originalDateStr ? format(parseISOStrict(moveRecurringConfirmation.originalDateStr)!, 'PPP') : ''} to {moveRecurringConfirmation?.newDateStr ? format(parseISOStrict(moveRecurringConfirmation.newDateStr)!, 'PPP') : ''}?
-                    </AlertDesc>
+                    </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setMoveRecurringConfirmation(null)}>Cancel</AlertDialogCancel>
@@ -1099,6 +1104,21 @@ export default function Home() {
             </AlertDialogContent>
         </AlertDialog>
 
+        <AlertDialog open={isAiConfirmOpen} onOpenChange={setIsAiConfirmOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Confirm AI Tasks</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The AI suggests adding {pendingAiTasks.length} task(s) to your calendar. Do you want to proceed?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={handleCancelAiTasks}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmAiTasks}>Confirm</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
         <TodaysTasksDialog
             isOpen={isTodaysTasksDialogOpen && todaysTasks.length > 0}
             onClose={() => setIsTodaysTasksDialogOpen(false)}
@@ -1108,7 +1128,7 @@ export default function Home() {
         <Dialog open={isWelcomeOpen} onOpenChange={setIsWelcomeOpen}>
             <DialogContent>
                 <DialogHeader>
-                    <FormDialogTitle>Welcome to WeekWise</FormDialogTitle>
+                    <DialogTitle>Welcome to WeekWise</DialogTitle>
                     <DialogDescription>
                         This is your personal planner to organize your life, track your goals, and manage your time effectively. Use the AI to quickly add tasks, view your schedule in different formats, and stay on top of your deadlines.
                     </DialogDescription>
@@ -1126,3 +1146,4 @@ export default function Home() {
     
 
     
+

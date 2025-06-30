@@ -25,7 +25,7 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
-    AlertDialogTitle as AlertTitle,
+    AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
   Sheet,
@@ -132,6 +132,7 @@ export default function DetailedViewPage() {
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
   const [pendingAiTasks, setPendingAiTasks] = useState<SingleTaskOutput[]>([]);
+  const [isAiConfirmOpen, setIsAiConfirmOpen] = useState(false);
 
   // Preset state
   const [presets, setPresets] = useLocalStorage<WeekPreset[]>('weekwise-presets', []);
@@ -439,7 +440,7 @@ export default function DetailedViewPage() {
       });
   }, [tasks, setCompletedTaskIds, toast]);
 
-    const confirmAiTasks = useCallback(() => {
+    const handleConfirmAiTasks = useCallback(() => {
         let tasksAddedCount = 0;
         pendingAiTasks.forEach(parsedTask => {
             const taskDate = parseISOStrict(parsedTask.date);
@@ -472,7 +473,17 @@ export default function DetailedViewPage() {
             });
         }
         setPendingAiTasks([]);
+        setIsAiConfirmOpen(false);
     }, [pendingAiTasks, addTask, toast]);
+
+    const handleCancelAiTasks = useCallback(() => {
+        setPendingAiTasks([]);
+        setIsAiConfirmOpen(false);
+        toast({
+            title: "AI Suggestions Canceled",
+            description: "The suggested tasks have been discarded.",
+        });
+    }, [toast]);
 
   const handleSendChatMessage = async () => {
     if (chatInput.trim() && !isParsingTask) {
@@ -483,12 +494,7 @@ export default function DetailedViewPage() {
 
         if (parsedTasksArray && parsedTasksArray.length > 0) {
             setPendingAiTasks(parsedTasksArray);
-            toast({
-                title: "Confirm AI Tasks",
-                description: `The AI suggests adding ${parsedTasksArray.length} task(s) to your calendar.`,
-                action: <ToastAction altText="Confirm" onClick={confirmAiTasks}>Confirm</ToastAction>,
-                duration: 15000,
-            });
+            setIsAiConfirmOpen(true);
             setChatInput('');
             setIsAiSheetOpen(false); // Close sheet on success
         } else {
@@ -616,7 +622,7 @@ export default function DetailedViewPage() {
       <header className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
-                  <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white h-10 w-10">
+                  <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground h-10 w-10">
                       <ArrowLeft className="h-5 w-5" />
                       <span className="sr-only">Back to Main Calendar</span>
                   </Button>
@@ -626,27 +632,27 @@ export default function DetailedViewPage() {
                 )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
+            <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
                 <Undo2 className="h-4 w-4" />
                 <span className="sr-only">Undo</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
+            <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
                 <Redo2 className="h-4 w-4" />
                 <span className="sr-only">Redo</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
+            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
               <Save className="h-4 w-4 mr-2" />
               Save
             </Button>
-            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
+            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
               <Download className="h-4 w-4 mr-2" />
               Import
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
+            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
               <Sparkles className="h-4 w-4" />
               <span className="sr-only">AI Manager</span>
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/10 hover:text-black dark:hover:text-white">
+            <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
               <Target className="h-4 w-4" />
               <span className="sr-only">View Goals</span>
             </Button>
@@ -769,7 +775,7 @@ export default function DetailedViewPage() {
       <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertTitle>Delete Recurring Task</AlertTitle>
+                    <AlertDialogTitle>Delete Recurring Task</AlertDialogTitle>
                     <AlertDialogDescription>
                         Do you want to delete only this occurrence of "{deleteConfirmation?.task?.name}" on {deleteConfirmation?.dateStr ? format(parseISOStrict(deleteConfirmation.dateStr)!, 'PPP') : ''}, or all future occurrences?
                     </AlertDialogDescription>
@@ -788,6 +794,22 @@ export default function DetailedViewPage() {
                     >
                         Delete All Occurrences
                     </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        {/* AI Task Confirmation Dialog */}
+        <AlertDialog open={isAiConfirmOpen} onOpenChange={setIsAiConfirmOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Confirm AI Tasks</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The AI suggests adding {pendingAiTasks.length} task(s) to your calendar. Do you want to proceed?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={handleCancelAiTasks}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmAiTasks}>Confirm</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
