@@ -896,18 +896,18 @@ export default function DetailedViewPage() {
                 <Redo2 className="h-4 w-4" />
                 <span className="sr-only">Redo</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
-              <Save className="h-4 w-4 mr-2" />
-              Save
+            <Button variant="outline" size="icon" onClick={() => setIsSavePresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground md:w-auto md:px-3">
+                <Save className="h-4 w-4" />
+                <span className="hidden md:inline ml-2">Save</span>
             </Button>
-            <Button variant="outline" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
-              <Download className="h-4 w-4 mr-2" />
-              Import
+            <Button variant="outline" size="icon" onClick={() => setIsImportPresetDialogOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground md:w-auto md:px-3">
+                <Download className="h-4 w-4" />
+                <span className="hidden md:inline ml-2">Import</span>
             </Button>
-            <Label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload ICS
-              <Input type="file" accept=".ics,text/calendar" className="hidden" onChange={handleIcsFileUpload} />
+            <Label className={cn(buttonVariants({ variant: "outline", size: "icon" }), "cursor-pointer text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground md:w-auto md:px-3")}>
+                <Upload className="h-4 w-4" />
+                <span className="hidden md:inline ml-2">Upload ICS</span>
+                <Input type="file" accept=".ics,text/calendar" className="hidden" onChange={handleIcsFileUpload} />
             </Label>
             <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
               <Sparkles className="h-4 w-4" />
