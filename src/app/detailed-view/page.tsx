@@ -462,10 +462,11 @@ export default function DetailedViewPage() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
+    let wasCompleted: boolean;
     setCompletedTaskIds(prevIds => {
         const currentCompletedKeys = new Set(prevIds);
         const completionKey = `${taskId}_${dateStr}`;
-        const wasCompleted = currentCompletedKeys.has(completionKey);
+        wasCompleted = currentCompletedKeys.has(completionKey);
 
         if (wasCompleted) {
             currentCompletedKeys.delete(completionKey);
@@ -475,19 +476,24 @@ export default function DetailedViewPage() {
         return Array.from(currentCompletedKeys);
     });
 
-    const wasCompleted = completedTasks.has(`${taskId}_${dateStr}`);
-    if (wasCompleted) {
-        toast({
-            title: "Task Incomplete",
-            description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as incomplete.`,
-        });
-    } else {
-        toast({
-            title: "Task Completed!",
-            description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as complete.`,
-        });
-    }
-  }, [tasks, completedTasks, setCompletedTaskIds, toast]);
+    // We need to use a timeout to ensure the state update has propagated before toasting.
+    // However, the `wasCompleted` variable is captured in the closure, so we can use it.
+    // The previous error happened because toast was inside the state setter.
+    // Let's use it outside.
+    setTimeout(() => {
+        if (wasCompleted) {
+            toast({
+                title: "Task Incomplete",
+                description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as incomplete.`,
+            });
+        } else {
+            toast({
+                title: "Task Completed!",
+                description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as complete.`,
+            });
+        }
+    }, 0);
+  }, [tasks, toast]);
 
     const handleConfirmAiTasks = useCallback(() => {
         const tasksToAdd: Task[] = pendingAiTasksRef.current
@@ -744,7 +750,7 @@ export default function DetailedViewPage() {
         return;
     }
 
-    e.target.value = '';
+    e.target.value = ''; // Reset file input to allow re-uploading the same file
 
     if (!file.name.toLowerCase().endsWith('.ics')) {
         toast({
@@ -760,23 +766,26 @@ export default function DetailedViewPage() {
         const { allEvents, error } = await parseIcsContent(fileContent);
 
         if (error) {
-            toast({
-                title: "Parsing Error",
-                description: error,
-                variant: "destructive",
-            });
+            toast({ title: "Parsing Error", description: error, variant: "destructive" });
             return;
         }
 
         if (allEvents.length === 0) {
-            toast({
-                title: "No Events Found",
-                description: "The ICS file seems to be empty or contains no valid events.",
-            });
+            toast({ title: "No Events Found", description: "The ICS file contains no valid events." });
             return;
         }
 
-        const newTasks: Task[] = allEvents.map(event => {
+        // 1. Deduplicate events from the ICS file itself
+        const uniqueIcsEvents = new Map<string, RelevantEvent>();
+        allEvents.forEach(event => {
+            // A key based on content ensures we only get one of each identical event
+            const eventKey = `${event.summary}_${event.startDate}_${event.endDate}`;
+            if (!uniqueIcsEvents.has(eventKey)) {
+                uniqueIcsEvents.set(eventKey, event);
+            }
+        });
+
+        const tasksToProcess: Task[] = Array.from(uniqueIcsEvents.values()).map(event => {
             const startDate = parseISO(event.startDate);
             const endDate = parseISO(event.endDate);
 
@@ -789,12 +798,13 @@ export default function DetailedViewPage() {
                 endTime: format(endDate, 'HH:mm'),
                 recurring: event.isRecurring,
                 highPriority: false,
-                color: null,
+                // 2. Set default color to #col4
+                color: colorTagToHexMap['#col4'],
                 details: null,
                 dueDate: null,
                 exceptions: [],
             };
-        }).filter(task => {
+        }).filter(task => { // Filter out any with invalid dates after conversion
             try {
                 return isValid(parseISO(task.date));
             } catch {
@@ -802,9 +812,11 @@ export default function DetailedViewPage() {
             }
         });
 
+        // 3. Filter out tasks that already exist in the calendar
         const existingTaskKeys = new Set(tasks.map(t => `${t.name}_${t.date}_${t.startTime}`));
-        const uniqueNewTasks = newTasks.filter(t => !existingTaskKeys.has(`${t.name}_${t.date}_${t.startTime}`));
-        const skippedCount = newTasks.length - uniqueNewTasks.length;
+        const uniqueNewTasks = tasksToProcess.filter(t => !existingTaskKeys.has(`${t.name}_${t.date}_${t.startTime}`));
+        
+        const skippedCount = tasksToProcess.length - uniqueNewTasks.length;
 
         if (skippedCount > 0) {
             toast({
@@ -812,7 +824,8 @@ export default function DetailedViewPage() {
                 description: `${skippedCount} events already existed in your calendar and were not added.`,
             });
         }
-
+        
+        // 4. Add the unique, new tasks
         if (uniqueNewTasks.length > 0) {
             setTasks(prevTasks => {
                 const updatedTasks = [...prevTasks, ...uniqueNewTasks];
@@ -829,15 +842,15 @@ export default function DetailedViewPage() {
             });
             toast({
                 title: "Import Successful",
-                description: `${uniqueNewTasks.length} event(s) have been added from ${file.name}.`,
+                description: `${uniqueNewTasks.length} new event(s) have been added from ${file.name}.`,
             });
-        } else if (newTasks.length > 0) {
+        } else if (tasksToProcess.length > 0) {
             toast({
                 title: "No New Events",
                 description: "All events from the file already exist in your calendar.",
             });
         }
-        
+    
     } catch (err) {
         console.error("Error processing ICS file:", err);
         toast({
