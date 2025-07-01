@@ -3,9 +3,9 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2, Undo2, Redo2, Bot, Clock } from 'lucide-react';
+import { ArrowLeft, Target, Sparkles, Loader2, SendHorizonal, Save, Download, Trash2, Undo2, Redo2, Bot, Clock, Upload } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
-import type { Task, Goal, WeekPreset, SingleTaskOutput } from '@/lib/types';
+import type { Task, Goal, WeekPreset, SingleTaskOutput, RelevantEvent } from '@/lib/types';
 import { DetailedCalendarView } from '@/components/DetailedCalendarView';
 import { TaskForm } from '@/components/TaskForm';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import { format, isValid, isSameDay, addDays, startOfWeek, endOfWeek, isWithinInterval, startOfDay } from 'date-fns';
+import { format, isValid, isSameDay, addDays, startOfWeek, endOfWeek, isWithinInterval, startOfDay, parseISO } from 'date-fns';
 import { cn, parseISOStrict, calculateGoalProgress } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/firebase';
@@ -53,6 +53,7 @@ import { adjustTasks } from '@/ai/flows/adjust-tasks-flow';
 import { chatWithAssistant } from '@/ai/flows/chat-assistant-flow';
 import { colorTagToHexMap } from '@/lib/color-map';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { parseIcsContent } from '@/lib/ics-parser';
 
 interface ChatMessage {
     id: string;
@@ -461,11 +462,11 @@ export default function DetailedViewPage() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const completionKey = `${taskId}_${dateStr}`;
-    const wasCompleted = completedTasks.has(completionKey);
-
     setCompletedTaskIds(prevIds => {
         const currentCompletedKeys = new Set(prevIds);
+        const completionKey = `${taskId}_${dateStr}`;
+        const wasCompleted = currentCompletedKeys.has(completionKey);
+
         if (wasCompleted) {
             currentCompletedKeys.delete(completionKey);
         } else {
@@ -474,6 +475,7 @@ export default function DetailedViewPage() {
         return Array.from(currentCompletedKeys);
     });
 
+    const wasCompleted = completedTasks.has(`${taskId}_${dateStr}`);
     if (wasCompleted) {
         toast({
             title: "Task Incomplete",
@@ -736,6 +738,115 @@ export default function DetailedViewPage() {
     toast({ title: "Preset Deleted", variant: "destructive" });
   };
 
+  const handleIcsFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+        return;
+    }
+
+    e.target.value = '';
+
+    if (!file.name.toLowerCase().endsWith('.ics')) {
+        toast({
+            title: "Invalid File Type",
+            description: "Please upload a valid .ics file.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    try {
+        const fileContent = await file.text();
+        const { allEvents, error } = await parseIcsContent(fileContent);
+
+        if (error) {
+            toast({
+                title: "Parsing Error",
+                description: error,
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (allEvents.length === 0) {
+            toast({
+                title: "No Events Found",
+                description: "The ICS file seems to be empty or contains no valid events.",
+            });
+            return;
+        }
+
+        const newTasks: Task[] = allEvents.map(event => {
+            const startDate = parseISO(event.startDate);
+            const endDate = parseISO(event.endDate);
+
+            return {
+                id: event.uid ? `${event.uid}-${event.startDate}` : crypto.randomUUID(),
+                name: event.summary,
+                description: event.description || event.location || null,
+                date: format(startDate, 'yyyy-MM-dd'),
+                startTime: format(startDate, 'HH:mm'),
+                endTime: format(endDate, 'HH:mm'),
+                recurring: event.isRecurring,
+                highPriority: false,
+                color: null,
+                details: null,
+                dueDate: null,
+                exceptions: [],
+            };
+        }).filter(task => {
+            try {
+                return isValid(parseISO(task.date));
+            } catch {
+                return false;
+            }
+        });
+
+        const existingTaskKeys = new Set(tasks.map(t => `${t.name}_${t.date}_${t.startTime}`));
+        const uniqueNewTasks = newTasks.filter(t => !existingTaskKeys.has(`${t.name}_${t.date}_${t.startTime}`));
+        const skippedCount = newTasks.length - uniqueNewTasks.length;
+
+        if (skippedCount > 0) {
+            toast({
+                title: "Duplicate Events Skipped",
+                description: `${skippedCount} events already existed in your calendar and were not added.`,
+            });
+        }
+
+        if (uniqueNewTasks.length > 0) {
+            setTasks(prevTasks => {
+                const updatedTasks = [...prevTasks, ...uniqueNewTasks];
+                updatedTasks.sort((a, b) => {
+                    const dateA = parseISOStrict(a.date);
+                    const dateB = parseISOStrict(b.date);
+                    if (!dateA || !dateB) return 0;
+                    const dateComparison = dateA.getTime() - dateB.getTime();
+                    if (dateComparison !== 0) return dateComparison;
+                    if (a.highPriority !== b.highPriority) return a.highPriority ? -1 : 1;
+                    return 0;
+                });
+                return updatedTasks;
+            });
+            toast({
+                title: "Import Successful",
+                description: `${uniqueNewTasks.length} event(s) have been added from ${file.name}.`,
+            });
+        } else if (newTasks.length > 0) {
+            toast({
+                title: "No New Events",
+                description: "All events from the file already exist in your calendar.",
+            });
+        }
+        
+    } catch (err) {
+        console.error("Error processing ICS file:", err);
+        toast({
+            title: "File Read Error",
+            description: "An unexpected error occurred while reading the file.",
+            variant: "destructive",
+        });
+    }
+  };
 
   if (authLoading || !isDataLoaded) {
     return <LoadingScreen />;
@@ -780,6 +891,11 @@ export default function DetailedViewPage() {
               <Download className="h-4 w-4 mr-2" />
               Import
             </Button>
+            <Label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload ICS
+              <Input type="file" accept=".ics,text/calendar" className="hidden" onChange={handleIcsFileUpload} />
+            </Label>
             <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
               <Sparkles className="h-4 w-4" />
               <span className="sr-only">AI Manager</span>
