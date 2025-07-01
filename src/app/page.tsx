@@ -52,7 +52,7 @@ import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, ArrowLeftCircle, ArrowRightCircle, Info } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, ArrowLeftCircle, ArrowRightCircle, Info, CalendarClock } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
@@ -752,7 +752,7 @@ export default function Home() {
       finalTasks.sort((a, b) => {
         const dateA = parseISOStrict(a.date);
         const dateB = parseISOStrict(b.date);
-        if (!dateA && !dateB) return 0;
+        if (!dateA || !dateB) return 0;
         if (!dateA) return 1;
         if (!dateB) return -1;
         const dateComparison = dateA.getTime() - dateB.getTime();
@@ -904,6 +904,14 @@ export default function Home() {
             >
                 <BookOpen className="h-5 w-5" />
                 <span className="ml-2 hidden md:inline">Study</span>
+            </Link>
+            <Link
+               href="/timetable"
+               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+               aria-label="Go to timetable importer"
+            >
+                <CalendarClock className="h-5 w-5" />
+                <span className="ml-2 hidden md:inline">Timetable</span>
             </Link>
             <Link
               href="/goals"
@@ -1146,4 +1154,5 @@ export default function Home() {
     
 
     
+
 
