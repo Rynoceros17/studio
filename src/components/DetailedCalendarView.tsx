@@ -301,10 +301,24 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
   const [isClient, setIsClient] = useState(false);
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   const [currentDay, setCurrentDay] = useState(() => startOfDay(new Date()));
+  const [dayWidth, setDayWidth] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const calculateDayWidth = () => {
+      if (gridRef.current) {
+        setDayWidth(gridRef.current.offsetWidth / (viewMode === 'week' ? 7 : 1));
+      }
+    };
+
+    calculateDayWidth();
+    window.addEventListener('resize', calculateDayWidth);
+    return () => window.removeEventListener('resize', calculateDayWidth);
+  }, [isClient, viewMode]);
 
   useEffect(() => {
       if (!isClient) return;
@@ -333,11 +347,6 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
     return week;
   }, [currentWeekStart, viewMode, currentDay]);
   
-  const dayWidth = useMemo(() => {
-    if (!gridRef.current) return 0;
-    return gridRef.current.offsetWidth / (viewMode === 'week' ? 7 : 1);
-  }, [gridRef, viewMode]);
-
   const weekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
   const isCurrentWeekVisible = useMemo(() => isWithinInterval(new Date(), { start: currentWeekStart, end: weekEnd }), [currentWeekStart, weekEnd]);
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -365,7 +374,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
   
   const handleDragMove = useCallback((e: MouseEvent) => {
     if (!dragState || !scrollContainerRef.current) return;
-    if (!gridRef.current) return;
+    if (!gridRef.current || dayWidth === 0) return;
 
     const currentScrollTop = scrollContainerRef.current.scrollTop;
     const scrollDelta = currentScrollTop - dragState.initialScrollTop;
