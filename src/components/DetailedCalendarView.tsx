@@ -294,6 +294,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
     initialHeight: number;
     dayIndex: number;
     initialClientX: number;
+    initialScrollTop: number;
   } | null>(null);
   const [modifiedTaskPosition, setModifiedTaskPosition] = useState<{ top: number; height: number; dayIndex: number; } | null>(null);
 
@@ -358,14 +359,17 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
         initialHeight: parseFloat(styles.height as string) * remToPx,
         dayIndex,
         initialClientX: e.clientX,
+        initialScrollTop: scrollContainerRef.current?.scrollTop || 0,
     });
   }, [days, remToPx]);
   
   const handleDragMove = useCallback((e: MouseEvent) => {
-    if (!dragState) return;
+    if (!dragState || !scrollContainerRef.current) return;
     if (!gridRef.current) return;
 
-    const deltaY = e.clientY - dragState.initialMouseY;
+    const currentScrollTop = scrollContainerRef.current.scrollTop;
+    const scrollDelta = currentScrollTop - dragState.initialScrollTop;
+    const deltaY = e.clientY - dragState.initialMouseY + scrollDelta;
     
     let newTop = dragState.initialTop + deltaY;
     let newHeight = dragState.initialHeight;
