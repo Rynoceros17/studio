@@ -717,8 +717,17 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                         )}>
                             
                             <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b h-[76px]">
-                                <p className="text-xs font-medium">{format(day, 'EEE')}</p>
-                                <p className={cn("text-xl font-bold", isToday && "text-primary")}>{format(day, 'd')}</p>
+                                <p className="text-xs font-medium text-muted-foreground">{format(day, 'EEE')}</p>
+                                <div
+                                    className={cn(
+                                        "mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold",
+                                        isToday
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-transparent text-foreground"
+                                    )}
+                                >
+                                    {format(day, 'd')}
+                                </div>
                             </div>
                             
                             <div className={cn("relative")} style={{ transform: 'translateZ(0)', zIndex: 1 }}>

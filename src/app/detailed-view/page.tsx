@@ -632,6 +632,20 @@ export default function DetailedViewPage() {
     }
   };
 
+  const handleAiButtonClick = () => {
+    // If chat is empty, populate it with the initial prompt.
+    if (chatHistory.length === 0) {
+      setChatHistory([
+        {
+          id: 'initial-ai-prompt',
+          role: 'ai',
+          content: "What do you have to do this week?",
+        },
+      ]);
+    }
+    setIsAiSheetOpen(true);
+  };
+
   const handleChatKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -884,10 +898,6 @@ export default function DetailedViewPage() {
                 <span className="hidden md:inline ml-2">Upload ICS</span>
                 <Input type="file" accept=".ics,text/calendar" className="hidden" onChange={handleIcsFileUpload} />
             </Label>
-            <Button variant="outline" size="icon" onClick={() => setIsAiSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
-              <Sparkles className="h-4 w-4" />
-              <span className="sr-only">AI Manager</span>
-            </Button>
             <Button variant="outline" size="icon" onClick={() => setIsGoalsSheetOpen(true)} className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground">
               <Target className="h-4 w-4" />
               <span className="sr-only">View Goals</span>
@@ -909,6 +919,16 @@ export default function DetailedViewPage() {
               updateTask={updateTask}
           />
       </main>
+
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={handleAiButtonClick}
+          className="h-12 rounded-full shadow-lg flex items-center gap-2 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Sparkles className="h-5 w-5" />
+          <span className="font-semibold">AI AGENT</span>
+        </Button>
+      </div>
 
       {/* AI Manager Sheet */}
       <Sheet open={isAiSheetOpen} onOpenChange={setIsAiSheetOpen}>
