@@ -54,7 +54,7 @@ Your task is to interpret a user's natural language request and convert it into 
 **Output Schema Fields:**
 - "name": (String) A concise name for the task.
 - "date": (String) The date in "YYYY-MM-DD" format.
-- "description": (String or Null) Additional details, but no time information.
+- "description": (Null) This field MUST ALWAYS be null. Do not add any text to it.
 - "startTime": (String 'HH:MM' or Null) 24-hour start time.
 - "endTime": (String 'HH:MM' or Null) 24-hour end time.
 - "recurring": (Boolean) True only for weekly repeats on a specific day.
@@ -123,3 +123,4 @@ const parseNaturalLanguageTaskFlow = ai.defineFlow(
     }));
   }
 );
+
