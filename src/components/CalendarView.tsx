@@ -58,6 +58,7 @@ import { cn, truncateText, getMaxLength, parseISOStrict } from '@/lib/utils';
 import { EditTaskDialog } from './EditTaskDialog';
 import { TaskDetailsDisplayDialog } from './TaskDetailsDisplayDialog';
 import { useToast } from "@/hooks/use-toast";
+import { GoalOfWeekEditor } from './GoalOfWeekEditor';
 
 interface CalendarViewProps {
     tasks: Task[];
@@ -74,6 +75,8 @@ interface CalendarViewProps {
     setCurrentDisplayDate: (date: Date) => void;
     weekNames: Record<string, string>;
     setWeekNames: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+    goalsByWeek: Record<string, string>;
+    setGoalsByWeek: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
 const dropAnimation: DropAnimation = {
@@ -488,6 +491,8 @@ export function CalendarView({
     setCurrentDisplayDate,
     weekNames,
     setWeekNames,
+    goalsByWeek,
+    setGoalsByWeek,
 }: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<'week' | 'today'>('week');
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -896,6 +901,13 @@ export function CalendarView({
                   </Card>
                 );
               })}
+            </div>
+             <div className="w-full mt-4">
+                <GoalOfWeekEditor
+                    currentDisplayDate={currentDisplayDate}
+                    goalsByWeek={goalsByWeek}
+                    setGoalsByWeek={setGoalsByWeek}
+                />
             </div>
           </div>
       </div>

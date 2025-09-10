@@ -1011,15 +1011,9 @@ export default function Home() {
             setCurrentDisplayDate={setCurrentDisplayDate}
             weekNames={weekNames}
             setWeekNames={setWeekNames}
-          />
-        </div>
-
-        <div className="w-full max-w-7xl mt-4">
-          <GoalOfWeekEditor
-            currentDisplayDate={currentDisplayDate}
             goalsByWeek={goalsByWeek}
             setGoalsByWeek={setGoalsByWeek}
-           />
+          />
         </div>
 
         <div className="w-full max-w-7xl mt-4">
