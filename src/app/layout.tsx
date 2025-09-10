@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'WeekWise',
-  description: 'Plan your week with ease.',
+  title: 'WeekWise. Your Educational planner.',
+  description: 'An intelligent weekly planner designed for students. Organize your schedule, track study sessions, and manage academic goals with AI assistance.',
 };
 
 export default function RootLayout({
