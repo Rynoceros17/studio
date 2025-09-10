@@ -786,8 +786,10 @@ export function CalendarView({
                   <Input
                       value={weekName}
                       onChange={(e) => setWeekName(e.target.value)}
-                      placeholder="Name of the Week"
-                      className="h-8 text-xs w-32 md:w-40 text-center bg-transparent border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-primary"
+                      placeholder="Name of Week"
+                      maxLength={12}
+                      size={Math.max(weekName.length, 12)}
+                      className="h-8 text-xs max-w-[150px] text-center bg-transparent border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-primary"
                     />
                   {isClient && theme && (
                     <Tabs
