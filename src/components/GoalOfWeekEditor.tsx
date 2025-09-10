@@ -100,7 +100,7 @@ export function GoalOfWeekEditor() {
     editorProps: {
       attributes: {
         class:
-          'prose dark:prose-invert min-h-[120px] max-h-[300px] w-full bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
+          'w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
       },
     },
   });
