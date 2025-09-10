@@ -789,7 +789,7 @@ export function CalendarView({
                       placeholder="Name of Week"
                       maxLength={12}
                       size={Math.max(weekName.length, 12)}
-                      className="h-8 text-xs max-w-[150px] text-center bg-transparent border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-primary"
+                      className="h-8 text-sm font-semibold max-w-[150px] text-center bg-transparent border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-primary"
                     />
                   {isClient && theme && (
                     <Tabs
