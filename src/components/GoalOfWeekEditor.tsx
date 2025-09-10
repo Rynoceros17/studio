@@ -1,14 +1,13 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import BulletList from '@tiptap/extension-bullet-list';
 import ListItem from '@tiptap/extension-list-item';
 import { Bold, Italic, List, AlignCenter, AlignLeft, AlignRight } from 'lucide-react';
-import useLocalStorage from '@/hooks/useLocalStorage';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
@@ -79,12 +78,15 @@ const MenuBar = ({ editor }: { editor: any | null }) => {
   );
 };
 
-export function GoalOfWeekEditor({ currentDisplayDate }: { currentDisplayDate: Date }) {
-  const [goalsByWeek, setGoalsByWeek] = useLocalStorage<Record<string, string>>(
-    'weekwise-goals-by-week',
-    {}
-  );
-  
+export function GoalOfWeekEditor({
+    currentDisplayDate,
+    goalsByWeek,
+    setGoalsByWeek
+}: {
+    currentDisplayDate: Date;
+    goalsByWeek: Record<string, string>;
+    setGoalsByWeek: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}) {
   const currentWeekKey = useMemo(() => {
     const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
     return format(weekStart, 'yyyy-MM-dd');
@@ -102,7 +104,6 @@ export function GoalOfWeekEditor({ currentDisplayDate }: { currentDisplayDate: D
       ListItem,
     ],
     content: content,
-    key: currentWeekKey, // Force re-initialization when the week changes
     onUpdate: ({ editor }) => {
       setGoalsByWeek(prev => ({
           ...prev,
@@ -112,10 +113,16 @@ export function GoalOfWeekEditor({ currentDisplayDate }: { currentDisplayDate: D
     editorProps: {
       attributes: {
         class:
-          'w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
+          'prose dark:prose-invert prose-sm sm:prose-base lg:prose-lg xl:prose-2xl w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
       },
     },
   });
+
+  useEffect(() => {
+      if (editor && editor.isAttached) {
+          editor.commands.setContent(content);
+      }
+  }, [content, editor]);
 
   return (
     <Card className="shadow-sm">

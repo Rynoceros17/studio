@@ -16,7 +16,6 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, ArrowLeftCircle, ArrowRightCircle, Edit } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import useLocalStorage from '@/hooks/useLocalStorage';
 
 import {
   DndContext,
@@ -71,6 +70,10 @@ interface CalendarViewProps {
     updateTask: (id: string, updates: Partial<Task>) => void;
     completedCount: number;
     requestMoveRecurringTask: (task: Task, originalDateStr: string, newDateStr: string) => void;
+    currentDisplayDate: Date;
+    setCurrentDisplayDate: (date: Date) => void;
+    weekNames: Record<string, string>;
+    setWeekNames: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
 const dropAnimation: DropAnimation = {
@@ -481,8 +484,11 @@ export function CalendarView({
     updateTask,
     completedCount,
     requestMoveRecurringTask,
+    currentDisplayDate,
+    setCurrentDisplayDate,
+    weekNames,
+    setWeekNames,
 }: CalendarViewProps) {
-  const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date()));
   const [viewMode, setViewMode] = useState<'week' | 'today'>('week');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -492,7 +498,6 @@ export function CalendarView({
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [today, setToday] = useState<Date | null>(null);
-  const [weekNames, setWeekNames] = useLocalStorage<Record<string, string>>('weekwise-week-names', {});
 
   const currentWeekKey = useMemo(() => {
     const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
@@ -534,7 +539,7 @@ export function CalendarView({
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isClient]);
+  }, [isClient, setCurrentDisplayDate]);
 
 
    const days = useMemo(() => {
@@ -804,7 +809,7 @@ export function CalendarView({
                       placeholder="Name of Week"
                       maxLength={12}
                       size={Math.max(weekName.length, 1)}
-                      className="h-8 text-base font-semibold text-center bg-transparent border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-primary w-auto"
+                      className="h-8 text-base font-semibold text-center bg-transparent border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-primary w-auto max-w-[150px]"
                     />
                   {isClient && theme && (
                     <Tabs

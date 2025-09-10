@@ -75,6 +75,9 @@ export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
+  const [weekNames, setWeekNames] = useState<Record<string, string>>({});
+  const [goalsByWeek, setGoalsByWeek] = useState<Record<string, string>>({});
+  
   const { user, authLoading } = useAuth();
   const isInitialLoad = useRef(true);
   const firestoreUnsubscribeRef = useRef<Unsubscribe | null>(null);
@@ -131,25 +134,27 @@ export default function Home() {
       firestoreUnsubscribeRef.current = null;
     }
     setIsDataLoaded(false);
-    isInitialLoad.current = true; // Prevent auto-saving during data load transition
+    isInitialLoad.current = true;
 
     if (user && db) {
-      // User is logged in. Clear local state and set up Firestore listener.
       setTasks([]);
       setCompletedTaskIds([]);
+      setWeekNames({});
+      setGoalsByWeek({});
       
       const userDocRef = doc(db, 'users', user.uid);
       firestoreUnsubscribeRef.current = onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          const tasksData = userData.tasks || [];
-          const completedIdsData = userData.completedTaskIds || [];
-          setTasks(Array.isArray(tasksData) ? tasksData : []);
-          setCompletedTaskIds(Array.isArray(completedIdsData) ? completedIdsData : []);
+          setTasks(Array.isArray(userData.tasks) ? userData.tasks : []);
+          setCompletedTaskIds(Array.isArray(userData.completedTaskIds) ? userData.completedTaskIds : []);
+          setWeekNames(userData.weekNames && typeof userData.weekNames === 'object' ? userData.weekNames : {});
+          setGoalsByWeek(userData.goalsByWeek && typeof userData.goalsByWeek === 'object' ? userData.goalsByWeek : {});
         } else {
-          // New user, Firestore doc will be created on first save. State is already empty.
           setTasks([]);
           setCompletedTaskIds([]);
+          setWeekNames({});
+          setGoalsByWeek({});
         }
         isInitialLoad.current = false;
         setIsDataLoaded(true);
@@ -159,16 +164,17 @@ export default function Home() {
         setIsDataLoaded(true);
       });
     } else if (!authLoading && !user) {
-      // No user, load from localStorage.
       try {
-        const localTasks = JSON.parse(localStorage.getItem('weekwise-tasks') || '[]');
-        const localCompleted = JSON.parse(localStorage.getItem('weekwise-completed-tasks') || '[]');
-        setTasks(localTasks);
-        setCompletedTaskIds(localCompleted);
+        setTasks(JSON.parse(localStorage.getItem('weekwise-tasks') || '[]'));
+        setCompletedTaskIds(JSON.parse(localStorage.getItem('weekwise-completed-tasks') || '[]'));
+        setWeekNames(JSON.parse(localStorage.getItem('weekwise-week-names') || '{}'));
+        setGoalsByWeek(JSON.parse(localStorage.getItem('weekwise-goals-by-week') || '{}'));
       } catch (error) {
         console.warn("Could not parse local storage data.", error);
         setTasks([]);
         setCompletedTaskIds([]);
+        setWeekNames({});
+        setGoalsByWeek({});
       }
       isInitialLoad.current = false;
       setIsDataLoaded(true);
@@ -184,38 +190,37 @@ export default function Home() {
 
   // Effect to automatically save data
   useEffect(() => {
-    // Skip saving on the very first load or while auth is resolving
     if (isInitialLoad.current || authLoading) {
       return;
     }
 
     const autoSave = async () => {
-      if (user && db) { // Logged in: save to Firestore
+      const dataToSave = {
+        tasks: tasks,
+        completedTaskIds: completedTaskIds,
+        weekNames: weekNames,
+        goalsByWeek: goalsByWeek,
+      };
+
+      if (user && db) {
         try {
           const userDocRef = doc(db, 'users', user.uid);
-          await setDoc(userDocRef, { 
-              tasks: tasks, 
-              completedTaskIds: completedTaskIds,
-          }, { merge: true });
+          await setDoc(userDocRef, dataToSave, { merge: true });
         } catch (error) {
           console.error("Error auto-saving user data to Firestore:", error);
           toast({ title: "Sync Failed", description: "Your latest changes could not be saved.", variant: "destructive" });
         }
-      } else { // Logged out: save to localStorage
-         localStorage.setItem('weekwise-tasks', JSON.stringify(tasks));
-         localStorage.setItem('weekwise-completed-tasks', JSON.stringify(completedTaskIds));
+      } else {
+         localStorage.setItem('weekwise-tasks', JSON.stringify(dataToSave.tasks));
+         localStorage.setItem('weekwise-completed-tasks', JSON.stringify(dataToSave.completedTaskIds));
+         localStorage.setItem('weekwise-week-names', JSON.stringify(dataToSave.weekNames));
+         localStorage.setItem('weekwise-goals-by-week', JSON.stringify(dataToSave.goalsByWeek));
       }
     };
 
-    // Debounce the save operation to avoid rapid writes.
-    const handler = setTimeout(() => {
-      autoSave();
-    }, 1000);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [tasks, completedTaskIds, user, authLoading, toast]);
+    const handler = setTimeout(autoSave, 1000);
+    return () => clearTimeout(handler);
+  }, [tasks, completedTaskIds, weekNames, goalsByWeek, user, authLoading, toast]);
   
   // Effect for keyboard shortcuts
   useEffect(() => {
@@ -527,7 +532,7 @@ export default function Home() {
            updatedTasks.sort((a, b) => {
                const dateA = parseISOStrict(a.date);
                const dateB = parseISOStrict(b.date);
-               if (!dateA && !dateB) return 0;
+               if (!dateA || !dateB) return 0;
                if (!dateA) return 1;
                if (!dateB) return -1;
                const dateComparison = dateA.getTime() - dateB.getTime();
@@ -1002,11 +1007,19 @@ export default function Home() {
             updateTask={updateTask}
             completedCount={completedCount}
             requestMoveRecurringTask={requestMoveRecurringTask}
+            currentDisplayDate={currentDisplayDate}
+            setCurrentDisplayDate={setCurrentDisplayDate}
+            weekNames={weekNames}
+            setWeekNames={setWeekNames}
           />
         </div>
 
         <div className="w-full max-w-7xl mt-4">
-          <GoalOfWeekEditor currentDisplayDate={currentDisplayDate} />
+          <GoalOfWeekEditor
+            currentDisplayDate={currentDisplayDate}
+            goalsByWeek={goalsByWeek}
+            setGoalsByWeek={setGoalsByWeek}
+           />
         </div>
 
         <div className="w-full max-w-7xl mt-4">
