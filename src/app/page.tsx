@@ -62,6 +62,7 @@ import { db } from '@/lib/firebase/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { TodaysTasksDialog } from '@/components/TodaysTasksDialog';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -1004,6 +1005,10 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-7xl mt-4">
+          <GoalOfWeekEditor />
+        </div>
+
+        <div className="w-full max-w-7xl mt-4">
            <TopTaskBar
              items={upcomingItemsForBar}
              toggleGoalPriority={toggleGoalPriority}
@@ -1150,9 +1155,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
-    
-
-    
-
-

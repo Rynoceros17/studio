@@ -1,0 +1,121 @@
+
+"use client";
+
+import React from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import TextAlign from '@tiptap/extension-text-align';
+import BulletList from '@tiptap/extension-bullet-list';
+import ListItem from '@tiptap/extension-list-item';
+import { Bold, Italic, List, AlignCenter, AlignLeft, AlignRight } from 'lucide-react';
+import useLocalStorage from '@/hooks/useLocalStorage';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
+
+const MenuBar = ({ editor }: { editor: any | null }) => {
+  if (!editor) {
+    return null;
+  }
+
+  const menuItems = [
+    {
+      icon: Bold,
+      onClick: () => editor.chain().focus().toggleBold().run(),
+      isActive: editor.isActive('bold'),
+      label: 'Bold',
+    },
+    {
+      icon: Italic,
+      onClick: () => editor.chain().focus().toggleItalic().run(),
+      isActive: editor.isActive('italic'),
+      label: 'Italic',
+    },
+    {
+      icon: List,
+      onClick: () => editor.chain().focus().toggleBulletList().run(),
+      isActive: editor.isActive('bulletList'),
+      label: 'Bullet List',
+    },
+    {
+      icon: AlignLeft,
+      onClick: () => editor.chain().focus().setTextAlign('left').run(),
+      isActive: editor.isActive({ textAlign: 'left' }),
+      label: 'Align Left',
+    },
+    {
+      icon: AlignCenter,
+      onClick: () => editor.chain().focus().setTextAlign('center').run(),
+      isActive: editor.isActive({ textAlign: 'center' }),
+      label: 'Align Center',
+    },
+    {
+      icon: AlignRight,
+      onClick: () => editor.chain().focus().setTextAlign('right').run(),
+      isActive: editor.isActive({ textAlign: 'right' }),
+      label: 'Align Right',
+    },
+  ];
+
+  return (
+    <div className="flex items-center space-x-1 border-b p-2 bg-muted/50 rounded-t-lg">
+      {menuItems.map((item, index) => (
+        <Button
+          key={index}
+          onClick={item.onClick}
+          variant="ghost"
+          size="icon"
+          className={cn(
+            'h-8 w-8',
+            item.isActive ? 'bg-primary/20 text-primary' : 'text-muted-foreground'
+          )}
+          aria-label={item.label}
+        >
+          <item.icon className="h-4 w-4" />
+        </Button>
+      ))}
+    </div>
+  );
+};
+
+export function GoalOfWeekEditor() {
+  const [content, setContent] = useLocalStorage<string>(
+    'weekwise-goal-of-week',
+    '<p>Set your intention for the week!</p>'
+  );
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      BulletList,
+      ListItem,
+    ],
+    content: content,
+    onUpdate: ({ editor }) => {
+      setContent(editor.getHTML());
+    },
+    editorProps: {
+      attributes: {
+        class:
+          'prose dark:prose-invert min-h-[120px] max-h-[300px] w-full rounded-b-md border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
+      },
+    },
+  });
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className='pb-2'>
+        <CardTitle className="text-lg font-semibold text-primary">Goal of the Week</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-lg border">
+          <MenuBar editor={editor} />
+          <EditorContent editor={editor} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
