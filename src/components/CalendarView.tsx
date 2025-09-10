@@ -492,7 +492,22 @@ export function CalendarView({
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [today, setToday] = useState<Date | null>(null);
-  const [weekName, setWeekName] = useLocalStorage('weekwise-week-name', 'My Week');
+  const [weekNames, setWeekNames] = useLocalStorage<Record<string, string>>('weekwise-week-names', {});
+
+  const currentWeekKey = useMemo(() => {
+    const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
+    return format(weekStart, 'yyyy-MM-dd');
+  }, [currentDisplayDate]);
+
+  const weekName = weekNames[currentWeekKey] || '';
+
+  const handleWeekNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setWeekNames(prev => ({
+        ...prev,
+        [currentWeekKey]: newName,
+    }));
+  };
 
   useEffect(() => {
       setIsClient(true);
@@ -785,7 +800,7 @@ export function CalendarView({
                   </h2>
                   <Input
                       value={weekName}
-                      onChange={(e) => setWeekName(e.target.value)}
+                      onChange={handleWeekNameChange}
                       placeholder="Name of Week"
                       maxLength={12}
                       size={Math.max(weekName.length, 1)}

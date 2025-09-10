@@ -105,6 +105,7 @@ export default function Home() {
   const router = useRouter();
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [isTodaysTasksDialogOpen, setIsTodaysTasksDialogOpen] = useState(false);
+  const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date()));
 
 
   useEffect(() => {
@@ -1005,7 +1006,7 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-7xl mt-4">
-          <GoalOfWeekEditor />
+          <GoalOfWeekEditor currentDisplayDate={currentDisplayDate} />
         </div>
 
         <div className="w-full max-w-7xl mt-4">

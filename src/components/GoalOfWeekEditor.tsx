@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
@@ -12,6 +12,7 @@ import useLocalStorage from '@/hooks/useLocalStorage';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { format, startOfWeek } from 'date-fns';
 
 const MenuBar = ({ editor }: { editor: any | null }) => {
   if (!editor) {
@@ -78,11 +79,18 @@ const MenuBar = ({ editor }: { editor: any | null }) => {
   );
 };
 
-export function GoalOfWeekEditor() {
-  const [content, setContent] = useLocalStorage<string>(
-    'weekwise-goal-of-week',
-    '<p>Set your intention for the week!</p>'
+export function GoalOfWeekEditor({ currentDisplayDate }: { currentDisplayDate: Date }) {
+  const [goalsByWeek, setGoalsByWeek] = useLocalStorage<Record<string, string>>(
+    'weekwise-goals-by-week',
+    {}
   );
+  
+  const currentWeekKey = useMemo(() => {
+    const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
+    return format(weekStart, 'yyyy-MM-dd');
+  }, [currentDisplayDate]);
+
+  const content = goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>';
 
   const editor = useEditor({
     extensions: [
@@ -94,8 +102,12 @@ export function GoalOfWeekEditor() {
       ListItem,
     ],
     content: content,
+    key: currentWeekKey, // Force re-initialization when the week changes
     onUpdate: ({ editor }) => {
-      setContent(editor.getHTML());
+      setGoalsByWeek(prev => ({
+          ...prev,
+          [currentWeekKey]: editor.getHTML(),
+      }));
     },
     editorProps: {
       attributes: {
