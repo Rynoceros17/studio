@@ -58,7 +58,7 @@ const MenuBar = ({ editor }: { editor: any | null }) => {
   ];
 
   return (
-    <div className="flex items-center space-x-1 border-b p-2 bg-muted/50 rounded-t-lg">
+    <div className="flex items-center space-x-1 border-b p-2 bg-muted/50">
       {menuItems.map((item, index) => (
         <Button
           key={index}
@@ -100,7 +100,7 @@ export function GoalOfWeekEditor() {
     editorProps: {
       attributes: {
         class:
-          'prose dark:prose-invert min-h-[120px] max-h-[300px] w-full rounded-b-md border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
+          'prose dark:prose-invert min-h-[120px] max-h-[300px] w-full bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
       },
     },
   });
@@ -111,7 +111,7 @@ export function GoalOfWeekEditor() {
         <CardTitle className="text-lg font-semibold text-primary">Goal of the Week</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="rounded-lg border">
+        <div className="rounded-lg border border-input">
           <MenuBar editor={editor} />
           <EditorContent editor={editor} />
         </div>
