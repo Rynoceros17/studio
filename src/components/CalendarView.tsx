@@ -16,6 +16,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Trash2, CheckCircle, Circle, GripVertical, Pencil, Star, ArrowLeftCircle, ArrowRightCircle, Edit } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import useLocalStorage from '@/hooks/useLocalStorage';
 
 import {
   DndContext,
@@ -51,6 +52,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from '@/components/ui/input';
 import type { Task, SingleTaskOutput } from '@/lib/types';
 import { cn, truncateText, getMaxLength, parseISOStrict } from '@/lib/utils';
 
@@ -490,6 +492,7 @@ export function CalendarView({
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [today, setToday] = useState<Date | null>(null);
+  const [weekName, setWeekName] = useLocalStorage('weekwise-week-name', 'My Week');
 
   useEffect(() => {
       setIsClient(true);
@@ -780,12 +783,12 @@ export function CalendarView({
                   <h2 className="text-base md:text-lg font-semibold text-primary">
                     {headerTitle}
                   </h2>
-                  {isClient && (
-                    <Badge variant="secondary" className="ml-2 flex items-center gap-1.5 px-2 py-1 text-xs">
-                      <Star className="h-3 w-3" />
-                      {completedCount} Completed
-                    </Badge>
-                  )}
+                  <Input
+                      value={weekName}
+                      onChange={(e) => setWeekName(e.target.value)}
+                      placeholder="Name of the Week"
+                      className="h-8 text-xs w-32 md:w-40 text-center bg-transparent border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-primary"
+                    />
                   {isClient && theme && (
                     <Tabs
                       value={theme === 'system' ? 'light' : theme}
