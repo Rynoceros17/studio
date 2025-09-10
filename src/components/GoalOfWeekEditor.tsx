@@ -92,8 +92,6 @@ export function GoalOfWeekEditor({
     return format(weekStart, 'yyyy-MM-dd');
   }, [currentDisplayDate]);
 
-  const content = goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>';
-
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -103,7 +101,7 @@ export function GoalOfWeekEditor({
       BulletList,
       ListItem,
     ],
-    content: content,
+    content: goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>',
     onUpdate: ({ editor }) => {
       setGoalsByWeek(prev => ({
           ...prev,
@@ -113,16 +111,21 @@ export function GoalOfWeekEditor({
     editorProps: {
       attributes: {
         class:
-          'prose dark:prose-invert prose-sm sm:prose-base lg:prose-lg xl:prose-2xl w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
+          'w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
       },
     },
   });
 
   useEffect(() => {
       if (editor && editor.isAttached) {
-          editor.commands.setContent(content);
+          const content = goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>';
+          // Check if the editor's current content is different from the new content
+          // This prevents resetting the cursor position during typing
+          if (editor.getHTML() !== content) {
+              editor.commands.setContent(content, false); // `false` prevents firing the onUpdate callback again
+          }
       }
-  }, [content, editor]);
+  }, [currentWeekKey, goalsByWeek, editor]);
 
   return (
     <Card className="shadow-sm">
