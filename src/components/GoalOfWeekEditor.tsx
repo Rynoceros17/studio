@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
+import BulletList from '@tiptap/extension-bullet-list';
+import ListItem from '@tiptap/extension-list-item';
 
 const MenuBar = ({ editor }: { editor: any | null }) => {
   if (!editor) return null;
@@ -93,14 +95,23 @@ export function GoalOfWeekEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        bulletList: false,
+        listItem: false,
+      }),
+      BulletList.configure({
+          HTMLAttributes: {
+              class: 'list-disc pl-5',
+          },
+      }),
+      ListItem,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ],
     content: goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>',
     editorProps: {
       attributes: {
         class:
-          'w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
+          'tiptap w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
       },
     },
     onUpdate: ({ editor: e }) => {
