@@ -122,16 +122,20 @@ export function GoalOfWeekEditor({
     },
   });
 
+  // This effect hook is the key to the fix.
+  // It watches for changes in the `currentWeekKey` and `goalsByWeek` object.
   useEffect(() => {
-      if (editor && editor.isAttached) {
-          const content = goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>';
-          // Check if the editor's current content is different from the new content
-          // This prevents resetting the cursor position during typing
-          if (editor.getHTML() !== content) {
-              editor.commands.setContent(content, false); // `false` prevents firing the onUpdate callback again
-          }
+    if (editor && editor.isAttached) {
+      const newContent = goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>';
+      const currentContent = editor.getHTML();
+      
+      // Only update the editor's content if it's different from the new content.
+      // This prevents the cursor from jumping to the beginning while typing.
+      if (currentContent !== newContent) {
+        editor.commands.setContent(newContent, false); // `false` prevents the onUpdate callback from firing again unnecessarily.
       }
-  }, [currentWeekKey, goalsByWeek, editor]);
+    }
+  }, [currentWeekKey, goalsByWeek, editor]); // It re-runs whenever the week or the goals data changes.
 
   return (
     <Card className="shadow-sm">
