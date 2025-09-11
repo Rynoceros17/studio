@@ -64,6 +64,7 @@ import { TodaysTasksDialog } from '@/components/TodaysTasksDialog';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
 import { LandingPage } from '@/components/LandingPage';
+import { motion } from 'framer-motion';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -492,27 +493,37 @@ export default function Home() {
 
 
   const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    let wasCompleted: boolean;
+    setCompletedTaskIds(prevIds => {
+      const currentCompletedKeys = new Set(prevIds);
       const completionKey = `${taskId}_${dateStr}`;
-      setCompletedTaskIds((prevIds) => {
-          const currentCompletedKeys = new Set(prevIds);
-          if (currentCompletedKeys.has(completionKey)) {
-              currentCompletedKeys.delete(completionKey);
-              toast({
-                  title: "Task Incomplete",
-                  description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as incomplete.`,
-              });
-          } else {
-              currentCompletedKeys.add(completionKey);
-              toast({
-                  title: "Task Completed!",
-                  description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as complete.`,
-              });
-          }
-          return Array.from(currentCompletedKeys);
-      });
-  }, [tasks, setCompletedTaskIds, toast]);
+      wasCompleted = currentCompletedKeys.has(completionKey);
+
+      if (wasCompleted) {
+        currentCompletedKeys.delete(completionKey);
+      } else {
+        currentCompletedKeys.add(completionKey);
+      }
+      return Array.from(currentCompletedKeys);
+    });
+
+    setTimeout(() => {
+      if (wasCompleted) {
+        toast({
+          title: 'Task Incomplete',
+          description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as incomplete.`,
+        });
+      } else {
+        toast({
+          title: 'Task Completed!',
+          description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as complete.`,
+        });
+      }
+    }, 0);
+  }, [tasks, toast]);
 
 
   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate'>>) => {

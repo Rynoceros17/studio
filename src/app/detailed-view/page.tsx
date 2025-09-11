@@ -459,10 +459,6 @@ export default function DetailedViewPage() {
         return Array.from(currentCompletedKeys);
     });
 
-    // We need to use a timeout to ensure the state update has propagated before toasting.
-    // However, the `wasCompleted` variable is captured in the closure, so we can use it.
-    // The previous error happened because toast was inside the state setter.
-    // Let's use it outside.
     setTimeout(() => {
         if (wasCompleted) {
             toast({
