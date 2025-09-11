@@ -3,6 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Calendar, Target, BrainCircuit } from 'lucide-react';
@@ -22,11 +23,17 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, titl
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen w-full bg-background flex flex-col">
+    <div className="min-h-screen w-full bg-background flex flex-col overflow-hidden">
       <div className="flex-grow flex items-center justify-center p-4">
         <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           
-          <div className="space-y-6 text-center md:text-left">
+          <motion.div
+            className="space-y-6 text-center md:text-left"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            whileHover={{ scale: 1.02 }}
+          >
             <h1 className={cn(
               "text-4xl md:text-5xl font-bold tracking-tighter text-primary",
               "animate-shine bg-[length:200%_100%] bg-clip-text text-transparent",
@@ -48,28 +55,35 @@ export function LandingPage() {
             <p className="text-xs text-muted-foreground pt-2">
               Sign up for a free account to get started.
             </p>
-          </div>
+          </motion.div>
 
           
-          <Card className="bg-secondary/30 border-none shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105">
-            <CardContent className="p-8 space-y-6">
-               <FeatureCard 
-                  icon={<BrainCircuit className="h-6 w-6 text-primary" />} 
-                  title="AI-Powered Scheduling" 
-                  description="Add tasks and events using natural language. Let our AI handle the details."
-               />
-               <FeatureCard 
-                  icon={<Calendar className="h-6 w-6 text-primary" />} 
-                  title="Dynamic Calendar" 
-                  description="View your week at a glance or dive into a detailed daily schedule."
-                />
-               <FeatureCard 
-                  icon={<Target className="h-6 w-6 text-primary" />} 
-                  title="Goal Tracking" 
-                  description="Set academic goals, break them down into sub-tasks, and track your progress."
-                />
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            whileHover={{ scale: 1.03, y: -5, boxShadow: "0px 10px 30px -5px rgba(0,0,0,0.1)" }}
+          >
+            <Card className="bg-secondary/30 border-none shadow-xl">
+                <CardContent className="p-8 space-y-6">
+                   <FeatureCard 
+                      icon={<BrainCircuit className="h-6 w-6 text-primary" />} 
+                      title="AI-Powered Scheduling" 
+                      description="Add tasks and events using natural language. Let our AI handle the details."
+                   />
+                   <FeatureCard 
+                      icon={<Calendar className="h-6 w-6 text-primary" />} 
+                      title="Dynamic Calendar" 
+                      description="View your week at a glance or dive into a detailed daily schedule."
+                    />
+                   <FeatureCard 
+                      icon={<Target className="h-6 w-6 text-primary" />} 
+                      title="Goal Tracking" 
+                      description="Set academic goals, break them down into sub-tasks, and track your progress."
+                    />
+                </CardContent>
+            </Card>
+          </motion.div>
 
         </div>
       </div>
