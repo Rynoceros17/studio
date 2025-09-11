@@ -45,11 +45,11 @@ export function LandingPage() {
               Your intelligent educational planner. Organize your schedule, track your goals, and master your studies with the power of AI.
             </p>
             <div className="flex flex-col gap-4 justify-center md:justify-start max-w-xs mx-auto md:mx-0">
-              <Link href="/login" passHref legacyBehavior>
-                <Button size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Login</Button>
-              </Link>
               <Link href="/signup" passHref legacyBehavior>
-                <Button size="lg" variant="outline" className="w-full border-foreground/80 text-foreground hover:bg-foreground/5 hover:text-foreground">Sign Up</Button>
+                <Button size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Sign Up</Button>
+              </Link>
+              <Link href="/login" passHref legacyBehavior>
+                <Button size="lg" variant="outline" className="w-full border-foreground/80 text-foreground hover:bg-foreground/5 hover:text-foreground">Login</Button>
               </Link>
             </div>
             <p className="text-xs text-muted-foreground pt-2">
