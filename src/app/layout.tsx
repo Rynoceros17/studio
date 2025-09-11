@@ -17,9 +17,57 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'WeekWise. Your Educational planner.',
-  description: 'An intelligent weekly planner designed for students. Organize your schedule, track study sessions, and manage academic goals with AI assistance.',
+  title: {
+    default: 'WeekWise | AI-Powered Student Planner',
+    template: '%s | WeekWise',
+  },
+  description: 'An intelligent weekly planner designed for students. Organize your schedule with AI, track study sessions with a Pomodoro timer, and manage academic goals. Import your timetable and plan for success.',
+  keywords: [
+    'student planner', 
+    'academic planner', 
+    'weekly planner', 
+    'AI planner', 
+    'study tracker', 
+    'Pomodoro timer', 
+    'goal setting for students', 
+    'timetable app', 
+    'college planner', 
+    'university planner',
+    'homework planner'
+  ],
+  authors: [{ name: 'WeekWise' }],
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    title: 'WeekWise | Your AI-Powered Educational Planner',
+    description: 'Organize your schedule, track study sessions, and manage academic goals with an intelligent AI assistant.',
+    url: 'https://weekwise-hxko9.web.app', // Using the production URL
+    siteName: 'WeekWise',
+    type: 'website',
+    images: [
+      {
+        url: 'https://weekwise-hxko9.web.app/og-image.png', // Placeholder URL
+        width: 1200,
+        height: 630,
+        alt: 'WeekWise Application Interface',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'WeekWise | AI-Powered Student Planner',
+    description: 'The smart way for students to plan their week, track goals, and manage time.',
+    images: ['https://weekwise-hxko9.web.app/twitter-image.png'], // Placeholder URL
+  },
+  icons: {
+    icon: '/favicon.ico', // Standard favicon
+    apple: '/apple-touch-icon.png', // For Apple devices
+  },
+  manifest: '/site.webmanifest', // For PWA capabilities
 };
+
 
 export default function RootLayout({
   children,
