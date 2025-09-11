@@ -37,12 +37,12 @@ export function LandingPage() {
             <p className="text-lg text-muted-foreground">
               Your intelligent educational planner. Organize your schedule, track your goals, and master your studies with the power of AI.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+            <div className="flex flex-col gap-4 justify-center md:justify-start max-w-xs mx-auto md:mx-0">
               <Link href="/login" passHref legacyBehavior>
-                <Button size="lg" className="w-full sm:w-auto">Login</Button>
+                <Button size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">Login</Button>
               </Link>
               <Link href="/signup" passHref legacyBehavior>
-                <Button size="lg" variant="outline" className="w-full sm:w-auto">Sign Up</Button>
+                <Button size="lg" variant="outline" className="w-full border-accent text-accent hover:bg-accent/10 hover:text-accent">Sign Up</Button>
               </Link>
             </div>
             <p className="text-xs text-muted-foreground pt-2">
@@ -51,7 +51,7 @@ export function LandingPage() {
           </div>
 
           
-          <Card className="bg-secondary/30 border-none shadow-xl">
+          <Card className="bg-secondary/30 border-none shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105">
             <CardContent className="p-8 space-y-6">
                <FeatureCard 
                   icon={<BrainCircuit className="h-6 w-6 text-primary" />} 
