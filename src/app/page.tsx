@@ -63,6 +63,7 @@ import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { TodaysTasksDialog } from '@/components/TodaysTasksDialog';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
+import { LandingPage } from '@/components/LandingPage';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -456,7 +457,7 @@ export default function Home() {
          combinedTasks.sort((a, b) => {
              const dateA = parseISOStrict(a.date);
              const dateB = parseISOStrict(b.date);
-             if (!dateA && !dateB) return 0;
+             if (!dateA || !dateB) return 0;
              if (!dateA) return 1;
              if (!dateB) return -1;
 
@@ -868,298 +869,290 @@ export default function Home() {
     return <LoadingScreen />;
   }
 
+  if (!user) {
+    return <LandingPage />;
+  }
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
-      <header
-        className={cn(
-          "bg-background border-b shadow-sm w-full",
-          "flex flex-col"
-        )}
-      >
-        <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
-            <Button
-              variant="ghost"
-              className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground"
-              aria-label="Show welcome message"
-              onClick={() => setIsWelcomeOpen(true)}
-            >
-              <Info className="h-5 w-5" />
-            </Button>
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">
-            WeekWise
-          </h1>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-            <AuthButton />
-          </div>
-        </div>
-
-        <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
-            <Link
-              href="/detailed-view"
-              className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
-              aria-label="Go to detailed view"
-            >
-                <LayoutDashboard className="h-5 w-5" />
-                <span className="ml-2 hidden md:inline">Detailed View</span>
-            </Link>
-            <Link
-               href="/study-tracker"
-               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
-               aria-label="Go to study tracker"
-            >
-                <BookOpen className="h-5 w-5" />
-                <span className="ml-2 hidden md:inline">Study</span>
-            </Link>
-            <Link
-               href="/timetable"
-               className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
-               aria-label="Go to timetable importer"
-            >
-                <CalendarClock className="h-5 w-5" />
-                <span className="ml-2 hidden md:inline">Timetable</span>
-            </Link>
-            <Link
-              href="/goals"
-              className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
-              aria-label="View goals"
-            >
-                <Target className="h-5 w-5" />
-                <span className="ml-2 hidden md:inline">Goals</span>
-            </Link>
-            <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")} aria-label="View bookmarks">
-                        <BookmarkIcon className="h-5 w-5" />
-                        <span className="ml-2 hidden md:inline">Bookmarks</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                    <SheetHeader className="p-4 border-b shrink-0">
-                        <SheetDialogTitle className="text-primary">Bookmarks</SheetDialogTitle>
-                    </SheetHeader>
-                    <BookmarkListSheet />
-                </SheetContent>
-            </Sheet>
-            <Button
-                variant="ghost"
-                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
-                aria-label="Toggle Pomodoro Timer"
-                onClick={() => setIsTimerVisible(!isTimerVisible)}
-            >
-                <TimerIcon className="h-5 w-5" />
-                <span className="ml-2 hidden md:inline">Timer</span>
-            </Button>
-            <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")} aria-label="Open scratchpad">
-                        <List className="h-5 w-5" />
-                        <span className="ml-2 hidden md:inline">Scratchpad</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                    <SheetHeader className="p-4 border-b shrink-0">
-                        <SheetDialogTitle className="text-primary">Scratchpad</SheetDialogTitle>
-                    </SheetHeader>
-                    <TaskListSheet />
-                </SheetContent>
-            </Sheet>
-        </nav>
-      </header>
-
-      <main
-        className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"
+      <div
+        className="flex min-h-screen flex-col items-center"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-
-        <div className="w-full max-w-7xl mb-4">
-            <Card className="shadow-sm bg-transparent border-none">
-                <CardContent className="p-3 flex items-center space-x-2">
-                    <Button onClick={handleSendChatMessage} className="h-10 px-3 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isParsingTask || !chatInput.trim()}>
-                        {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
-                        <span className="sr-only">Send Task Query</span>
-                    </Button>
-                    <Input
-                        ref={chatInputRef}
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="AI Task Entry: e.g., 'Important meeting #col1, Weekly review #col3' (Max 100 chars)"
-                        className="h-10 text-sm flex-grow"
-                        onKeyPress={handleChatKeyPress}
-                        disabled={isParsingTask}
-                        maxLength={100}
-                    />
-                </CardContent>
-            </Card>
-        </div>
-
-        <div className="w-full max-w-7xl space-y-4">
-          <CalendarView
-            tasks={tasks}
-            pendingAiTasks={pendingAiTasks}
-            requestDeleteTask={requestDeleteTask}
-            updateTaskOrder={updateTaskOrder}
-            toggleTaskCompletion={toggleTaskCompletion}
-            completedTasks={completedTasks}
-            updateTaskDetails={updateTaskDetails}
-            updateTask={updateTask}
-            completedCount={completedCount}
-            requestMoveRecurringTask={requestMoveRecurringTask}
-            currentDisplayDate={currentDisplayDate}
-            setCurrentDisplayDate={setCurrentDisplayDate}
-            weekNames={weekNames}
-            setWeekNames={setWeekNames}
-            goalsByWeek={goalsByWeek}
-            setGoalsByWeek={setGoalsByWeek}
-          />
-        </div>
-
-        <div className="w-full max-w-7xl mt-4">
-           <TopTaskBar
-             items={upcomingItemsForBar}
-             toggleGoalPriority={toggleGoalPriority}
-           />
-         </div>
-
-
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="h-12 w-12 rounded-full shadow-lg"
-                  aria-label="Add new task manually"
-                >
-                  <Plus className="h-6 w-6" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                   <DialogTitle className="text-primary">Add New Task</DialogTitle>
-                </DialogHeader>
-                <TaskForm
-                   addTask={addTask}
-                   onTaskAdded={() => setIsFormOpen(false)}
-                   initialData={null}
-                />
-              </DialogContent>
-            </Dialog>
-        </div>
-
-        {!authLoading && !user && (
-          <div className="fixed bottom-4 left-4 z-50">
-            <Link href="/login">
+        <header
+          className={cn(
+            "bg-background border-b shadow-sm w-full",
+            "flex flex-col"
+          )}
+        >
+          <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2">
               <Button
-                variant="default"
-                size="icon"
-                className="h-12 w-12 rounded-full shadow-lg"
-                aria-label="Login"
+                variant="ghost"
+                className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground"
+                aria-label="Show welcome message"
+                onClick={() => setIsWelcomeOpen(true)}
               >
-                <LogIn className="h-6 w-6" />
+                <Info className="h-5 w-5" />
               </Button>
-            </Link>
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">
+              WeekWise
+            </h1>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <AuthButton />
+            </div>
           </div>
-        )}
+
+          <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
+              <Link
+                href="/detailed-view"
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                aria-label="Go to detailed view"
+              >
+                  <LayoutDashboard className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Detailed View</span>
+              </Link>
+              <Link
+                 href="/study-tracker"
+                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                 aria-label="Go to study tracker"
+              >
+                  <BookOpen className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Study</span>
+              </Link>
+              <Link
+                 href="/timetable"
+                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                 aria-label="Go to timetable importer"
+              >
+                  <CalendarClock className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Timetable</span>
+              </Link>
+              <Link
+                href="/goals"
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                aria-label="View goals"
+              >
+                  <Target className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Goals</span>
+              </Link>
+              <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
+                  <SheetTrigger asChild>
+                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")} aria-label="View bookmarks">
+                          <BookmarkIcon className="h-5 w-5" />
+                          <span className="ml-2 hidden md:inline">Bookmarks</span>
+                      </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                      <SheetHeader className="p-4 border-b shrink-0">
+                          <SheetDialogTitle className="text-primary">Bookmarks</SheetDialogTitle>
+                      </SheetHeader>
+                      <BookmarkListSheet />
+                  </SheetContent>
+              </Sheet>
+              <Button
+                  variant="ghost"
+                  className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                  aria-label="Toggle Pomodoro Timer"
+                  onClick={() => setIsTimerVisible(!isTimerVisible)}
+              >
+                  <TimerIcon className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Timer</span>
+              </Button>
+              <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
+                  <SheetTrigger asChild>
+                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")} aria-label="Open scratchpad">
+                          <List className="h-5 w-5" />
+                          <span className="ml-2 hidden md:inline">Scratchpad</span>
+                      </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                      <SheetHeader className="p-4 border-b shrink-0">
+                          <SheetDialogTitle className="text-primary">Scratchpad</SheetDialogTitle>
+                      </SheetHeader>
+                      <TaskListSheet />
+                  </SheetContent>
+              </Sheet>
+          </nav>
+        </header>
+
+        <main
+          className="flex flex-grow w-full flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"
+        >
+
+          <div className="w-full max-w-7xl mb-4">
+              <Card className="shadow-sm bg-transparent border-none">
+                  <CardContent className="p-3 flex items-center space-x-2">
+                      <Button onClick={handleSendChatMessage} className="h-10 px-3 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isParsingTask || !chatInput.trim()}>
+                          {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+                          <span className="sr-only">Send Task Query</span>
+                      </Button>
+                      <Input
+                          ref={chatInputRef}
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          placeholder="AI Task Entry: e.g., 'Important meeting #col1, Weekly review #col3' (Max 100 chars)"
+                          className="h-10 text-sm flex-grow"
+                          onKeyPress={handleChatKeyPress}
+                          disabled={isParsingTask}
+                          maxLength={100}
+                      />
+                  </CardContent>
+              </Card>
+          </div>
+
+          <div className="w-full max-w-7xl space-y-4">
+            <CalendarView
+              tasks={tasks}
+              pendingAiTasks={pendingAiTasks}
+              requestDeleteTask={requestDeleteTask}
+              updateTaskOrder={updateTaskOrder}
+              toggleTaskCompletion={toggleTaskCompletion}
+              completedTasks={completedTasks}
+              updateTaskDetails={updateTaskDetails}
+              updateTask={updateTask}
+              completedCount={completedCount}
+              requestMoveRecurringTask={requestMoveRecurringTask}
+              currentDisplayDate={currentDisplayDate}
+              setCurrentDisplayDate={setCurrentDisplayDate}
+              weekNames={weekNames}
+              setWeekNames={setWeekNames}
+              goalsByWeek={goalsByWeek}
+              setGoalsByWeek={setGoalsByWeek}
+            />
+          </div>
+
+          <div className="w-full max-w-7xl mt-4">
+             <TopTaskBar
+               items={upcomingItemsForBar}
+               toggleGoalPriority={toggleGoalPriority}
+             />
+           </div>
 
 
-        {isClient && isTimerVisible && (
-          <PomodoroTimer
-            position={timerPosition}
-            onClose={() => setIsTimerVisible(false)}
+          <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 items-end">
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="icon"
+                    className="h-12 w-12 rounded-full shadow-lg"
+                    aria-label="Add new task manually"
+                  >
+                    <Plus className="h-6 w-6" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                     <DialogTitle className="text-primary">Add New Task</DialogTitle>
+                  </DialogHeader>
+                  <TaskForm
+                     addTask={addTask}
+                     onTaskAdded={() => setIsFormOpen(false)}
+                     initialData={null}
+                  />
+                </DialogContent>
+              </Dialog>
+          </div>
+
+          {isClient && isTimerVisible && (
+            <PomodoroTimer
+              position={timerPosition}
+              onClose={() => setIsTimerVisible(false)}
+            />
+          )}
+
+          <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
+              <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Recurring Task</AlertDialogTitle>
+                      <AlertDialogDescription>
+                          Do you want to delete only this occurrence of "{deleteConfirmation?.task?.name}" on {deleteConfirmation?.dateStr ? format(parseISOStrict(deleteConfirmation.dateStr) ?? new Date(), 'PPP') : ''}, or all future occurrences?
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                          onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
+                           className={cn("text-foreground")}
+                      >
+                          Delete This Occurrence Only
+                      </AlertDialogAction>
+                      <AlertDialogAction
+                          onClick={() => deleteAllOccurrences(deleteConfirmation!.task.id)}
+                          className={cn(buttonVariants({ variant: "destructive" }))}
+                      >
+                          Delete All Occurrences
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={!!moveRecurringConfirmation} onOpenChange={(open) => !open && setMoveRecurringConfirmation(null)}>
+              <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Move Recurring Task</AlertDialogTitle>
+                      <AlertDialogDescription>
+                          You are moving the recurring task "{moveRecurringConfirmation?.task?.name}".
+                          How would you like to move it from {moveRecurringConfirmation?.originalDateStr ? format(parseISOStrict(moveRecurringConfirmation.originalDateStr)!, 'PPP') : ''} to {moveRecurringConfirmation?.newDateStr ? format(parseISOStrict(moveRecurringConfirmation.newDateStr)!, 'PPP') : ''}?
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setMoveRecurringConfirmation(null)}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                          onClick={handleMoveAllRecurringOccurrences}
+                          className={cn("text-foreground")}
+                      >
+                          Move All Occurrences
+                      </AlertDialogAction>
+                      <AlertDialogAction
+                          onClick={handleMoveRecurringInstanceOnly}
+                           className={cn("text-foreground")}
+                      >
+                          Move This Instance Only
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={isAiConfirmOpen} onOpenChange={setIsAiConfirmOpen}>
+              <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Confirm AI Tasks</AlertDialogTitle>
+                      <AlertDialogDescription>
+                          The AI suggests adding {pendingAiTasks.length} task(s) to your calendar. Do you want to proceed?
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel onClick={handleCancelAiTasks}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConfirmAiTasks}>Confirm</AlertDialogAction>
+                  </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
+
+          <TodaysTasksDialog
+              isOpen={isTodaysTasksDialogOpen && todaysTasks.length > 0}
+              onClose={() => setIsTodaysTasksDialogOpen(false)}
+              tasks={todaysTasks}
           />
-        )}
 
-        <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Recurring Task</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Do you want to delete only this occurrence of "{deleteConfirmation?.task?.name}" on {deleteConfirmation?.dateStr ? format(parseISOStrict(deleteConfirmation.dateStr) ?? new Date(), 'PPP') : ''}, or all future occurrences?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
-                         className={cn("text-foreground")}
-                    >
-                        Delete This Occurrence Only
-                    </AlertDialogAction>
-                    <AlertDialogAction
-                        onClick={() => deleteAllOccurrences(deleteConfirmation!.task.id)}
-                        className={cn(buttonVariants({ variant: "destructive" }))}
-                    >
-                        Delete All Occurrences
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog open={!!moveRecurringConfirmation} onOpenChange={(open) => !open && setMoveRecurringConfirmation(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Move Recurring Task</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        You are moving the recurring task "{moveRecurringConfirmation?.task?.name}".
-                        How would you like to move it from {moveRecurringConfirmation?.originalDateStr ? format(parseISOStrict(moveRecurringConfirmation.originalDateStr)!, 'PPP') : ''} to {moveRecurringConfirmation?.newDateStr ? format(parseISOStrict(moveRecurringConfirmation.newDateStr)!, 'PPP') : ''}?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setMoveRecurringConfirmation(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={handleMoveAllRecurringOccurrences}
-                        className={cn("text-foreground")}
-                    >
-                        Move All Occurrences
-                    </AlertDialogAction>
-                    <AlertDialogAction
-                        onClick={handleMoveRecurringInstanceOnly}
-                         className={cn("text-foreground")}
-                    >
-                        Move This Instance Only
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog open={isAiConfirmOpen} onOpenChange={setIsAiConfirmOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Confirm AI Tasks</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        The AI suggests adding {pendingAiTasks.length} task(s) to your calendar. Do you want to proceed?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={handleCancelAiTasks}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmAiTasks}>Confirm</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
-        <TodaysTasksDialog
-            isOpen={isTodaysTasksDialogOpen && todaysTasks.length > 0}
-            onClose={() => setIsTodaysTasksDialogOpen(false)}
-            tasks={todaysTasks}
-        />
-
-        <Dialog open={isWelcomeOpen} onOpenChange={setIsWelcomeOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Welcome to WeekWise</DialogTitle>
-                    <DialogDescription>
-                        This is your personal planner to organize your life, track your goals, and manage your time effectively. Use the AI to quickly add tasks, view your schedule in different formats, and stay on top of your deadlines.
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button onClick={() => setIsWelcomeOpen(false)}>Get Started</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-      </main>
+          <Dialog open={isWelcomeOpen} onOpenChange={setIsWelcomeOpen}>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Welcome to WeekWise</DialogTitle>
+                      <DialogDescription>
+                          This is your personal planner to organize your life, track your goals, and manage your time effectively. Use the AI to quickly add tasks, view your schedule in different formats, and stay on top of your deadlines.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                      <Button onClick={() => setIsWelcomeOpen(false)}>Get Started</Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+        </main>
+      </div>
     </DndContext>
   );
 }
