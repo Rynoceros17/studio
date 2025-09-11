@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Calendar, Target, BrainCircuit } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
     <div className="flex items-start space-x-4">
@@ -26,7 +27,11 @@ export function LandingPage() {
         <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           
           <div className="space-y-6 text-center md:text-left">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-primary">
+            <h1 className={cn(
+              "text-4xl md:text-5xl font-bold tracking-tighter text-primary",
+              "animate-shine bg-[length:200%_100%] bg-clip-text text-transparent",
+              "bg-gradient-to-r from-primary via-primary/50 to-primary"
+            )}>
               Welcome to WeekWise
             </h1>
             <p className="text-lg text-muted-foreground">
