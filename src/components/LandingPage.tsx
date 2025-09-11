@@ -39,17 +39,17 @@ export function LandingPage() {
               "animate-shine bg-[length:200%_100%] bg-clip-text text-transparent",
               "bg-gradient-to-r from-primary via-primary/50 to-primary"
             )}>
-              Welcome to WeekWise
+              Welcome to WeekWise.
             </h1>
             <p className="text-lg text-muted-foreground">
               Your intelligent educational planner. Organize your schedule, track your goals, and master your studies with the power of AI.
             </p>
             <div className="flex flex-col gap-4 justify-center md:justify-start max-w-xs mx-auto md:mx-0">
               <Link href="/login" passHref legacyBehavior>
-                <Button size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">Login</Button>
+                <Button size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/80">Login</Button>
               </Link>
               <Link href="/signup" passHref legacyBehavior>
-                <Button size="lg" variant="outline" className="w-full border-accent text-accent hover:bg-accent/10 hover:text-accent">Sign Up</Button>
+                <Button size="lg" variant="outline" className="w-full border-foreground/80 text-foreground hover:bg-foreground/5 hover:text-foreground">Sign Up</Button>
               </Link>
             </div>
             <p className="text-xs text-muted-foreground pt-2">
