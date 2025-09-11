@@ -8,10 +8,10 @@ import TextAlign from '@tiptap/extension-text-align';
 import BulletList from '@tiptap/extension-bullet-list';
 import ListItem from '@tiptap/extension-list-item';
 import { Bold, Italic, List, AlignCenter, AlignLeft, AlignRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
-import { format, startOfWeek } from 'date-fns';
+import { format, startOfWeek, endOfWeek } from 'date-fns';
 
 const MenuBar = ({ editor }: { editor: any | null }) => {
   if (!editor) {
@@ -91,6 +91,12 @@ export function GoalOfWeekEditor({
     const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
     return format(weekStart, 'yyyy-MM-dd');
   }, [currentDisplayDate]);
+  
+  const weekDateRange = useMemo(() => {
+      const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(currentDisplayDate, { weekStartsOn: 1 });
+      return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'd')}`;
+  }, [currentDisplayDate]);
 
   const editor = useEditor({
     extensions: [
@@ -129,8 +135,9 @@ export function GoalOfWeekEditor({
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className='pb-2'>
+      <CardHeader className='pb-2 flex flex-row items-center justify-between'>
         <CardTitle className="text-lg font-semibold text-primary">Goal of the Week</CardTitle>
+        <CardDescription className="text-sm font-medium">{weekDateRange}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-lg border border-input">
