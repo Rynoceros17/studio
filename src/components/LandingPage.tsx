@@ -46,7 +46,7 @@ export function LandingPage() {
             </p>
             <div className="flex flex-col gap-4 justify-center md:justify-start max-w-xs mx-auto md:mx-0">
               <Link href="/login" passHref legacyBehavior>
-                <Button size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/80">Login</Button>
+                <Button size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Login</Button>
               </Link>
               <Link href="/signup" passHref legacyBehavior>
                 <Button size="lg" variant="outline" className="w-full border-foreground/80 text-foreground hover:bg-foreground/5 hover:text-foreground">Sign Up</Button>
