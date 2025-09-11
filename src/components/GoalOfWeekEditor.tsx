@@ -5,8 +5,6 @@ import React, { useMemo, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
-import BulletList from '@tiptap/extension-bullet-list';
-import ListItem from '@tiptap/extension-list-item';
 import { Bold, Italic, List, AlignCenter, AlignLeft, AlignRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
@@ -14,9 +12,7 @@ import { cn } from '@/lib/utils';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 
 const MenuBar = ({ editor }: { editor: any | null }) => {
-  if (!editor) {
-    return null;
-  }
+  if (!editor) return null;
 
   const menuItems = [
     {
@@ -65,10 +61,7 @@ const MenuBar = ({ editor }: { editor: any | null }) => {
           onClick={item.onClick}
           variant="ghost"
           size="icon"
-          className={cn(
-            'h-8 w-8',
-            item.isActive ? 'bg-primary/20 text-primary' : 'text-muted-foreground'
-          )}
+          className={cn('h-8 w-8', item.isActive ? 'bg-primary/20 text-primary' : 'text-muted-foreground')}
           aria-label={item.label}
         >
           <item.icon className="h-4 w-4" />
@@ -79,74 +72,79 @@ const MenuBar = ({ editor }: { editor: any | null }) => {
 };
 
 export function GoalOfWeekEditor({
-    currentDisplayDate,
-    goalsByWeek,
-    setGoalsByWeek
+  currentDisplayDate,
+  goalsByWeek,
+  setGoalsByWeek,
 }: {
-    currentDisplayDate: Date;
-    goalsByWeek: Record<string, string>;
-    setGoalsByWeek: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  currentDisplayDate: Date;
+  goalsByWeek: Record<string, string>;
+  setGoalsByWeek: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }) {
   const currentWeekKey = useMemo(() => {
     const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
     return format(weekStart, 'yyyy-MM-dd');
   }, [currentDisplayDate]);
-  
+
   const weekDateRange = useMemo(() => {
-      const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(currentDisplayDate, { weekStartsOn: 1 });
-      return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'd')}`;
+    const weekStart = startOfWeek(currentDisplayDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(currentDisplayDate, { weekStartsOn: 1 });
+    return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'd')}`;
   }, [currentDisplayDate]);
 
   const editor = useEditor({
     extensions: [
       StarterKit,
-      TextAlign.configure({
-        types: ['heading', 'paragraph'],
-      }),
-      BulletList,
-      ListItem,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ],
     content: goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>',
-    onUpdate: ({ editor }) => {
-      setGoalsByWeek(prev => ({
-          ...prev,
-          [currentWeekKey]: editor.getHTML(),
-      }));
-    },
     editorProps: {
       attributes: {
         class:
           'w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
       },
     },
+    onUpdate: ({ editor: e }) => {
+      // This onUpdate function will be rebound by the useEffect below
+      // to ensure it always saves to the correct week key.
+    },
   });
 
-  // This effect hook is the key to the fix.
-  // It watches for changes in the `currentWeekKey` and `goalsByWeek` object.
+  // Rebind the onUpdate event handler whenever the week key changes.
+  // This ensures that edits are saved to the currently viewed week's key.
   useEffect(() => {
-    if (editor && editor.isAttached) {
-      const newContent = goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>';
-      const currentContent = editor.getHTML();
-      
-      // Only update the editor's content if it's different from the new content.
-      // This prevents the cursor from jumping to the beginning while typing.
-      if (currentContent !== newContent) {
-        editor.commands.setContent(newContent, false); // `false` prevents the onUpdate callback from firing again unnecessarily.
-      }
+    if (!editor) return;
+    editor.setOptions({
+      onUpdate: ({ editor: e }) => {
+        setGoalsByWeek(prev => ({
+          ...prev,
+          [currentWeekKey]: e.getHTML(),
+        }));
+      },
+    });
+  }, [editor, currentWeekKey, setGoalsByWeek]);
+
+  // When the week key changes, check if the editor's content matches
+  // the content for the new week. If not, update the editor's content.
+  useEffect(() => {
+    if (!editor) return;
+    const newContent = goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>';
+    const currentContent = editor.getHTML();
+    if (currentContent !== newContent) {
+      editor.commands.setContent(newContent, false); // `false` prevents the onUpdate from firing for this programmatic change.
+      editor.commands.focus('end'); // Optional: move cursor to the end.
     }
-  }, [currentWeekKey, goalsByWeek, editor]); // It re-runs whenever the week or the goals data changes.
+  }, [editor, currentWeekKey, goalsByWeek]);
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className='pb-2 flex flex-row items-center justify-between'>
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold text-primary">Goal of the Week</CardTitle>
         <CardDescription className="text-sm font-medium">{weekDateRange}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-lg border border-input">
           <MenuBar editor={editor} />
-          <EditorContent editor={editor} />
+          <EditorContent key={currentWeekKey} editor={editor} />
         </div>
       </CardContent>
     </Card>
