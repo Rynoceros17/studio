@@ -390,7 +390,7 @@ export default function Home() {
               updatedTasks.sort((a, b) => {
                   const dateA = parseISOStrict(a.date);
                   const dateB = parseISOStrict(b.date);
-                  if (!dateA && !dateB) return 0;
+                  if (!dateA || !dateB) return 0;
                   if (!dateA) return 1;
                   if (!dateB) return -1;
                   const dateComparison = dateA.getTime() - dateB.getTime();
@@ -498,30 +498,30 @@ export default function Home() {
 
     let wasCompleted: boolean;
     setCompletedTaskIds(prevIds => {
-      const currentCompletedKeys = new Set(prevIds);
-      const completionKey = `${taskId}_${dateStr}`;
-      wasCompleted = currentCompletedKeys.has(completionKey);
+        const currentCompletedKeys = new Set(prevIds);
+        const completionKey = `${taskId}_${dateStr}`;
+        wasCompleted = currentCompletedKeys.has(completionKey);
 
-      if (wasCompleted) {
-        currentCompletedKeys.delete(completionKey);
-      } else {
-        currentCompletedKeys.add(completionKey);
-      }
-      return Array.from(currentCompletedKeys);
+        if (wasCompleted) {
+            currentCompletedKeys.delete(completionKey);
+        } else {
+            currentCompletedKeys.add(completionKey);
+        }
+        return Array.from(currentCompletedKeys);
     });
 
     setTimeout(() => {
-      if (wasCompleted) {
-        toast({
-          title: 'Task Incomplete',
-          description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as incomplete.`,
-        });
-      } else {
-        toast({
-          title: 'Task Completed!',
-          description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as complete.`,
-        });
-      }
+        if (wasCompleted) {
+            toast({
+                title: "Task Incomplete",
+                description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as incomplete.`,
+            });
+        } else {
+            toast({
+                title: "Task Completed!",
+                description: `"${task.name}" on ${format(parseISOStrict(dateStr)!, 'PPP')} marked as complete.`,
+            });
+        }
     }, 0);
   }, [tasks, toast]);
 
@@ -909,7 +909,7 @@ export default function Home() {
               </Button>
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">
-              WeekWise
+              WeekWise.
             </h1>
             <div className="absolute right-4 top-1/2 -translate-y-1/2">
               <AuthButton />
