@@ -96,12 +96,13 @@ export function GoalOfWeekEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        // Disable starter kit's default list extensions to use our custom ones
         bulletList: false,
         listItem: false,
       }),
       BulletList.configure({
           HTMLAttributes: {
-              class: 'list-disc pl-5',
+              class: 'list-disc pl-5', // This class is handled by globals.css
           },
       }),
       ListItem,
@@ -114,37 +115,33 @@ export function GoalOfWeekEditor({
           'tiptap w-full min-h-[120px] max-h-[300px] rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-auto',
       },
     },
+    // This onUpdate function will be rebound by the useEffect below
+    // to ensure it always saves to the correct week key.
     onUpdate: ({ editor: e }) => {
-      // This onUpdate function will be rebound by the useEffect below
-      // to ensure it always saves to the correct week key.
+      setGoalsByWeek(prev => ({
+        ...prev,
+        [currentWeekKey]: e.getHTML(),
+      }));
     },
   });
-
-  // Rebind the onUpdate event handler whenever the week key changes.
-  // This ensures that edits are saved to the currently viewed week's key.
-  useEffect(() => {
-    if (!editor) return;
-    editor.setOptions({
-      onUpdate: ({ editor: e }) => {
-        setGoalsByWeek(prev => ({
-          ...prev,
-          [currentWeekKey]: e.getHTML(),
-        }));
-      },
-    });
-  }, [editor, currentWeekKey, setGoalsByWeek]);
 
   // When the week key changes, check if the editor's content matches
   // the content for the new week. If not, update the editor's content.
   useEffect(() => {
     if (!editor) return;
+
+    // This ensures that when the user navigates, the editor shows the correct content
+    // for the new week without triggering a save cycle.
     const newContent = goalsByWeek[currentWeekKey] || '<p>Set your intention for the week!</p>';
     const currentContent = editor.getHTML();
+    
     if (currentContent !== newContent) {
-      editor.commands.setContent(newContent, false); // `false` prevents the onUpdate from firing for this programmatic change.
-      editor.commands.focus('end'); // Optional: move cursor to the end.
+      // The `false` here is important. It tells Tiptap not to emit an 'update' event
+      // for this programmatic change, which prevents an infinite loop.
+      editor.commands.setContent(newContent, false);
     }
   }, [editor, currentWeekKey, goalsByWeek]);
+
 
   return (
     <Card className="shadow-sm">
@@ -155,7 +152,7 @@ export function GoalOfWeekEditor({
       <CardContent>
         <div className="rounded-lg border border-input">
           <MenuBar editor={editor} />
-          <EditorContent key={currentWeekKey} editor={editor} />
+          <EditorContent editor={editor} />
         </div>
       </CardContent>
     </Card>
