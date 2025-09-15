@@ -1050,9 +1050,9 @@ export default function Home() {
             {/* Right Column: Bookmarks */}
             <div className="col-span-10 lg:col-span-2 hidden lg:block">
                <Card className="h-full">
-                <SheetDialogHeader className="p-4 border-b shrink-0">
-                    <SheetDialogTitle className="text-primary">Bookmarks</SheetDialogTitle>
-                </SheetDialogHeader>
+                <div className="p-4 border-b shrink-0">
+                    <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
+                </div>
                 <BookmarkListSheet />
                </Card>
             </div>
