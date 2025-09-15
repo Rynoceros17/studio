@@ -365,6 +365,19 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         className={cn("mb-1 touch-none relative", !isPending && "group")}
         onClick={handleClick}
     >
+        <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+                "absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+                iconButtonClass,
+                isPending && "hidden"
+            )}
+            onClick={(e) => handleMoveClick(e, 'prev')}
+            aria-label="Move task to previous day"
+            >
+            <ArrowLeftCircle className="h-3 w-3" />
+        </Button>
 
         <Card
             className={cn(
@@ -438,6 +451,19 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
             </div>
           </div>
         </Card>
+        <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+                "absolute -right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+                iconButtonClass,
+                isPending && "hidden"
+            )}
+            onClick={(e) => handleMoveClick(e, 'next')}
+            aria-label="Move task to next day"
+            >
+            <ArrowRightCircle className="h-3 w-3" />
+        </Button>
     </div>
   );
 }
