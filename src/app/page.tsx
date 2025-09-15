@@ -53,7 +53,7 @@ import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, Info, CalendarClock, Palette, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
-import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay } from 'date-fns';
+import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay, startOfWeek } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -87,6 +87,7 @@ export default function Home() {
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
   const [weekNames, setWeekNames] = useState<Record<string, string>>({});
   const [goalsByWeek, setGoalsByWeek] = useState<Record<string, string>>({});
+  const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   
   const { user, authLoading } = useAuth();
   const isInitialLoad = useRef(true);
@@ -1106,7 +1107,7 @@ export default function Home() {
             </div>
             
             {/* Center Column: Calendar */}
-            <div className="col-span-12 wide:col-span-7">
+            <div className="col-span-12 wide:col-span-8">
                 <div className="w-full mb-4">
                     <Card className="shadow-sm bg-transparent border-none">
                         <CardContent className="p-3 flex items-center space-x-2">
@@ -1148,7 +1149,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Bookmarks */}
-            <div className="col-span-12 wide:col-span-3 hidden wide:block">
+            <div className="col-span-12 wide:col-span-2 hidden wide:block">
                <Card className="h-full">
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
