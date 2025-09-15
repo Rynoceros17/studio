@@ -38,7 +38,7 @@ function formatTimeLeftForBadge(timeLeft: TimeLeft | null): string {
   if (timeLeft.hoursComponent > 0 || (parts.length > 0 && timeLeft.daysDetailed >= 0 && timeLeft.hoursComponent === 0) || (parts.length === 0 && timeLeft.hoursComponent === 0 && timeLeft.minutesComponent > 0) ) {
       if (timeLeft.daysDetailed > 0 || timeLeft.weeksDetailed > 0 || timeLeft.monthsDetailed > 0 || timeLeft.yearsDetailed > 0) { // Only add if a larger unit is present
         parts.push(`${timeLeft.hoursComponent}h`);
-      } else if (timeLeft.hoursComponent > 0) { // Or if hours is the largest unit itself
+      } else if (timeLeft.hoursComponent > 0) { // Or if if hours is the largest unit itself
         parts.push(`${timeLeft.hoursComponent}h`);
       }
   }
@@ -128,7 +128,7 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center min-w-0 flex-grow">
                                   <Target className="h-4 w-4 mr-1.5 shrink-0 text-primary/80" />
-                                  <CardTitle className={cn("text-base font-semibold truncate", isHighPriorityGoal ? "text-accent-foreground" : "text-secondary-foreground")} title={item.name}>
+                                  <CardTitle className={cn("text-base font-semibold truncate", isHighPriorityGoal ? "text-accent-foreground dark:text-primary-foreground" : "text-secondary-foreground")} title={item.name}>
                                     {truncateText(item.name, isSingleGoalCard ? 40 : 28)}
                                   </CardTitle>
                                 </div>
@@ -138,14 +138,14 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                                       <span className="sr-only">Toggle Priority</span>
                                   </Button>
                                   <Link href="/goals" passHref legacyBehavior>
-                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0", isHighPriorityGoal ? "text-accent-foreground hover:text-accent-foreground/80" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.stopPropagation(); /* Link handles navigation */ }}>
+                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0", isHighPriorityGoal ? "text-accent-foreground dark:text-primary-foreground hover:text-accent-foreground/80" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.stopPropagation(); /* Link handles navigation */ }}>
                                         <Settings className="h-4 w-4" />
                                         <span className="sr-only">Edit Goals</span>
                                     </Button>
                                   </Link>
                                 </div>
                               </div>
-                              <CardDescription className={cn("text-xs pl-[22px]", isHighPriorityGoal ? "text-accent-foreground/80" : "text-muted-foreground")}>
+                              <CardDescription className={cn("text-xs pl-[22px]", isHighPriorityGoal ? "text-accent-foreground/80 dark:text-primary-foreground/80" : "text-muted-foreground")}>
                                 Due: {format(parseISO(item.dueDate), 'MMM d, yyyy')}
                               </CardDescription>
                             </CardHeader>
@@ -154,32 +154,32 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                                 <div className="flex flex-row flex-wrap items-baseline gap-x-2 gap-y-1 text-center justify-center my-2">
                                   {timeLeftDetails.totalYears > 0 && (
                                     <div className="flex flex-col items-center px-1">
-                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground" : "text-foreground")}>{timeLeftDetails.totalYears}</span>
-                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70" : "text-muted-foreground")}>Years</span>
+                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground dark:text-primary-foreground" : "text-foreground")}>{timeLeftDetails.totalYears}</span>
+                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70 dark:text-primary-foreground/70" : "text-muted-foreground")}>Years</span>
                                     </div>
                                   )}
                                   {timeLeftDetails.totalYears > 0 && timeLeftDetails.totalMonths > 0 && <Separator orientation="vertical" className="h-6 bg-border self-center mx-0.5" />}
                                   
                                   {timeLeftDetails.totalMonths > 0 && (
                                     <div className="flex flex-col items-center px-1">
-                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground" : "text-foreground")}>{timeLeftDetails.monthsInYear > 0 && timeLeftDetails.totalYears > 0 ? timeLeftDetails.monthsInYear : timeLeftDetails.totalMonths}</span>
-                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70" : "text-muted-foreground")}>Months</span>
+                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground dark:text-primary-foreground" : "text-foreground")}>{timeLeftDetails.monthsInYear > 0 && timeLeftDetails.totalYears > 0 ? timeLeftDetails.monthsInYear : timeLeftDetails.totalMonths}</span>
+                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70 dark:text-primary-foreground/70" : "text-muted-foreground")}>Months</span>
                                     </div>
                                   )}
                                   {(timeLeftDetails.totalMonths > 0 && timeLeftDetails.totalWeeks > 0) && <Separator orientation="vertical" className="h-6 bg-border self-center mx-0.5" />}
 
                                   {timeLeftDetails.totalWeeks > 0 && (
                                     <div className="flex flex-col items-center px-1">
-                                        <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground" : "text-foreground")}>{timeLeftDetails.weeksInMonth > 0 && timeLeftDetails.totalMonths > 0 ? timeLeftDetails.weeksInMonth : timeLeftDetails.totalWeeks}</span>
-                                        <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70" : "text-muted-foreground")}>Weeks</span>
+                                        <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground dark:text-primary-foreground" : "text-foreground")}>{timeLeftDetails.weeksInMonth > 0 && timeLeftDetails.totalMonths > 0 ? timeLeftDetails.weeksInMonth : timeLeftDetails.totalWeeks}</span>
+                                        <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70 dark:text-primary-foreground/70" : "text-muted-foreground")}>Weeks</span>
                                     </div>
                                   )}
                                   {(timeLeftDetails.totalWeeks > 0 && timeLeftDetails.fullDaysRemaining > 0 ) && <Separator orientation="vertical" className="h-6 bg-border self-center mx-0.5" />}
                                   
                                   {timeLeftDetails.fullDaysRemaining > 0 && (
                                     <div className="flex flex-col items-center px-1">
-                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground" : "text-foreground")}>{timeLeftDetails.daysInWeek > 0 && timeLeftDetails.totalWeeks > 0 ? timeLeftDetails.daysInWeek : timeLeftDetails.fullDaysRemaining}</span>
-                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70" : "text-muted-foreground")}>Days</span>
+                                      <span className={cn("text-lg md:text-xl font-bold font-mono", isHighPriorityGoal ? "text-accent-foreground dark:text-primary-foreground" : "text-foreground")}>{timeLeftDetails.daysInWeek > 0 && timeLeftDetails.totalWeeks > 0 ? timeLeftDetails.daysInWeek : timeLeftDetails.fullDaysRemaining}</span>
+                                      <span className={cn("text-[10px] uppercase", isHighPriorityGoal ? "text-accent-foreground/70 dark:text-primary-foreground/70" : "text-muted-foreground")}>Days</span>
                                     </div>
                                   )}
                                   {/* Hours Left Removed */}
@@ -187,7 +187,7 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                               ) : timeLeftDetails && !timeLeftDetails.isPastDue ? (
                                  <p className={cn(
                                   "text-sm font-semibold text-center my-2 font-mono tracking-tight",
-                                   isHighPriorityGoal ? "text-accent-foreground" : "text-foreground"
+                                   isHighPriorityGoal ? "text-accent-foreground dark:text-primary-foreground" : "text-foreground"
                                   )}>
                                     {formatTimeLeftForBadge(timeLeftDetails)}
                                   </p>
@@ -200,7 +200,7 @@ export function TopTaskBar({ items, toggleGoalPriority }: TopTaskBarProps) {
                               )}
                               {typeof item.progress === 'number' && (
                                 <div className="mt-auto">
-                                  <div className={cn("flex justify-between text-xs mb-0.5", isHighPriorityGoal ? "text-accent-foreground/80" : "text-muted-foreground")}>
+                                  <div className={cn("flex justify-between text-xs mb-0.5", isHighPriorityGoal ? "text-accent-foreground/80 dark:text-primary-foreground/80" : "text-muted-foreground")}>
                                     <span>Progress</span>
                                     <span>
                                       {item.progress === 100 && <CheckCircle className="inline h-3.5 w-3.5 text-green-600 mr-1" />}
