@@ -10,6 +10,9 @@ export default {
   ],
   theme: {
   	extend: {
+      screens: {
+        'wide': '1350px',
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

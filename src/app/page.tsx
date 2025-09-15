@@ -52,7 +52,7 @@ import { TaskListSheet } from '@/components/TaskListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, Info, CalendarClock, Palette } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, Info, CalendarClock, Palette, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
@@ -694,7 +694,7 @@ export default function Home() {
 
     return combinedItems.sort((a, b) => {
       const aIsHighPriority = a.type === 'goal' ? a.goalHighPriority : a.taskHighPriority;
-      const bIsHighPriority = b.type === 'goal' ? b.goalHighPriority : a.taskHighPriority;
+      const bIsHighPriority = b.type === 'goal' ? b.goalHighPriority : b.taskHighPriority;
 
       if (aIsHighPriority && !bIsHighPriority) return -1;
       if (!aIsHighPriority && bIsHighPriority) return 1;
@@ -1094,7 +1094,7 @@ export default function Home() {
         >
           <div className="grid grid-cols-12 gap-4 w-full max-w-[1800px] mx-auto">
             {/* Left Column: Goal of the Week & Upcoming */}
-            <div className="col-span-12 2xl:col-span-2 hidden 2xl:block space-y-4">
+            <div className="col-span-12 wide:col-span-2 hidden wide:block space-y-4">
               <GoalOfWeekEditor
                 currentDisplayDate={currentDisplayDate}
                 goalsByWeek={goalsByWeek}
@@ -1107,7 +1107,7 @@ export default function Home() {
             </div>
             
             {/* Center Column: Calendar */}
-            <div className="col-span-12 2xl:col-span-7">
+            <div className="col-span-12 wide:col-span-8">
                 <div className="w-full mb-4">
                     <Card className="shadow-sm bg-transparent border-none">
                         <CardContent className="p-3 flex items-center space-x-2">
@@ -1149,7 +1149,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Bookmarks */}
-            <div className="col-span-12 2xl:col-span-3 hidden 2xl:block">
+            <div className="col-span-12 wide:col-span-2 hidden wide:block">
                <Card className="h-full">
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
@@ -1284,7 +1284,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
-    
-
-    
