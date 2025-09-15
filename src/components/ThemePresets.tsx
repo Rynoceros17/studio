@@ -41,7 +41,7 @@ export function ThemePresets({ setHue, currentHue }: ThemePresetsProps) {
               className="h-5 w-5 rounded-full border"
               style={{ backgroundColor: `hsl(${theme.hue}, 43%, 61%)` }}
             />
-            <span className="font-medium text-foreground">{theme.name}</span>
+            <span className="font-medium text-foreground dark:text-accent-foreground">{theme.name}</span>
           </div>
           {currentHue === theme.hue && <Check className="h-5 w-5 text-primary" />}
         </Button>
