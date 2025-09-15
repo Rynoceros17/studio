@@ -144,7 +144,7 @@ export function GoalOfWeekEditor({
 
 
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm bg-secondary">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold text-primary">Goal of the Week</CardTitle>
         <CardDescription className="text-sm font-medium">{weekDateRange}</CardDescription>
