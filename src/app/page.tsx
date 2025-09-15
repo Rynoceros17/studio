@@ -998,16 +998,11 @@ export default function Home() {
           <div className="grid grid-cols-12 gap-4 w-full max-w-[1800px] mx-auto">
             {/* Left Column: Goal of the Week & Upcoming */}
             <div className="col-span-12 lg:col-span-3 hidden lg:block space-y-4">
-              <Card>
-                <div className="p-4 border-b shrink-0">
-                    <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Goal of the Week</h3>
-                </div>
-                <GoalOfWeekEditor
-                    currentDisplayDate={currentDisplayDate}
-                    goalsByWeek={goalsByWeek}
-                    setGoalsByWeek={setGoalsByWeek}
-                />
-              </Card>
+              <GoalOfWeekEditor
+                currentDisplayDate={currentDisplayDate}
+                goalsByWeek={goalsByWeek}
+                setGoalsByWeek={setGoalsByWeek}
+              />
               <TopTaskBar
                items={upcomingItemsForBar}
                toggleGoalPriority={toggleGoalPriority}
