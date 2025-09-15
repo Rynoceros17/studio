@@ -65,6 +65,7 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
 import { LandingPage } from '@/components/LandingPage';
 import { motion } from 'framer-motion';
+import { HueSlider } from '@/components/HueSlider';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -893,15 +894,16 @@ export default function Home() {
       >
         <header
           className={cn(
-            "bg-background border-b shadow-sm w-full",
+            "bg-background/95 backdrop-blur-sm border-b shadow-sm w-full sticky top-0 z-40",
             "flex flex-col"
           )}
         >
           <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+               <HueSlider />
               <Button
                 variant="ghost"
-                className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground"
+                className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10"
                 aria-label="Show welcome message"
                 onClick={() => setIsWelcomeOpen(true)}
               >
@@ -916,10 +918,10 @@ export default function Home() {
             </div>
           </div>
 
-          <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t">
+          <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t-[0.5px]">
               <Link
                 href="/detailed-view"
-                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
                 aria-label="Go to detailed view"
               >
                   <LayoutDashboard className="h-5 w-5" />
@@ -927,7 +929,7 @@ export default function Home() {
               </Link>
               <Link
                  href="/study-tracker"
-                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
                  aria-label="Go to study tracker"
               >
                   <BookOpen className="h-5 w-5" />
@@ -935,7 +937,7 @@ export default function Home() {
               </Link>
               <Link
                  href="/timetable"
-                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
                  aria-label="Go to timetable importer"
               >
                   <CalendarClock className="h-5 w-5" />
@@ -943,7 +945,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/goals"
-                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
                 aria-label="View goals"
               >
                   <Target className="h-5 w-5" />
@@ -951,7 +953,7 @@ export default function Home() {
               </Link>
               <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                   <SheetTrigger asChild>
-                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")} aria-label="View bookmarks">
+                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")} aria-label="View bookmarks">
                           <BookmarkIcon className="h-5 w-5" />
                           <span className="ml-2 hidden md:inline">Bookmarks</span>
                       </Button>
@@ -965,7 +967,7 @@ export default function Home() {
               </Sheet>
               <Button
                   variant="ghost"
-                  className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")}
+                  className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")}
                   aria-label="Toggle Pomodoro Timer"
                   onClick={() => setIsTimerVisible(!isTimerVisible)}
               >
@@ -974,7 +976,7 @@ export default function Home() {
               </Button>
               <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
                   <SheetTrigger asChild>
-                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground")} aria-label="Open scratchpad">
+                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10")} aria-label="Open scratchpad">
                           <List className="h-5 w-5" />
                           <span className="ml-2 hidden md:inline">Scratchpad</span>
                       </Button>
