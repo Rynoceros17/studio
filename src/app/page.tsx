@@ -43,7 +43,7 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
+  SheetHeader as SheetDialogHeader,
   SheetTitle as SheetDialogTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
@@ -960,9 +960,9 @@ export default function Home() {
                       </Button>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                      <SheetHeader className="p-4 border-b shrink-0">
+                      <SheetDialogHeader className="p-4 border-b shrink-0">
                           <SheetDialogTitle className="text-primary">Bookmarks</SheetDialogTitle>
-                      </SheetHeader>
+                      </SheetDialogHeader>
                       <BookmarkListSheet />
                   </SheetContent>
               </Sheet>
@@ -983,9 +983,9 @@ export default function Home() {
                       </Button>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                      <SheetHeader className="p-4 border-b shrink-0">
+                      <SheetDialogHeader className="p-4 border-b shrink-0">
                           <SheetDialogTitle className="text-primary">Scratchpad</SheetDialogTitle>
-                      </SheetHeader>
+                      </SheetDialogHeader>
                       <TaskListSheet />
                   </SheetContent>
               </Sheet>
@@ -1050,9 +1050,9 @@ export default function Home() {
             {/* Right Column: Bookmarks */}
             <div className="col-span-10 lg:col-span-2 hidden lg:block">
                <Card className="h-full">
-                <SheetHeader className="p-4 border-b shrink-0">
+                <SheetDialogHeader className="p-4 border-b shrink-0">
                     <SheetDialogTitle className="text-primary">Bookmarks</SheetDialogTitle>
-                </SheetHeader>
+                </SheetDialogHeader>
                 <BookmarkListSheet />
                </Card>
             </div>
