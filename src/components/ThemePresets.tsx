@@ -32,6 +32,9 @@ export function ThemePresets({ setHue, currentHue }: ThemePresetsProps) {
           )}
           onClick={() => setHue(theme.hue)}
           aria-label={`Set theme to ${theme.name}`}
+          style={{
+            backgroundColor: `hsl(${theme.hue}, 90%, 95%)`,
+          }}
         >
           <div className="flex items-center gap-3">
             <div
