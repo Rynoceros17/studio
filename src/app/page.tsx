@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -1184,5 +1185,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
-    
