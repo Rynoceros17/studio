@@ -160,10 +160,58 @@ export default function DetailedViewPage() {
 
   // Fetch goals from local storage
   const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
+  const [hue, setHue] = useLocalStorage('app-primary-hue', 259);
+  const previousHueRef = useRef(hue);
+
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        document.documentElement.style.setProperty('--primary-hue', String(hue));
+        const oppositeHue = (hue + 180) % 360;
+        document.documentElement.style.setProperty('--opposite-hue', String(oppositeHue));
+
+        // Live update task colors
+        if (isDataLoaded && hue !== previousHueRef.current) {
+            const oldPrimaryHue = previousHueRef.current;
+            const oldOppositeHue = (oldPrimaryHue + 180) % 360;
+            
+            setTasks(currentTasks => 
+                currentTasks.map(task => {
+                    if (!task.color || task.color === 'hsl(0 0% 100%)') {
+                        return task;
+                    }
+
+                    try {
+                        const match = task.color.match(/hsl\((\d+)\s/);
+                        if (!match) return task;
+
+                        const taskHue = parseInt(match[1], 10);
+                        let newHue = taskHue;
+
+                        if (Math.abs(taskHue - oldPrimaryHue) < 5) {
+                            newHue = hue;
+                        } else if (Math.abs(taskHue - oldOppositeHue) < 5) {
+                            newHue = oppositeHue;
+                        } else {
+                            return task;
+                        }
+                        
+                        const newColor = task.color.replace(`hsl(${taskHue}`, `hsl(${newHue}`);
+                        return { ...task, color: newColor };
+                    } catch (e) {
+                        return task;
+                    }
+                })
+            );
+
+            previousHueRef.current = hue;
+        }
+    }
+  }, [hue, isDataLoaded, setTasks]);
 
   useEffect(() => {
     if (chatScrollAreaRef.current) {
@@ -1143,3 +1191,5 @@ export default function DetailedViewPage() {
     </div>
   );
 }
+
+    
