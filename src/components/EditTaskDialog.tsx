@@ -27,14 +27,15 @@ import {
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const colorOptions = [
+const generateColorOptions = (primaryHue: number, oppositeHue: number) => [
   { name: 'White', value: 'hsl(0 0% 100%)' },
-  { name: 'Light Purple', value: 'hsl(259 67% 88%)' },
-  { name: 'Lighter Purple', value: 'hsl(259 67% 92%)' },
-  { name: 'Pale Gold', value: 'hsl(50, 100%, 90%)' },
-  { name: 'Soft Gold', value: 'hsl(45, 90%, 85%)' },
-  { name: 'Light Goldenrod', value: 'hsl(55, 80%, 80%)' },
+  { name: 'Primary 1', value: `hsl(${primaryHue} 70% 60%)` },
+  { name: 'Primary 2', value: `hsl(${primaryHue} 60% 75%)` },
+  { name: 'Primary 3', value: `hsl(${primaryHue} 50% 90%)` },
+  { name: 'Opposite 1', value: `hsl(${oppositeHue} 70% 60%)` },
+  { name: 'Opposite 2', value: `hsl(${oppositeHue} 60% 75%)` },
 ];
+
 
 const editFormSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
@@ -44,7 +45,7 @@ const editFormSchema = z.object({
   endTime: z.string().optional(),
   recurring: z.boolean().optional(),
   highPriority: z.boolean().optional(),
-  color: z.string().optional().default(colorOptions[0].value),
+  color: z.string().optional(),
 }).refine(data => {
     if (data.startTime || data.endTime) {
         if (!data.startTime || !data.endTime || data.endTime <= data.startTime) {
@@ -75,8 +76,16 @@ interface EditTaskDialogProps {
 
 export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDialogProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [selectedColor, setSelectedColor] = useState<string | null>(task?.color || colorOptions[0].value);
+  const [colorOptions, setColorOptions] = useState(generateColorOptions(259, 79));
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        const rootStyle = window.getComputedStyle(document.documentElement);
+        const primaryHue = parseInt(rootStyle.getPropertyValue('--primary-hue').trim() || '259', 10);
+        const oppositeHue = parseInt(rootStyle.getPropertyValue('--opposite-hue').trim() || '79', 10);
+        setColorOptions(generateColorOptions(primaryHue, oppositeHue));
+    }
+  }, []);
 
   const form = useForm<EditTaskFormValues>({
     resolver: zodResolver(editFormSchema),
@@ -105,12 +114,10 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
         highPriority: task.highPriority || false,
         color: task.color || defaultColorValue,
       });
-      setSelectedColor(task.color || defaultColorValue);
     } else if (!isOpen) {
        form.reset({ name: '', description: '', date: undefined, startTime: '', endTime: '', recurring: false, highPriority: false, color: defaultColorValue });
-       setSelectedColor(defaultColorValue);
     }
-  }, [task, isOpen, form]);
+  }, [task, isOpen, form, colorOptions]);
 
   const onSubmit: SubmitHandler<EditTaskFormValues> = (data) => {
     if (task) {
@@ -308,7 +315,6 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                             )}
                             onClick={() => {
                               field.onChange(colorOpt.value);
-                              setSelectedColor(colorOpt.value);
                             }}
                             aria-label={`Set task color to ${colorOpt.name}`}
                             title={colorOpt.name}
@@ -341,3 +347,5 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
     </ShadDialog>
   );
 }
+
+    
