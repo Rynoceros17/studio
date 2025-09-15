@@ -54,9 +54,9 @@ body {
     --popover-foreground: 250 15% 96%;
     --primary: var(--primary-hue) 43% 71%; /* Using the dynamic hue */
     --primary-foreground: 0 0% 98%;
-    --secondary: 260 15% 26%;
+    --secondary: var(--primary-hue) 15% 26%;
     --secondary-foreground: 250 15% 90%;
-    --muted: 260 15% 22%;
+    --muted: var(--primary-hue) 15% 22%;
     --muted-foreground: 250 10% 60%;
     --accent: var(--primary-hue) 43% 71%; /* Changed from gold to primary hue */
     --accent-foreground: 240 10% 10%;
