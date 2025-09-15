@@ -119,7 +119,6 @@ export default function Home() {
   const router = useRouter();
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [isTodaysTasksDialogOpen, setIsTodaysTasksDialogOpen] = useState(false);
-  const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date()));
   const { theme, setTheme } = useTheme();
   const [hue, setHue] = useLocalStorage('app-primary-hue', 259);
   const previousHueRef = useRef(hue);
@@ -1107,7 +1106,7 @@ export default function Home() {
             </div>
             
             {/* Center Column: Calendar */}
-            <div className="col-span-12 wide:col-span-8">
+            <div className="col-span-12 wide:col-span-7">
                 <div className="w-full mb-4">
                     <Card className="shadow-sm bg-transparent border-none">
                         <CardContent className="p-3 flex items-center space-x-2">
@@ -1149,7 +1148,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Bookmarks */}
-            <div className="col-span-12 wide:col-span-2 hidden wide:block">
+            <div className="col-span-12 wide:col-span-3 hidden wide:block">
                <Card className="h-full">
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
