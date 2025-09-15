@@ -2,21 +2,23 @@
 "use client";
 
 import React from 'react';
-import useLocalStorage from '@/hooks/useLocalStorage';
 import { Slider } from '@/components/ui/slider';
 import { Label } from './ui/label';
 
-export function HueSlider() {
-  const [hue, setHue] = useLocalStorage('app-primary-hue', 259);
+interface HueSliderProps {
+  hue: number;
+  setHue: (hue: number) => void;
+}
 
+export function HueSlider({ hue, setHue }: HueSliderProps) {
   React.useEffect(() => {
     document.documentElement.style.setProperty('--primary-hue', String(hue));
   }, [hue]);
 
   return (
-    <div className="space-y-4">
-      <Label htmlFor="hue-slider" className="text-sm font-medium text-center block">
-        Theme Hue ({hue}°)
+    <div className="space-y-3">
+      <Label htmlFor="hue-slider" className="text-sm font-medium">
+        Custom Hue ({hue}°)
       </Label>
       <Slider
         id="hue-slider"

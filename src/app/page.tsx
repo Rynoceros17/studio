@@ -24,12 +24,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -70,6 +70,8 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
+import { Separator } from '@/components/ui/separator';
+import { ThemePresets } from '@/components/ThemePresets';
 
 
 interface MoveRecurringConfirmationState {
@@ -923,16 +925,15 @@ export default function Home() {
                     <span className="hidden md:inline ml-2">Theme</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[280px]">
-                  <SheetHeader>
-                    <SheetTitle>Theme Settings</SheetTitle>
+                <SheetContent side="left" className="w-[300px] sm:w-[320px]" showOverlay={false}>
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="text-lg">Theme Settings</SheetTitle>
                   </SheetHeader>
-                  <div className="py-4 space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="theme-mode" className="text-sm font-medium">Mode</Label>
+                  <div className="p-4 space-y-6">
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Mode</Label>
                       {isClient && theme && (
                           <Tabs
-                            id="theme-mode"
                             value={theme === 'system' ? 'light' : theme}
                             onValueChange={setTheme}
                             className="w-full"
@@ -944,19 +945,12 @@ export default function Home() {
                           </Tabs>
                       )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="hue-slider" className="text-sm font-medium text-center block">
-                        Primary Hue ({hue}°)
-                      </Label>
-                      <Slider
-                        id="hue-slider"
-                        min={0}
-                        max={360}
-                        step={1}
-                        value={[hue]}
-                        onValueChange={(value) => setHue(value[0])}
-                        className="w-full"
-                      />
+                    <Separator />
+                    <HueSlider hue={hue} setHue={setHue} />
+                    <Separator />
+                    <div className="space-y-3">
+                        <Label className="text-sm font-medium">Presets</Label>
+                        <ThemePresets setHue={setHue} />
                     </div>
                   </div>
                 </SheetContent>
