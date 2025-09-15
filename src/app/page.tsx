@@ -108,6 +108,9 @@ export default function Home() {
   const { theme, setTheme } = useTheme();
   const [hue, setHue] = useLocalStorage('app-primary-hue', 259);
   const previousHueRef = useRef(hue);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const calendarRef = useRef<{ addTask: (task: Omit<Task, 'id'>) => void }>(null);
+
 
   useEffect(() => {
     document.documentElement.style.setProperty('--primary-hue', String(hue));
@@ -132,7 +135,8 @@ export default function Home() {
   // Show the "Today's Tasks" dialog only after the user's auth status and data is resolved.
   useEffect(() => {
     if (!authLoading && isDataLoaded) {
-        setIsTodaysTasksDialogOpen(true);
+        // Temporarily disabled to avoid being annoying during dev
+        // setIsTodaysTasksDialogOpen(true);
     }
   }, [authLoading, isDataLoaded]);
 
@@ -282,6 +286,11 @@ export default function Home() {
     // This completes the gesture.
     setTouchStartX(null);
   };
+
+    const handleAddTask = (taskData: Omit<Task, 'id'>) => {
+        calendarRef.current?.addTask(taskData);
+        setIsFormOpen(false); // Close the dialog after adding
+    };
   
   if (authLoading || !isDataLoaded) {
     return <LoadingScreen />;
@@ -457,6 +466,7 @@ export default function Home() {
             {/* Center Column: Calendar */}
             <div className="col-span-12 wide:col-span-8">
                 <CalendarView
+                    ref={calendarRef}
                     currentDisplayDate={currentDisplayDate}
                     setCurrentDisplayDate={setCurrentDisplayDate}
                 />
@@ -486,6 +496,29 @@ export default function Home() {
               tasks={[]}
           />
 
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild>
+                    <Button
+                        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+                        aria-label="Add new task"
+                    >
+                        <Plus className="h-7 w-7" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-primary">Add New Task</DialogTitle>
+                        <DialogDescription>
+                            Fill out the details for your new task below.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <TaskForm
+                        addTask={handleAddTask}
+                        onTaskAdded={() => setIsFormOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
+
           <Dialog open={isWelcomeOpen} onOpenChange={setIsWelcomeOpen}>
               <DialogContent>
                   <DialogHeader>
@@ -504,7 +537,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
-    
-
-    

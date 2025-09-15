@@ -2,7 +2,7 @@
 "use client";
 
 import type * as React from 'react';
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   addDays,
   subDays,
@@ -464,10 +464,10 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 }
 
 
-export function CalendarView({
-    currentDisplayDate,
-    setCurrentDisplayDate,
-}: CalendarViewProps) {
+export const CalendarView = forwardRef<
+  { addTask: (task: Omit<Task, 'id'>) => void },
+  CalendarViewProps
+>(({ currentDisplayDate, setCurrentDisplayDate }, ref) => {
   const { user, authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -628,6 +628,10 @@ export function CalendarView({
      setIsFormOpen(false);
   }, [setTasks, toast, isParsingTask, moveRecurringConfirmation]);
 
+  useImperativeHandle(ref, () => ({
+    addTask,
+  }));
+
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
       setTasks(prevTasks => {
           let needsResort = false;
@@ -649,7 +653,7 @@ export function CalendarView({
               updatedTasks.sort((a, b) => {
                   const dateA = parseISOStrict(a.date);
                   const dateB = parseISOStrict(b.date);
-                  if (!dateA || !dateB) return 0;
+                  if (!dateA && !dateB) return 0;
                   if (!dateA) return 1;
                   if (!dateB) return -1;
                   const dateComparison = dateA.getTime() - dateB.getTime();
@@ -1064,6 +1068,6 @@ export function CalendarView({
         </AlertDialog>
     </DndContext>
   );
-}
+});
 
-    
+CalendarView.displayName = 'CalendarView';
