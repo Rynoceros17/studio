@@ -1008,7 +1008,7 @@ export default function Home() {
             </div>
             
             {/* Center Column: Calendar */}
-            <div className="col-span-12 2xl:col-span-8">
+            <div className="col-span-12 2xl:col-span-7">
                 <div className="w-full mb-4">
                     <Card className="shadow-sm bg-transparent border-none">
                         <CardContent className="p-3 flex items-center space-x-2">
@@ -1050,7 +1050,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Bookmarks */}
-            <div className="col-span-12 2xl:col-span-2 hidden 2xl:block">
+            <div className="col-span-12 2xl:col-span-3 hidden 2xl:block">
                <Card className="h-full">
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
