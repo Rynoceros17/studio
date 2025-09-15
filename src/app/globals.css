@@ -26,7 +26,7 @@ body {
     --accent-foreground: 240 10% 10%; /* Dark Grey */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: var(--primary-hue) 40% 80%; /* Adjusted to use hue */
+    --border: var(--primary-hue) 40% 90%; /* Adjusted to use hue */
     --input: var(--primary-hue) 40% 80%; /* Adjusted to use hue */
     --ring: var(--primary-hue) 43% 71%; /* Adjusted to use hue */
     --chart-1: 12 76% 61%;
@@ -48,7 +48,7 @@ body {
     --primary-hue: 259; /* New variable for dynamic hue */
     --background: 260 15% 14%;
     --foreground: 250 15% 96%;
-    --card: var(--primary-hue) 15% 18%;
+    --card: var(--primary-hue)-20 15% 18%;
     --card-foreground: var(--primary-hue) 15% 96%;
     --popover: 260 15% 18%;
     --popover-foreground: var(--primary-hue) 15% 96%;
