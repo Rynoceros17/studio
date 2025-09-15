@@ -839,7 +839,6 @@ export default function DetailedViewPage() {
                 endTime: format(endDate, 'HH:mm'),
                 recurring: event.isRecurring,
                 highPriority: false,
-                // 2. Set default color to #col4
                 color: colorTagToHexMap['#col4'],
                 details: null,
                 dueDate: null,
@@ -1191,5 +1190,3 @@ export default function DetailedViewPage() {
     </div>
   );
 }
-
-    
