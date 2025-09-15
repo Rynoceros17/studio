@@ -785,17 +785,6 @@ export function CalendarView({
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
     >
         <div className="relative w-full">
-            <Link href="/timetable" passHref legacyBehavior>
-                <a className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), "hidden md:flex absolute top-1/2 -left-12 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center")} aria-label="Go to Timetable">
-                    <ArrowLeftCircle className="h-6 w-6" />
-                </a>
-            </Link>
-            <Link href="/goals" passHref legacyBehavior>
-                <a className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), "hidden md:flex absolute top-1/2 -right-12 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center")} aria-label="Go to Goals">
-                    <ArrowRightCircle className="h-6 w-6" />
-                </a>
-            </Link>
-
           <div className="p-1 md:p-2">
             <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
