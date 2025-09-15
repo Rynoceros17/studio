@@ -16,7 +16,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, PlusCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { cn, truncateText } from '@/lib/utils';
+import { cn, truncateText, calculateGoalProgress } from '@/lib/utils';
 import type { Subtask, Goal } from '@/lib/types';
 
 interface GoalsSheetProps {
@@ -27,36 +27,12 @@ interface GoalsSheetProps {
   onCreateTaskFromSubtask?: (subtask: Subtask) => void;
 }
 
-// This component is now simplified as the main functionality moves to /goals/page.tsx
-// It can be used as a read-only display or a quick-access version if desired later.
-// For now, making it a simple display or placeholder.
 export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
     const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
     const { toast } = useToast(); // Kept for potential future interactions
 
-    const calculateProgress = (goal: Goal): number => {
-        let totalSubtasks = 0;
-        let completedSubtasks = 0;
-        const countSubtasksRecursive = (subtasks: Subtask[]) => {
-            subtasks.forEach(subtask => {
-                totalSubtasks++;
-                if (subtask.completed) {
-                    completedSubtasks++;
-                }
-                if (subtask.subtasks && subtask.subtasks.length > 0) {
-                    countSubtasksRecursive(subtask.subtasks);
-                }
-            });
-        };
-        if (goal.subtasks && goal.subtasks.length > 0) {
-            countSubtasksRecursive(goal.subtasks);
-        }
-        if (totalSubtasks === 0) return 0;
-        return Math.round((completedSubtasks / totalSubtasks) * 100);
-    };
-
     return (
-        <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden">
+        <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden h-full">
             <div className="p-4 border-b shrink-0 bg-secondary/30 rounded-b-md">
                  <p className="text-sm text-muted-foreground">
                     View and manage your detailed goals on the dedicated <Link href="/goals" className="text-primary underline hover:text-primary/80">Goals Page</Link>.
@@ -70,7 +46,7 @@ export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
                     ) : (
                         <Accordion type="multiple" className="w-full">
                             {goals.map((goal) => {
-                                const progress = calculateProgress(goal);
+                                const progress = calculateGoalProgress(goal);
                                 return (
                                     <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4">
                                         <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">

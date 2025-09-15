@@ -902,13 +902,6 @@ export function CalendarView({
                 );
               })}
             </div>
-             <div className="w-full mt-4">
-                <GoalOfWeekEditor
-                    currentDisplayDate={currentDisplayDate}
-                    goalsByWeek={goalsByWeek}
-                    setGoalsByWeek={setGoalsByWeek}
-                />
-            </div>
           </div>
       </div>
         <DragOverlay dropAnimation={dropAnimation}>

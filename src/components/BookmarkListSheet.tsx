@@ -95,8 +95,7 @@ export function BookmarkListSheet() {
 
     return (
         
-        <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden"> 
-
+        <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden h-full"> 
             
             <div className="p-4 border-b shrink-0 space-y-3 bg-secondary/30 rounded-b-md"> 
                 <div>

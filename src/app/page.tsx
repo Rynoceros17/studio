@@ -66,6 +66,7 @@ import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
 import { LandingPage } from '@/components/LandingPage';
 import { motion } from 'framer-motion';
 import { HueSlider } from '@/components/HueSlider';
+import { GoalsSheet } from '@/components/GoalsSheet';
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -992,52 +993,72 @@ export default function Home() {
         </header>
 
         <main
-          className="flex flex-grow w-full flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"
+          className="flex-grow w-full flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"
         >
+          <div className="grid grid-cols-10 gap-4 w-full max-w-[1800px] mx-auto">
+            {/* Left Column: Goal of the Week */}
+            <div className="col-span-10 lg:col-span-2 hidden lg:block">
+              <GoalOfWeekEditor
+                    currentDisplayDate={currentDisplayDate}
+                    goalsByWeek={goalsByWeek}
+                    setGoalsByWeek={setGoalsByWeek}
+                />
+            </div>
+            
+            {/* Center Column: Calendar */}
+            <div className="col-span-10 lg:col-span-6">
+                <div className="w-full mb-4">
+                    <Card className="shadow-sm bg-transparent border-none">
+                        <CardContent className="p-3 flex items-center space-x-2">
+                            <Button onClick={handleSendChatMessage} className="h-10 px-3 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isParsingTask || !chatInput.trim()}>
+                                {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+                                <span className="sr-only">Send Task Query</span>
+                            </Button>
+                            <Input
+                                ref={chatInputRef}
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                placeholder="AI Task Entry: e.g., 'Important meeting #col1, Weekly review #col3' (Max 100 chars)"
+                                className="h-10 text-sm flex-grow"
+                                onKeyPress={handleChatKeyPress}
+                                disabled={isParsingTask}
+                                maxLength={100}
+                            />
+                        </CardContent>
+                    </Card>
+                </div>
+                <CalendarView
+                    tasks={tasks}
+                    pendingAiTasks={pendingAiTasks}
+                    requestDeleteTask={requestDeleteTask}
+                    updateTaskOrder={updateTaskOrder}
+                    toggleTaskCompletion={toggleTaskCompletion}
+                    completedTasks={completedTasks}
+                    updateTaskDetails={updateTaskDetails}
+                    updateTask={updateTask}
+                    completedCount={completedCount}
+                    requestMoveRecurringTask={requestMoveRecurringTask}
+                    currentDisplayDate={currentDisplayDate}
+                    setCurrentDisplayDate={setCurrentDisplayDate}
+                    weekNames={weekNames}
+                    setWeekNames={setWeekNames}
+                    goalsByWeek={goalsByWeek}
+                    setGoalsByWeek={setGoalsByWeek}
+                />
+            </div>
 
-          <div className="w-full max-w-7xl mb-4">
-              <Card className="shadow-sm bg-transparent border-none">
-                  <CardContent className="p-3 flex items-center space-x-2">
-                      <Button onClick={handleSendChatMessage} className="h-10 px-3 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isParsingTask || !chatInput.trim()}>
-                          {isParsingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
-                          <span className="sr-only">Send Task Query</span>
-                      </Button>
-                      <Input
-                          ref={chatInputRef}
-                          value={chatInput}
-                          onChange={(e) => setChatInput(e.target.value)}
-                          placeholder="AI Task Entry: e.g., 'Important meeting #col1, Weekly review #col3' (Max 100 chars)"
-                          className="h-10 text-sm flex-grow"
-                          onKeyPress={handleChatKeyPress}
-                          disabled={isParsingTask}
-                          maxLength={100}
-                      />
-                  </CardContent>
-              </Card>
+            {/* Right Column: Bookmarks */}
+            <div className="col-span-10 lg:col-span-2 hidden lg:block">
+               <Card className="h-full">
+                <SheetHeader className="p-4 border-b shrink-0">
+                    <SheetDialogTitle className="text-primary">Bookmarks</SheetDialogTitle>
+                </SheetHeader>
+                <BookmarkListSheet />
+               </Card>
+            </div>
           </div>
-
-          <div className="w-full max-w-7xl space-y-4">
-            <CalendarView
-              tasks={tasks}
-              pendingAiTasks={pendingAiTasks}
-              requestDeleteTask={requestDeleteTask}
-              updateTaskOrder={updateTaskOrder}
-              toggleTaskCompletion={toggleTaskCompletion}
-              completedTasks={completedTasks}
-              updateTaskDetails={updateTaskDetails}
-              updateTask={updateTask}
-              completedCount={completedCount}
-              requestMoveRecurringTask={requestMoveRecurringTask}
-              currentDisplayDate={currentDisplayDate}
-              setCurrentDisplayDate={setCurrentDisplayDate}
-              weekNames={weekNames}
-              setWeekNames={setWeekNames}
-              goalsByWeek={goalsByWeek}
-              setGoalsByWeek={setGoalsByWeek}
-            />
-          </div>
-
-          <div className="w-full max-w-7xl mt-4">
+          
+           <div className="w-full max-w-[1800px] mx-auto mt-4">
              <TopTaskBar
                items={upcomingItemsForBar}
                toggleGoalPriority={toggleGoalPriority}
