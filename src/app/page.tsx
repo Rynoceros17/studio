@@ -84,6 +84,7 @@ interface MoveRecurringConfirmationState {
 export default function Home() {
   const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
   const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [goalsByWeek, setGoalsByWeek] = useLocalStorage<Record<string, string>>('weekwise-goals-by-week', {});
   
   const { user, authLoading } = useAuth();
   const isInitialLoad = useRef(true);
@@ -441,11 +442,11 @@ export default function Home() {
         >
           <div className="grid grid-cols-12 gap-4 w-full max-w-[1800px] mx-auto">
             {/* Left Column: Goal of the Week & Upcoming */}
-            <div className="col-span-12 wide:col-span-3 hidden wide:block space-y-4">
+            <div className="col-span-12 wide:col-span-2 hidden wide:block space-y-4">
               <GoalOfWeekEditor
                 currentDisplayDate={currentDisplayDate}
-                goalsByWeek={{} /* Pass empty or load from new source */}
-                setGoalsByWeek={() => {} /* Pass empty or load from new source */}
+                goalsByWeek={goalsByWeek}
+                setGoalsByWeek={setGoalsByWeek}
               />
               <TopTaskBar
                items={upcomingItemsForBar}
@@ -454,7 +455,7 @@ export default function Home() {
             </div>
             
             {/* Center Column: Calendar */}
-            <div className="col-span-12 wide:col-span-6">
+            <div className="col-span-12 wide:col-span-8">
                 <CalendarView
                     currentDisplayDate={currentDisplayDate}
                     setCurrentDisplayDate={setCurrentDisplayDate}
@@ -462,7 +463,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Bookmarks */}
-            <div className="col-span-12 wide:col-span-3 hidden wide:block">
+            <div className="col-span-12 wide:col-span-2 hidden wide:block">
                <Card className="h-full">
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
@@ -503,5 +504,7 @@ export default function Home() {
     </DndContext>
   );
 }
+
+    
 
     
