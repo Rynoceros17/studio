@@ -7,11 +7,11 @@ import { Button } from './ui/button';
 import { Check } from 'lucide-react';
 
 const presetThemes = [
-  { name: 'Purple', hue: 259 },
-  { name: 'Blue', hue: 220 },
-  { name: 'Green', hue: 140 },
-  { name: 'Orange', hue: 25 },
-  { name: 'Red', hue: 0 },
+  { name: 'Amethyst', hue: 259 },
+  { name: 'Sapphire', hue: 220 },
+  { name: 'Jade', hue: 140 },
+  { name: 'Beehive', hue: 25 },
+  { name: 'Crimson', hue: 0 },
 ];
 
 interface ThemePresetsProps {
