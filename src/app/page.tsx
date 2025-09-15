@@ -922,7 +922,7 @@ export default function Home() {
           <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t-[0.5px]">
               <Link
                 href="/detailed-view"
-                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/10 hover:bg-primary/20")}
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20")}
                 aria-label="Go to detailed view"
               >
                   <LayoutDashboard className="h-5 w-5" />
@@ -930,7 +930,7 @@ export default function Home() {
               </Link>
               <Link
                  href="/study-tracker"
-                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/10 hover:bg-primary/20")}
+                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20")}
                  aria-label="Go to study tracker"
               >
                   <BookOpen className="h-5 w-5" />
@@ -938,7 +938,7 @@ export default function Home() {
               </Link>
               <Link
                  href="/timetable"
-                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/10 hover:bg-primary/20")}
+                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20")}
                  aria-label="Go to timetable importer"
               >
                   <CalendarClock className="h-5 w-5" />
@@ -946,7 +946,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/goals"
-                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/10 hover:bg-primary/20")}
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20")}
                 aria-label="View goals"
               >
                   <Target className="h-5 w-5" />
@@ -954,7 +954,7 @@ export default function Home() {
               </Link>
               <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
                   <SheetTrigger asChild>
-                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/10 hover:bg-primary/20")} aria-label="View bookmarks">
+                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20")} aria-label="View bookmarks">
                           <BookmarkIcon className="h-5 w-5" />
                           <span className="ml-2 hidden md:inline">Bookmarks</span>
                       </Button>
@@ -968,7 +968,7 @@ export default function Home() {
               </Sheet>
               <Button
                   variant="ghost"
-                  className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/10 hover:bg-primary/20")}
+                  className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20")}
                   aria-label="Toggle Pomodoro Timer"
                   onClick={() => setIsTimerVisible(!isTimerVisible)}
               >
@@ -977,7 +977,7 @@ export default function Home() {
               </Button>
               <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
                   <SheetTrigger asChild>
-                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/10 hover:bg-primary/20")} aria-label="Open scratchpad">
+                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20")} aria-label="Open scratchpad">
                           <List className="h-5 w-5" />
                           <span className="ml-2 hidden md:inline">Scratchpad</span>
                       </Button>
@@ -995,9 +995,9 @@ export default function Home() {
         <main
           className="flex-grow w-full flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"
         >
-          <div className="grid grid-cols-10 gap-4 w-full max-w-[1800px] mx-auto">
+          <div className="grid grid-cols-12 gap-4 w-full max-w-[1800px] mx-auto">
             {/* Left Column: Goal of the Week & Upcoming */}
-            <div className="col-span-10 lg:col-span-2 hidden lg:block space-y-4">
+            <div className="col-span-12 lg:col-span-3 hidden lg:block space-y-4">
               <Card>
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Goal of the Week</h3>
@@ -1015,7 +1015,7 @@ export default function Home() {
             </div>
             
             {/* Center Column: Calendar */}
-            <div className="col-span-10 lg:col-span-6">
+            <div className="col-span-12 lg:col-span-6">
                 <div className="w-full mb-4">
                     <Card className="shadow-sm bg-transparent border-none">
                         <CardContent className="p-3 flex items-center space-x-2">
@@ -1057,7 +1057,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Bookmarks */}
-            <div className="col-span-10 lg:col-span-2 hidden lg:block">
+            <div className="col-span-12 lg:col-span-3 hidden lg:block">
                <Card className="h-full">
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
