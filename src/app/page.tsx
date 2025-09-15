@@ -68,6 +68,8 @@ import { HueSlider } from '@/components/HueSlider';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
+import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 
 
 interface MoveRecurringConfirmationState {
@@ -646,7 +648,7 @@ export default function Home() {
 
     return combinedItems.sort((a, b) => {
       const aIsHighPriority = a.type === 'goal' ? a.goalHighPriority : a.taskHighPriority;
-      const bIsHighPriority = b.type === 'goal' ? b.goalHighPriority : b.taskHighPriority;
+      const bIsHighPriority = b.type === 'goal' ? b.goalHighPriority : a.taskHighPriority;
 
       if (aIsHighPriority && !bIsHighPriority) return -1;
       if (!aIsHighPriority && bIsHighPriority) return 1;
@@ -1244,3 +1246,5 @@ export default function Home() {
     </DndContext>
   );
 }
+
+    
