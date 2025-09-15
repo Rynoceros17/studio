@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useEffect } from 'react';
@@ -144,7 +143,7 @@ export function GoalOfWeekEditor({
 
 
   return (
-    <Card className="shadow-sm bg-secondary">
+    <Card className="shadow-sm">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold text-primary">Goal of the Week</CardTitle>
         <CardDescription className="text-sm font-medium">{weekDateRange}</CardDescription>
