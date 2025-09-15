@@ -9,7 +9,7 @@ import { Check } from 'lucide-react';
 const presetThemes = [
   { name: 'Amethyst', hue: 259 },
   { name: 'Sapphire', hue: 220 },
-  { name: 'Jade', hue: 140 },
+  { name: 'Jade', hue: 157 },
   { name: 'Beehive', hue: 25 },
   { name: 'Crimson', hue: 0 },
 ];
