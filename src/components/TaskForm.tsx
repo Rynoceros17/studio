@@ -20,31 +20,18 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const getHueName = (hue: number): string => {
-    if (hue >= 340 || hue < 15) return 'Crimson'; // Red
-    if (hue < 45) return 'Beehive'; // Orange
-    if (hue < 75) return 'Gold'; // Yellow
-    if (hue < 150) return 'Jade'; // Green
-    if (hue < 195) return 'Teal'; // Cyan/Teal
-    if (hue < 250) return 'Sapphire'; // Blue
-    if (hue < 285) return 'Amethyst'; // Purple
-    if (hue < 340) return 'Rose'; // Pink/Magenta
-    return 'Neutral';
-};
-
-const generateColorOptions = (primaryHue: number, oppositeHue: number) => {
-    const primaryName = getHueName(primaryHue);
-    const oppositeName = getHueName(oppositeHue);
-
-    return [
-      { name: 'Neutral', value: 'hsl(0 0% 100%)' },
-      { name: `${primaryName} (Dark)`, value: `hsl(${primaryHue} 70% 60%)` },
-      { name: `${primaryName} (Medium)`, value: `hsl(${primaryHue} 60% 75%)` },
-      { name: `${primaryName} (Light)`, value: `hsl(${primaryHue} 50% 90%)` },
-      { name: `${oppositeName} (Dark)`, value: `hsl(${oppositeHue} 70% 60%)` },
-      { name: `${oppositeName} (Medium)`, value: `hsl(${oppositeHue} 60% 75%)` },
-    ];
-};
+const colorOptions = [
+    { name: 'Tomato', value: 'hsl(4 90% 58%)' },
+    { name: 'Tangerine', value: 'hsl(36 90% 58%)' },
+    { name: 'Citron', value: 'hsl(54 90% 58%)' },
+    { name: 'Lime', value: 'hsl(90 90% 58%)' },
+    { name: 'Mint', value: 'hsl(150 90% 58%)' },
+    { name: 'Sky', value: 'hsl(190 90% 58%)' },
+    { name: 'Lavender', value: 'hsl(250 90% 65%)' },
+    { name: 'Plum', value: 'hsl(280 90% 65%)' },
+    { name: 'Rose', value: 'hsl(340 90% 65%)' },
+    { name: 'Graphite', value: 'hsl(240 10% 40%)' },
+];
 
 
 const formSchema = z.object({
@@ -87,16 +74,6 @@ interface TaskFormProps {
 
 export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [colorOptions, setColorOptions] = useState(generateColorOptions(259, 79));
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        const rootStyle = window.getComputedStyle(document.documentElement);
-        const primaryHue = parseInt(rootStyle.getPropertyValue('--primary-hue').trim() || '259', 10);
-        const oppositeHue = parseInt(rootStyle.getPropertyValue('--opposite-hue').trim() || '79', 10);
-        setColorOptions(generateColorOptions(primaryHue, oppositeHue));
-    }
-  }, []);
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(formSchema),
@@ -137,7 +114,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
          color: defaultColorValue,
        });
      }
-   }, [initialData, form, colorOptions]);
+   }, [initialData, form]);
 
 
   const onSubmit: SubmitHandler<TaskFormValues> = (data) => {
@@ -358,4 +335,3 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
   );
 }
 
-    
