@@ -50,7 +50,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
 import type { Task, SingleTaskOutput } from '@/lib/types';
 import { cn, truncateText, getMaxLength, parseISOStrict } from '@/lib/utils';
@@ -366,38 +365,6 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         className={cn("mb-1 touch-none relative", !isPending && "group")}
         onClick={handleClick}
     >
-       {!isPending && (
-         <>
-            <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                    "absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100",
-                    iconButtonClass
-                )}
-                onClick={(e) => handleMoveClick(e, 'prev')}
-                aria-label="Move task to previous day"
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-            >
-                <ArrowLeftCircle className="h-4 w-4" />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                    "absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100",
-                    iconButtonClass
-                    )}
-                onClick={(e) => handleMoveClick(e, 'next')}
-                aria-label="Move task to next day"
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-            >
-                <ArrowRightCircle className="h-4 w-4" />
-            </Button>
-         </>
-       )}
 
         <Card
             className={cn(
@@ -501,7 +468,6 @@ export function CalendarView({
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
   const [today, setToday] = useState<Date | null>(null);
 
   const currentWeekKey = useMemo(() => {
@@ -805,18 +771,6 @@ export function CalendarView({
                       size={Math.max(weekName.length, 1)}
                       className="h-8 text-base font-semibold text-center bg-transparent border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-primary w-auto max-w-[150px]"
                     />
-                  {isClient && theme && (
-                    <Tabs
-                      value={theme === 'system' ? 'light' : theme}
-                      onValueChange={setTheme}
-                      className="ml-2 w-[100px]"
-                    >
-                      <TabsList className="grid w-full grid-cols-2 h-8 p-0.5">
-                        <TabsTrigger value="light" className="text-xs h-6 px-2">Light</TabsTrigger>
-                        <TabsTrigger value="dark" className="text-xs h-6 px-2">Dark</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  )}
               </div>
 
                 <div className="flex items-center gap-2">

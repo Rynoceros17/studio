@@ -5,6 +5,7 @@ import type * as React from 'react';
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import {
   DndContext,
   type DragEndEvent,
@@ -43,14 +44,15 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TaskListSheet } from '@/components/TaskListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, ArrowLeftCircle, ArrowRightCircle, Info, CalendarClock } from 'lucide-react';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, Info, CalendarClock, Palette } from 'lucide-react';
 import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay } from 'date-fns';
 import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
 import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
@@ -60,11 +62,13 @@ import { db } from '@/lib/firebase/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { TodaysTasksDialog } from '@/components/TodaysTasksDialog';
 import { LoadingScreen } from '@/components/LoadingScreen';
-import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
 import { LandingPage } from '@/components/LandingPage';
 import { motion } from 'framer-motion';
 import { HueSlider } from '@/components/HueSlider';
-import { GoalsSheet } from '@/components/GoalsSheet';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+
 
 interface MoveRecurringConfirmationState {
   task: Task;
@@ -101,6 +105,7 @@ export default function Home() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
   const [moveRecurringConfirmation, setMoveRecurringConfirmation] = useState<MoveRecurringConfirmationState | null>(null);
+  const [isThemeSheetOpen, setIsThemeSheetOpen] = useState(false);
 
   const [chatInput, setChatInput] = useState('');
   const [isParsingTask, setIsParsingTask] = useState(false);
@@ -111,6 +116,12 @@ export default function Home() {
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [isTodaysTasksDialogOpen, setIsTodaysTasksDialogOpen] = useState(false);
   const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfDay(new Date()));
+  const { theme, setTheme } = useTheme();
+  const [hue, setHue] = useLocalStorage('app-primary-hue', 259);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary-hue', String(hue));
+  }, [hue]);
 
 
   useEffect(() => {
@@ -899,7 +910,55 @@ export default function Home() {
         >
           <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-               <HueSlider />
+               <Sheet open={isThemeSheetOpen} onOpenChange={setIsThemeSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10"
+                    aria-label="Change theme color"
+                  >
+                    <Palette className="h-5 w-5" />
+                    <span className="hidden md:inline ml-2">Theme</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px]">
+                  <SheetHeader>
+                    <SheetTitle>Theme Settings</SheetTitle>
+                  </SheetHeader>
+                  <div className="py-4 space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="theme-mode" className="text-sm font-medium">Mode</Label>
+                      {isClient && theme && (
+                          <Tabs
+                            id="theme-mode"
+                            value={theme === 'system' ? 'light' : theme}
+                            onValueChange={setTheme}
+                            className="w-full"
+                          >
+                            <TabsList className="grid w-full grid-cols-2 h-9 p-0.5">
+                              <TabsTrigger value="light" className="text-xs h-7 px-2">Light</TabsTrigger>
+                              <TabsTrigger value="dark" className="text-xs h-7 px-2">Dark</TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="hue-slider" className="text-sm font-medium text-center block">
+                        Primary Hue ({hue}°)
+                      </Label>
+                      <Slider
+                        id="hue-slider"
+                        min={0}
+                        max={360}
+                        step={1}
+                        value={[hue]}
+                        onValueChange={(value) => setHue(value[0])}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
               <Button
                 variant="ghost"
                 className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10"
@@ -958,7 +1017,7 @@ export default function Home() {
                       </Button>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                       <div className="p-4 border-b shrink-0">
+                      <div className="p-4 border-b shrink-0">
                           <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
                       </div>
                       <BookmarkListSheet />
