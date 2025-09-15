@@ -30,12 +30,12 @@ body {
     --border: var(--primary-hue) 40% 90%; /* Adjusted to use hue */
     --input: var(--primary-hue) 40% 80%; /* Adjusted to use hue */
     --ring: var(--primary-hue) 43% 71%; /* Adjusted to use hue */
-    --chart-1: var(--primary-hue) 70% 50%;
-    --chart-2: var(--primary-hue) 60% 65%;
-    --chart-3: var(--primary-hue) 50% 80%;
-    --chart-4: var(--opposite-hue) 70% 50%;
-    --chart-5: var(--opposite-hue) 60% 65%;
-    --chart-6: var(--opposite-hue) 50% 80%;
+    --chart-1: hsl(var(--primary-hue) 70% 60%);
+    --chart-2: hsl(var(--primary-hue) 60% 75%);
+    --chart-3: hsl(var(--primary-hue) 50% 90%);
+    --chart-4: hsl(var(--opposite-hue) 70% 60%);
+    --chart-5: hsl(var(--opposite-hue) 60% 75%);
+    --chart-6: hsl(var(--opposite-hue) 50% 90%);
     --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -68,12 +68,12 @@ body {
     --border: var(--primary-hue) 15% 32%; /* Adjusted to use hue */
     --input: var(--primary-hue) 15% 32%; /* Adjusted to use hue */
     --ring: var(--primary-hue) 43% 71%; /* Adjusted to use hue */
-    --chart-1: var(--primary-hue) 70% 60%;
-    --chart-2: var(--primary-hue) 60% 75%;
-    --chart-3: var(--primary-hue) 50% 90%;
-    --chart-4: var(--opposite-hue) 70% 60%;
-    --chart-5: var(--opposite-hue) 60% 75%;
-    --chart-6: var(--opposite-hue) 50% 90%;
+    --chart-1: hsl(var(--primary-hue) 70% 60%);
+    --chart-2: hsl(var(--primary-hue) 60% 75%);
+    --chart-3: hsl(var(--primary-hue) 50% 90%);
+    --chart-4: hsl(var(--opposite-hue) 70% 60%);
+    --chart-5: hsl(var(--opposite-hue) 60% 75%);
+    --chart-6: hsl(var(--opposite-hue) 50% 90%);
     --sidebar-background: var(--primary-hue) 15% 14%;
     --sidebar-foreground: var(--primary-hue) 15% 88%;
     --sidebar-primary: var(--primary-hue) 96% 57%;
@@ -93,7 +93,7 @@ body {
     @apply bg-background text-foreground;
   }
   html {
-    font-size: 100%;
+    font-size: 75%;
   }
 }
 
