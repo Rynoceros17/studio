@@ -102,13 +102,16 @@ interface SortableTaskProps {
 }
 
 const lightBackgroundColors = [
-  'hsl(0 0% 100%)',
-  'hsl(259 67% 88%)',
-  'hsl(259 67% 92%)',
-  'hsl(50, 100%, 90%)',
-  'hsl(45, 90%, 85%)',
-  'hsl(55, 80%, 80%)',
-  'hsl(259 67% 82%)',
+  'hsl(var(--task-color-1))',
+  'hsl(var(--task-color-2))',
+  'hsl(var(--task-color-3))',
+  'hsl(var(--task-color-4))',
+  'hsl(var(--task-color-5))',
+  'hsl(var(--task-color-6))',
+  'hsl(var(--task-color-7))',
+  'hsl(var(--task-color-8))',
+  'hsl(var(--task-color-9))',
+  'hsl(var(--task-color-10))',
 ];
 
 function TaskItem({ task, isCompleted, isDragging, isPending }: SortableTaskProps) {
@@ -151,20 +154,12 @@ function TaskItem({ task, isCompleted, isDragging, isPending }: SortableTaskProp
     } else {
         cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
 
-        const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
-        const isDarkMode = theme === 'dark';
-        let colorToApply = task.color;
-
-        if (isDefaultWhite && isDarkMode) {
-            colorToApply = 'hsl(259 67% 82%)';
+        if (task.color) {
+            cardCustomStyle.backgroundColor = task.color;
+            cardBgClass = ''; // Use style prop to override class
         }
 
-        if (colorToApply) {
-            cardCustomStyle.backgroundColor = colorToApply;
-            cardBgClass = ''; // Use style prop
-        }
-
-        const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
+        const isLightColor = task.color && lightBackgroundColors.includes(task.color);
 
         if (isLightColor) {
             textColorClass = 'text-neutral-800';
@@ -319,20 +314,12 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
     } else {
         cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
 
-        const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
-        const isDarkMode = theme === 'dark';
-        let colorToApply = task.color;
-
-        if (isDefaultWhite && isDarkMode) {
-            colorToApply = 'hsl(259 67% 82%)';
+        if (task.color) {
+            cardCustomStyle.backgroundColor = task.color;
+            cardBgClass = ''; // Use style prop to override class
         }
 
-        if (colorToApply) {
-            cardCustomStyle.backgroundColor = colorToApply;
-            cardBgClass = ''; // Use style prop
-        }
-
-        const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
+        const isLightColor = task.color && lightBackgroundColors.includes(task.color);
 
         if (isLightColor) {
             textColorClass = 'text-neutral-800';

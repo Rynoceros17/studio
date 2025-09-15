@@ -36,6 +36,19 @@ body {
     --chart-4: hsl(var(--opposite-hue) 70% 60%);
     --chart-5: hsl(var(--opposite-hue) 60% 75%);
     --chart-6: hsl(var(--opposite-hue) 50% 90%);
+
+    /* Task Color Palette */
+    --task-color-1: 4 90% 58%;   /* Tomato */
+    --task-color-2: 36 90% 58%;  /* Tangerine */
+    --task-color-3: 54 90% 58%;  /* Citron */
+    --task-color-4: 90 90% 58%;  /* Lime */
+    --task-color-5: 150 90% 58%; /* Mint */
+    --task-color-6: 190 90% 58%; /* Sky */
+    --task-color-7: 250 90% 65%; /* Lavender */
+    --task-color-8: 280 90% 65%; /* Plum */
+    --task-color-9: 340 90% 65%; /* Rose */
+    --task-color-10: 240 10% 40%;/* Graphite */
+
     --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;

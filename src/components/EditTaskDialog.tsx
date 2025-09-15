@@ -28,16 +28,16 @@ import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const colorOptions = [
-    { name: 'Tomato', value: 'hsl(4 90% 58%)' },
-    { name: 'Tangerine', value: 'hsl(36 90% 58%)' },
-    { name: 'Citron', value: 'hsl(54 90% 58%)' },
-    { name: 'Lime', value: 'hsl(90 90% 58%)' },
-    { name: 'Mint', value: 'hsl(150 90% 58%)' },
-    { name: 'Sky', value: 'hsl(190 90% 58%)' },
-    { name: 'Lavender', value: 'hsl(250 90% 65%)' },
-    { name: 'Plum', value: 'hsl(280 90% 65%)' },
-    { name: 'Rose', value: 'hsl(340 90% 65%)' },
-    { name: 'Graphite', value: 'hsl(240 10% 40%)' },
+    { name: 'Tomato', value: 'hsl(var(--task-color-1))' },
+    { name: 'Tangerine', value: 'hsl(var(--task-color-2))' },
+    { name: 'Citron', value: 'hsl(var(--task-color-3))' },
+    { name: 'Lime', value: 'hsl(var(--task-color-4))' },
+    { name: 'Mint', value: 'hsl(var(--task-color-5))' },
+    { name: 'Sky', value: 'hsl(var(--task-color-6))' },
+    { name: 'Lavender', value: 'hsl(var(--task-color-7))' },
+    { name: 'Plum', value: 'hsl(var(--task-color-8))' },
+    { name: 'Rose', value: 'hsl(var(--task-color-9))' },
+    { name: 'Graphite', value: 'hsl(var(--task-color-10))' },
 ];
 
 
