@@ -20,14 +20,31 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import type { Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const generateColorOptions = (primaryHue: number, oppositeHue: number) => [
-  { name: 'White', value: 'hsl(0 0% 100%)' },
-  { name: 'Primary 1', value: `hsl(${primaryHue} 70% 60%)` },
-  { name: 'Primary 2', value: `hsl(${primaryHue} 60% 75%)` },
-  { name: 'Primary 3', value: `hsl(${primaryHue} 50% 90%)` },
-  { name: 'Opposite 1', value: `hsl(${oppositeHue} 70% 60%)` },
-  { name: 'Opposite 2', value: `hsl(${oppositeHue} 60% 75%)` },
-];
+const getHueName = (hue: number): string => {
+    if (hue >= 340 || hue < 15) return 'Crimson'; // Red
+    if (hue < 45) return 'Beehive'; // Orange
+    if (hue < 75) return 'Gold'; // Yellow
+    if (hue < 150) return 'Jade'; // Green
+    if (hue < 195) return 'Teal'; // Cyan/Teal
+    if (hue < 250) return 'Sapphire'; // Blue
+    if (hue < 285) return 'Amethyst'; // Purple
+    if (hue < 340) return 'Rose'; // Pink/Magenta
+    return 'Neutral';
+};
+
+const generateColorOptions = (primaryHue: number, oppositeHue: number) => {
+    const primaryName = getHueName(primaryHue);
+    const oppositeName = getHueName(oppositeHue);
+
+    return [
+      { name: 'Neutral', value: 'hsl(0 0% 100%)' },
+      { name: `${primaryName} (Dark)`, value: `hsl(${primaryHue} 70% 60%)` },
+      { name: `${primaryName} (Medium)`, value: `hsl(${primaryHue} 60% 75%)` },
+      { name: `${primaryName} (Light)`, value: `hsl(${primaryHue} 50% 90%)` },
+      { name: `${oppositeName} (Dark)`, value: `hsl(${oppositeHue} 70% 60%)` },
+      { name: `${oppositeName} (Medium)`, value: `hsl(${oppositeHue} 60% 75%)` },
+    ];
+};
 
 
 const formSchema = z.object({
