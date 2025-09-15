@@ -70,14 +70,14 @@ body {
     --chart-3: 30 80% 60%;
     --chart-4: 120 50% 55%;
     --chart-5: 330 70% 65%;
-    --sidebar-background: 260 15% 14%;
-    --sidebar-foreground: 250 15% 88%;
-    --sidebar-primary: 48 96% 57%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 260 15% 22%;
-    --sidebar-accent-foreground: 250 15% 96%;
-    --sidebar-border: 260 15% 25%;
-    --sidebar-ring: 48 96% 60%;
+    --sidebar-background: var(--primary-hue) 15% 14%;
+    --sidebar-foreground: var(--primary-hue) 15% 88%;
+    --sidebar-primary: var(--primary-hue) 96% 57%;
+    --sidebar-primary-foreground: var(--primary-hue) 0% 98%;
+    --sidebar-accent: var(--primary-hue) 15% 22%;
+    --sidebar-accent-foreground: var(--primary-hue) 15% 96%;
+    --sidebar-border: var(--primary-hue) 15% 25%;
+    --sidebar-ring: var(--primary-hue) 96% 60%;
   }
 }
 
