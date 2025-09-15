@@ -43,11 +43,8 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetHeader as SheetDialogHeader,
-  SheetTitle as SheetDialogTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { TaskListSheet } from '@/components/TaskListSheet';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { TopTaskBar } from '@/components/TopTaskBar';
 import { AuthButton } from '@/components/AuthButton';
@@ -960,7 +957,7 @@ export default function Home() {
                       </Button>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                      <div className="p-4 border-b shrink-0">
+                       <div className="p-4 border-b shrink-0">
                           <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
                       </div>
                       <BookmarkListSheet />
@@ -997,7 +994,7 @@ export default function Home() {
         >
           <div className="grid grid-cols-12 gap-4 w-full max-w-[1800px] mx-auto">
             {/* Left Column: Goal of the Week & Upcoming */}
-            <div className="col-span-12 lg:col-span-3 hidden lg:block space-y-4">
+            <div className="col-span-12 2xl:col-span-3 hidden 2xl:block space-y-4">
               <GoalOfWeekEditor
                 currentDisplayDate={currentDisplayDate}
                 goalsByWeek={goalsByWeek}
@@ -1010,7 +1007,7 @@ export default function Home() {
             </div>
             
             {/* Center Column: Calendar */}
-            <div className="col-span-12 lg:col-span-6">
+            <div className="col-span-12 2xl:col-span-6">
                 <div className="w-full mb-4">
                     <Card className="shadow-sm bg-transparent border-none">
                         <CardContent className="p-3 flex items-center space-x-2">
@@ -1052,7 +1049,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Bookmarks */}
-            <div className="col-span-12 lg:col-span-3 hidden lg:block">
+            <div className="col-span-12 2xl:col-span-3 hidden 2xl:block">
                <Card className="h-full">
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
