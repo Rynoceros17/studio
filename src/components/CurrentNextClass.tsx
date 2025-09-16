@@ -151,7 +151,7 @@ export function CurrentNextClass() {
                         try {
                             const checkStartDate = parseISO(event.startDate);
                             if (isNaN(currentEndDate.getTime())) return false;
-                            return checkStartDate > currentEndDate;
+                            return checkStartDate >= currentEndDate;
                         } catch { return false; }
                     }) || null;
                 }
@@ -210,4 +210,3 @@ export function CurrentNextClass() {
         </div>
     );
 }
-
