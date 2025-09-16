@@ -941,7 +941,7 @@ export const CalendarView = forwardRef<
                         ref={chatInputRef}
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="AI Task Entry: e.g., 'Important meeting #col1, Weekly review #col3'"
+                        placeholder="Add tasks with just english! e.g. Urgent meeting tomorrow or Assignment due on next Thursday"
                         className="h-10 text-sm flex-grow"
                         onKeyPress={(e) => e.key === 'Enter' && handleSendChatMessage()}
                         disabled={isParsingTask}

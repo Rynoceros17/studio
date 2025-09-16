@@ -17,7 +17,7 @@ body {
     --card-foreground: 240 10% 10%; /* Dark Grey */
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 240 10% 10%; /* Dark Grey */
-    --primary: var(--primary-hue) 75% 45%; /* Using the dynamic hue, decreased lightness from 61% */
+    --primary: var(--primary-hue) 100% 45%; /* Using the dynamic hue, decreased lightness from 61% */
     --primary-foreground: 0 0% 98%; /* White */
     --secondary: var(--primary-hue) 77% 75%; /* Adjusted to use hue */
     --secondary-foreground: 240 10% 10%; /* Dark Grey */
@@ -68,7 +68,7 @@ body {
     --card-foreground: var(--primary-hue) 15% 96%;
     --popover: 260 15% 18%;
     --popover-foreground: var(--primary-hue) 15% 96%;
-    --primary: var(--primary-hue) 80% 71%; /* Using the dynamic hue */
+    --primary: var(--primary-hue) 100% 71%; /* Using the dynamic hue */
     --primary-foreground: 0 0% 98%;
     --secondary: var(--primary-hue) 40% 56%;
     --secondary-foreground: var(--primary-hue) 15% 90%;

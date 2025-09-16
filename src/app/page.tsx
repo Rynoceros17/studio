@@ -366,7 +366,7 @@ export default function Home() {
                 <Info className="h-5 w-5" />
               </Button>
             </div>
-            <h1 className="text-xl md:text-2xl font-bold text-primary tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
               WeekWise.
             </h1>
             <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -539,3 +539,5 @@ export default function Home() {
     </DndContext>
   );
 }
+
+    
