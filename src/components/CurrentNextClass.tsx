@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import useLocalStorage from '@/hooks/use-local-storage';
 import { parseIcsContent, type RelevantEvent } from '@/lib/ics-parser';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,15 +76,22 @@ function EventCard({ event, type }: { event: RelevantEvent | null, type: 'Curren
 
 
 export function CurrentNextClass() {
-    const [icsData] = useLocalStorage<string | null>('icsData', null);
+    const [isClient, setIsClient] = useState(false);
+    const [icsData, setIcsData] = useState<string | null>(null);
     const [allEvents, setAllEvents] = useState<RelevantEvent[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
         setIsClient(true);
     }, []);
+
+    useEffect(() => {
+        if (isClient) {
+            const storedIcsData = window.localStorage.getItem('icsData');
+            setIcsData(storedIcsData);
+        }
+    }, [isClient]);
 
     useEffect(() => {
         if (!isClient) return;
