@@ -17,7 +17,7 @@ body {
     --card-foreground: 240 10% 10%; /* Dark Grey */
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 240 10% 10%; /* Dark Grey */
-    --primary: var(--primary-hue) 43% 45%; /* Using the dynamic hue, decreased lightness from 61% */
+    --primary: var(--primary-hue) 75% 45%; /* Using the dynamic hue, decreased lightness from 61% */
     --primary-foreground: 0 0% 98%; /* White */
     --secondary: var(--primary-hue) 77% 75%; /* Adjusted to use hue */
     --secondary-foreground: 240 10% 10%; /* Dark Grey */

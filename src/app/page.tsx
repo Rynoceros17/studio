@@ -72,6 +72,7 @@ import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
 import { BookmarkListSheet } from '@/components/BookmarkListSheet';
 import { Separator } from '@/components/ui/separator';
 import { ThemePresets } from '@/components/ThemePresets';
+import { CurrentNextClass } from '@/components/CurrentNextClass';
 
 
 interface MoveRecurringConfirmationState {
@@ -457,6 +458,7 @@ export default function Home() {
                 goalsByWeek={goalsByWeek}
                 setGoalsByWeek={setGoalsByWeek}
               />
+              <CurrentNextClass />
               <TopTaskBar
                items={upcomingItemsForBar}
                toggleGoalPriority={toggleGoalPriority}
@@ -537,5 +539,3 @@ export default function Home() {
     </DndContext>
   );
 }
-
-    
