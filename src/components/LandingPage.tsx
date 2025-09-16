@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Calendar, Target, BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import useLocalStorage from '@/hooks/use-local-storage';
+import { HueSlider } from './HueSlider';
+import { Label } from './ui/label';
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
     <div className="flex items-start space-x-4">
@@ -22,6 +25,8 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, titl
 );
 
 export function LandingPage() {
+  const [hue, setHue] = useLocalStorage('app-primary-hue', 259);
+
   return (
     <div 
         className="min-h-screen w-full bg-background flex flex-col overflow-hidden"
@@ -60,6 +65,12 @@ export function LandingPage() {
             <p className="text-xs text-muted-foreground pt-2">
               Sign up for a free account to get started.
             </p>
+             <div className="pt-6 max-w-xs mx-auto md:mx-0">
+                <Label className="text-sm font-medium text-muted-foreground">Customize:</Label>
+                <div className="mt-2">
+                    <HueSlider hue={hue} setHue={setHue} />
+                </div>
+            </div>
           </motion.div>
 
           
