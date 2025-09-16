@@ -19,7 +19,7 @@ body {
     --popover-foreground: 240 10% 10%; /* Dark Grey */
     --primary: var(--primary-hue) 43% 45%; /* Using the dynamic hue, decreased lightness from 61% */
     --primary-foreground: 0 0% 98%; /* White */
-    --secondary: var(--primary-hue) 67% 70%; /* Adjusted to use hue */
+    --secondary: var(--primary-hue) 77% 75%; /* Adjusted to use hue */
     --secondary-foreground: 240 10% 10%; /* Dark Grey */
     --muted: var(--primary-hue) 67% 92%; /* Adjusted to use hue */
     --muted-foreground: 240 5% 45%; /* Muted Grey */
@@ -62,15 +62,15 @@ body {
   .dark {
     --primary-hue: 259; /* New variable for dynamic hue */
     --opposite-hue: 79; /* (259 + 180) % 360 */
-    --background: 260 15% 14%;
+    --background: 260 15% 10%;
     --foreground: 250 15% 96%;
-    --card: 260 15% 14%;
+    --card: 260 15% 10%;
     --card-foreground: var(--primary-hue) 15% 96%;
     --popover: 260 15% 18%;
     --popover-foreground: var(--primary-hue) 15% 96%;
-    --primary: var(--primary-hue) 43% 71%; /* Using the dynamic hue */
+    --primary: var(--primary-hue) 80% 71%; /* Using the dynamic hue */
     --primary-foreground: 0 0% 98%;
-    --secondary: var(--primary-hue) 15% 26%;
+    --secondary: var(--primary-hue) 40% 56%;
     --secondary-foreground: var(--primary-hue) 15% 90%;
     --muted: var(--primary-hue) 15% 22%;
     --muted-foreground: var(--primary-hue) 10% 60%;

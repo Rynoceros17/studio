@@ -145,8 +145,6 @@ function TaskItem({ task, isCompleted, isDragging, isPending }: SortableTaskProp
     const timeDisplay = task.startTime && task.endTime ? `${task.startTime} - ${task.endTime}` : null;
 
     let cardBgClass = 'bg-card';
-    let textColorClass = 'text-neutral-800';
-    let descColorClass = 'text-neutral-700';
     let cardBorderStyle = 'border-border';
 
     const cardCustomStyle: React.CSSProperties = {};
@@ -156,8 +154,6 @@ function TaskItem({ task, isCompleted, isDragging, isPending }: SortableTaskProp
         cardBorderStyle = 'border-dashed border-primary/50';
     } else if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60';
-        textColorClass = 'text-muted-foreground';
-        descColorClass = 'text-muted-foreground';
         cardBorderStyle = 'border-transparent';
     } else {
         cardBorderStyle = task.highPriority ? 'border-accent border-2' : 'border-border';
@@ -181,27 +177,27 @@ function TaskItem({ task, isCompleted, isDragging, isPending }: SortableTaskProp
           style={cardCustomStyle}
         >
           <div className="flex items-start justify-between gap-1 flex-grow">
-             <div className={cn("pt-0.5 cursor-grab shrink-0", textColorClass)}>
+             <div className={cn("pt-0.5 cursor-grab shrink-0", "text-neutral-800")}>
                 <GripVertical className="h-3 w-3" />
              </div>
             <div className="flex-grow min-w-0 pr-1 overflow-hidden">
-              <p className={cn( "text-xs font-medium break-words whitespace-normal line-clamp-1", textColorClass, isCompleted && 'line-through' )} title={task.name} >
+              <p className={cn( "text-xs font-medium break-words whitespace-normal line-clamp-1", "text-neutral-800", isCompleted && 'line-through' )} title={task.name} >
                 {nameDisplay}
               </p>
               {timeDisplay && (
-                <p className={cn("text-[10px] font-mono", descColorClass, isCompleted && 'line-through')}>{timeDisplay}</p>
+                <p className={cn("text-[10px] font-mono", "text-neutral-800", isCompleted && 'line-through')}>{timeDisplay}</p>
               )}
               {descriptionDisplay && !timeDisplay && (
-                <p className={cn("text-[10px] mt-0.5 break-words whitespace-normal line-clamp-2", descColorClass, isCompleted && 'line-through')} title={task.description ?? ''}>
+                <p className={cn("text-[10px] mt-0.5 break-words whitespace-normal line-clamp-2", "text-neutral-800", isCompleted && 'line-through')} title={task.description ?? ''}>
                   {descriptionDisplay}
                 </p>
               )}
             </div>
             <div className="flex flex-col items-center space-y-0.5 shrink-0">
-               <div className={cn("h-5 w-5 flex items-center justify-center", isCompleted ? 'text-green-600' : textColorClass )}>
+               <div className={cn("h-5 w-5 flex items-center justify-center", isCompleted ? 'text-green-600' : "text-neutral-800" )}>
                   {isCompleted ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
                 </div>
-               <div className={cn("h-5 w-5 flex items-center justify-center", textColorClass )}>
+               <div className={cn("h-5 w-5 flex items-center justify-center", "text-neutral-800" )}>
                  <Edit className="h-3 w-3" />
                </div>
                <div className="h-5 w-5 flex items-center justify-center text-destructive">
@@ -291,8 +287,6 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 
 
     let cardBgClass = 'bg-card';
-    const textColorClass = 'text-neutral-800';
-    const descColorClass = 'text-neutral-700';
     const iconButtonClass = 'text-neutral-600 hover:text-neutral-800';
     let completeIconClass = 'text-neutral-600';
     let cardBorderStyle = 'border-border';
@@ -372,14 +366,14 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
                 <GripVertical className="h-3 w-3" />
              </button>
              <div className="flex-grow min-w-0 pr-1 overflow-hidden">
-               <p className={cn( "text-xs font-medium break-words whitespace-normal line-clamp-1", textColorClass, isCompleted && 'line-through' )} title={task.name} >
+               <p className={cn( "text-xs font-medium break-words whitespace-normal line-clamp-1", "text-neutral-800", isCompleted && 'line-through' )} title={task.name} >
                  {nameDisplay}
                </p>
               {timeDisplay && (
-                <p className={cn("text-[10px] font-mono", descColorClass, isCompleted && 'line-through')}>{timeDisplay}</p>
+                <p className={cn("text-[10px] font-mono", "text-neutral-800", isCompleted && 'line-through')}>{timeDisplay}</p>
               )}
               {descriptionDisplay && !timeDisplay && (
-                <p className={cn("text-[10px] mt-0.5 break-words whitespace-normal line-clamp-2", descColorClass, isCompleted && 'line-through')} title={task.description ?? ''}>
+                <p className={cn("text-[10px] mt-0.5 break-words whitespace-normal line-clamp-2", "text-neutral-800", isCompleted && 'line-through')} title={task.description ?? ''}>
                   {descriptionDisplay}
                 </p>
               )}
@@ -983,7 +977,7 @@ export const CalendarView = forwardRef<
                 const dayTasks = tasksByDay[dateStr] || [];
                 const isActualToday = today ? isSameDay(day, today) : false;
                 return (
-                  <Card key={dateStr} className={cn("flex flex-col h-[700px] overflow-hidden", isActualToday ? 'border-accent border-2 shadow-md bg-card dark:bg-muted' : 'bg-secondary/30 border-transparent')}>
+                  <Card key={dateStr} className={cn("flex flex-col h-[700px] overflow-hidden", isActualToday ? 'border-accent dark:border-white border-2 shadow-md bg-card dark:bg-muted' : 'bg-secondary/30 border-transparent')}>
                     <CardHeader className="p-1 text-center shrink-0">
                       <CardTitle className="text-xs font-medium">{format(day, 'EEE')}</CardTitle>
                       <CardDescription className={cn("text-sm font-bold", isActualToday ? 'text-accent' : 'text-foreground')}>{format(day, 'd')}</CardDescription>
