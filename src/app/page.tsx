@@ -106,7 +106,7 @@ export default function Home() {
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [isTodaysTasksDialogOpen, setIsTodaysTasksDialogOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const [hue, setHue] = useLocalStorage('app-primary-hue', 259);
+  const [hue, setHue] = useLocalStorage('app-primary-hue', 270);
   const previousHueRef = useRef(hue);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const calendarRef = useRef<{ addTask: (task: Omit<Task, 'id'>) => void }>(null);

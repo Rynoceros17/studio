@@ -160,7 +160,7 @@ export default function DetailedViewPage() {
 
   // Fetch goals from local storage
   const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
-  const [hue, setHue] = useLocalStorage('app-primary-hue', 259);
+  const [hue, setHue] = useLocalStorage('app-primary-hue', 270);
   const previousHueRef = useRef(hue);
 
 
