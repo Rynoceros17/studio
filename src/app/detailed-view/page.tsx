@@ -1190,3 +1190,5 @@ export default function DetailedViewPage() {
     </div>
   );
 }
+
+    
