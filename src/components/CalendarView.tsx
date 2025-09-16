@@ -145,8 +145,8 @@ function TaskItem({ task, isCompleted, isDragging, isPending }: SortableTaskProp
     const timeDisplay = task.startTime && task.endTime ? `${task.startTime} - ${task.endTime}` : null;
 
     let cardBgClass = 'bg-card';
-    let textColorClass = 'text-card-foreground';
-    let descColorClass = 'text-muted-foreground';
+    let textColorClass = 'text-neutral-800';
+    let descColorClass = 'text-neutral-700';
     let cardBorderStyle = 'border-border';
 
     const cardCustomStyle: React.CSSProperties = {};
@@ -165,16 +165,6 @@ function TaskItem({ task, isCompleted, isDragging, isPending }: SortableTaskProp
         if (task.color) {
             cardCustomStyle.backgroundColor = task.color;
             cardBgClass = ''; // Use style prop to override class
-        }
-
-        const isLightColor = task.color && lightBackgroundColors.includes(task.color);
-
-        if (isLightColor) {
-            textColorClass = 'text-neutral-800';
-            descColorClass = 'text-neutral-700';
-        } else {
-            textColorClass = 'text-card-foreground';
-            descColorClass = 'text-muted-foreground';
         }
     }
 
@@ -301,10 +291,10 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
 
 
     let cardBgClass = 'bg-card';
-    let textColorClass = 'text-card-foreground';
-    let descColorClass = 'text-muted-foreground';
-    let iconButtonClass = 'text-muted-foreground hover:text-foreground';
-    let completeIconClass = 'text-muted-foreground';
+    const textColorClass = 'text-neutral-800';
+    const descColorClass = 'text-neutral-700';
+    const iconButtonClass = 'text-neutral-600 hover:text-neutral-800';
+    let completeIconClass = 'text-neutral-600';
     let cardBorderStyle = 'border-border';
 
     const cardCustomStyle: React.CSSProperties = {};
@@ -314,9 +304,6 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         cardBorderStyle = 'border-dashed border-primary/50';
     } else if (isCompleted) {
         cardBgClass = 'bg-muted opacity-60';
-        textColorClass = 'text-muted-foreground';
-        descColorClass = 'text-muted-foreground';
-        iconButtonClass = 'text-muted-foreground';
         completeIconClass = 'text-green-600';
         cardBorderStyle = 'border-transparent';
     } else {
@@ -325,20 +312,6 @@ function SortableTask({ task, dateStr, isCompleted, toggleTaskCompletion, reques
         if (task.color) {
             cardCustomStyle.backgroundColor = task.color;
             cardBgClass = ''; // Use style prop to override class
-        }
-
-        const isLightColor = task.color && lightBackgroundColors.includes(task.color);
-
-        if (isLightColor) {
-            textColorClass = 'text-neutral-800';
-            descColorClass = 'text-neutral-700';
-            iconButtonClass = 'text-neutral-600 hover:text-neutral-800';
-            completeIconClass = 'text-neutral-600';
-        } else {
-            textColorClass = 'text-card-foreground';
-            descColorClass = 'text-muted-foreground';
-            iconButtonClass = 'text-muted-foreground hover:text-foreground';
-            completeIconClass = 'text-muted-foreground';
         }
     }
 

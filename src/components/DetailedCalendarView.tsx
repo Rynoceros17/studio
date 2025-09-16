@@ -30,13 +30,16 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
 });
 
 const lightBackgroundColors = [
-  'hsl(0 0% 100%)',
-  'hsl(259 67% 88%)',
-  'hsl(259 67% 92%)',
-  'hsl(50, 100%, 90%)',
-  'hsl(45, 90%, 85%)',
-  'hsl(55, 80%, 80%)',
-  'hsl(259 67% 82%)',
+  'hsl(var(--task-color-1))',
+  'hsl(var(--task-color-2))',
+  'hsl(var(--task-color-3))',
+  'hsl(var(--task-color-4))',
+  'hsl(var(--task-color-5))',
+  'hsl(var(--task-color-6))',
+  'hsl(var(--task-color-7))',
+  'hsl(var(--task-color-8))',
+  'hsl(var(--task-color-9))',
+  'hsl(var(--task-color-10))',
 ];
 
 // Helper to convert HH:mm to minutes from midnight for layout calculation
@@ -191,7 +194,6 @@ function TaskBlock({
     
     const { theme } = useTheme();
     const isDarkMode = theme === 'dark';
-    const isLightColor = colorToApply && lightBackgroundColors.includes(colorToApply);
 
     // Calculate duration to add conditional hover class
     const [startH, startM] = (task.startTime || '0:0').split(':').map(Number);
@@ -200,23 +202,11 @@ function TaskBlock({
     const isShortTask = actualDuration > 0 && actualDuration < 45;
     const isVeryShortTask = actualDuration > 0 && actualDuration <= 15;
 
-    let textColorClass = 'text-white';
-    let iconColorClass = 'text-white/80 hover:bg-white/20';
-
-    if (isDarkMode) {
-      if (colorToApply) {
-        textColorClass = 'text-neutral-800';
-        iconColorClass = 'text-neutral-700 hover:bg-neutral-900/10';
-      }
-    } else {
-      if (isLightColor) {
-        textColorClass = 'text-neutral-800';
-        iconColorClass = 'text-neutral-700 hover:bg-neutral-900/10';
-      }
-    }
+    const textColorClass = 'text-neutral-800';
+    const iconColorClass = 'text-neutral-700 hover:bg-neutral-900/10';
 
     const checkmarkIconClass = isCompleted 
-        ? (isDarkMode && colorToApply) || (!isDarkMode && isLightColor) ? 'text-green-700' : 'text-green-400'
+        ? 'text-green-700'
         : iconColorClass;
 
     const borderStyle = isCompleted
@@ -755,10 +745,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                                     const completionKey = `${task.id}_${dateStr}`;
                                     const isCompleted = completedTasks.has(completionKey);
                                     const isPending = !!task.isPending;
-                                    const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
-                                    const isDarkMode = theme === 'dark';
-                                    let colorToApply = task.color;
-                                    if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
+                                    const colorToApply = task.color;
                                     return (
                                         <TaskBlock
                                             key={`${task.id}_${dateStr}`}
@@ -793,10 +780,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                         const dateStr = format(days[modifiedTaskPosition.dayIndex], 'yyyy-MM-dd');
                         const completionKey = `${task.id}_${dateStr}`;
                         const isCompleted = completedTasks.has(completionKey);
-                        const isDefaultWhite = task.color === 'hsl(0 0% 100%)';
-                        const isDarkMode = theme === 'dark';
-                        let colorToApply = task.color;
-                        if (isDefaultWhite && isDarkMode) colorToApply = 'hsl(259 67% 82%)';
+                        const colorToApply = task.color;
 
                         const headerHeightRem = 76 / remToPx;
 
