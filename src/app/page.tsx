@@ -451,7 +451,7 @@ export default function Home() {
         >
           <div className="grid grid-cols-12 gap-4 w-full max-w-[1800px] mx-auto">
             {/* Left Column: Goal of the Week & Upcoming */}
-            <div className="col-span-12 wide:col-span-2 hidden wide:block space-y-4">
+            <div className="col-span-12 wide:col-span-2 space-y-4">
               <GoalOfWeekEditor
                 currentDisplayDate={currentDisplayDate}
                 goalsByWeek={goalsByWeek}
@@ -473,7 +473,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Bookmarks */}
-            <div className="col-span-12 wide:col-span-2 hidden wide:block">
+            <div className="col-span-12 wide:col-span-2">
                <Card className="h-full">
                 <div className="p-4 border-b shrink-0">
                     <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
