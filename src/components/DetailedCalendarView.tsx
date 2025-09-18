@@ -691,7 +691,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                 ))}
             </div>
 
-            <div ref={gridRef} className={cn("grid flex-grow select-none relative bg-secondary/30", viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1')}>
+            <div ref={gridRef} className={cn("grid flex-grow select-none relative", viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1')}>
                 {days.map((day, dayIndex) => {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const dailyTasksWithLayout = tasksWithLayoutByDay[dateStr] || [];
@@ -703,7 +703,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                             "relative", 
                             isToday 
                                 ? "bg-background border-l-2 border-r-2 border-accent z-10" 
-                                : (dayIndex > 0 && !isPrevDayToday ? "border-l" : "")
+                                : "bg-white " + (dayIndex > 0 && !isPrevDayToday ? "border-l" : "")
                         )}>
                             
                             <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b h-[76px]">
@@ -728,7 +728,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                                             return (
                                                 <div
                                                     key={quarter}
-                                                    className={cn("h-[1.05rem]", quarter === 3 ? "border-b border-solid border-border/50" : "border-b border-dashed border-border/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                                                    className={cn("h-[1.05rem]", quarter === 3 ? "border-b border-solid border-white/50" : "border-b border-dashed border-white/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                                                     data-cell-id={cellId}
                                                     onMouseDown={handleMouseDown}
                                                     onMouseMove={handleMouseMove}
