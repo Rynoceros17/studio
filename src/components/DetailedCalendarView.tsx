@@ -212,7 +212,7 @@ function TaskBlock({
     const borderStyle = isCompleted
         ? 'border-transparent'
         : task.highPriority
-        ? 'border-accent border-2'
+        ? 'border-accent border'
         : 'border-primary/70';
 
     return (
@@ -702,8 +702,8 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                         <div key={dateStr} className={cn(
                             "relative", 
                             isToday 
-                                ? "bg-background border-l-2 border-r-2 border-accent z-10" 
-                                : "bg-white " + (dayIndex > 0 && !isPrevDayToday ? "border-l" : "")
+                                ? "bg-muted border-l-2 border-r-2 border-accent dark:border-white z-10" 
+                                : "bg-white dark:bg-muted " + (dayIndex > 0 && !isPrevDayToday ? "border-l" : "")
                         )}>
                             
                             <div className="sticky top-0 z-20 pt-2 px-2 pb-4 text-center bg-background border-b h-[76px]">
@@ -728,7 +728,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                                             return (
                                                 <div
                                                     key={quarter}
-                                                    className={cn("h-[1.05rem]", quarter === 3 ? "border-b border-solid border-white/50" : "border-b border-dashed border-white/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                                                    className={cn("h-[1.05rem]", quarter === 3 ? "border-b border-solid border-border/50" : "border-b border-dashed border-border/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                                                     data-cell-id={cellId}
                                                     onMouseDown={handleMouseDown}
                                                     onMouseMove={handleMouseMove}
