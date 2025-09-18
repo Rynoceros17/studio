@@ -906,7 +906,7 @@ export default function DetailedViewPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-white">
       <header className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
