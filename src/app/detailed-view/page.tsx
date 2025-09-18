@@ -907,7 +907,7 @@ export default function DetailedViewPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <header className="flex items-center justify-between p-4 border-b shrink-0">
+      <header className="flex items-center justify-between p-4 border-b shrink-0 bg-background">
           <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
                   <Button variant="outline" size="icon" className="text-primary border-primary hover:bg-primary/10 hover:text-foreground dark:hover:text-primary-foreground h-10 w-10">
@@ -1190,5 +1190,7 @@ export default function DetailedViewPage() {
     </div>
   );
 }
+
+    
 
     
