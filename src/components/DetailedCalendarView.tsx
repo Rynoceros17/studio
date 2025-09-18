@@ -209,11 +209,11 @@ function TaskBlock({
         ? 'text-green-700'
         : iconColorClass;
 
-    const borderStyle = isCompleted
-        ? 'border-transparent'
+    const outlineStyle = isCompleted
+        ? 'ring-transparent'
         : task.highPriority
-        ? 'border-accent border'
-        : 'border-primary/70';
+        ? 'ring-accent'
+        : 'ring-primary/70';
 
     return (
         <div
@@ -221,8 +221,8 @@ function TaskBlock({
             className={cn(
                 "absolute p-1 rounded-md overflow-hidden text-[10px] group shadow-md transition-all duration-300",
                 "flex flex-col justify-between",
-                "border",
-                isPending ? 'bg-card/60 backdrop-blur-sm border-dashed border-primary/50' : borderStyle,
+                "ring-1 ring-inset", // Use ring instead of border
+                isPending ? 'bg-card/60 backdrop-blur-sm border-dashed border-primary/50 ring-transparent' : outlineStyle,
                 textColorClass,
                 isCompleted && "opacity-50",
                 isShortTask && !isLayoutEditing && `hover:min-h-[3rem]`,
@@ -667,7 +667,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
 
 
   return (
-    <div className="flex flex-col h-full" onMouseUp={!dragState ? handleMouseUp : undefined} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
+    <div className="flex flex-col h-full bg-white" onMouseUp={!dragState ? handleMouseUp : undefined} onMouseLeave={isSelecting ? handleMouseUp : undefined}>
       <header className="flex items-center justify-between p-2 border-b shrink-0 bg-background">
         <Button variant="outline" size="icon" onClick={goToPrevious} className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
@@ -728,7 +728,7 @@ export function DetailedCalendarView({ currentWeekStart, onWeekChange, tasks, pe
                                             return (
                                                 <div
                                                     key={quarter}
-                                                    className={cn("h-[1.05rem]", quarter === 3 ? "border-b border-solid border-border/50" : "border-b border-dashed border-border/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
+                                                    className={cn("h-[1.05rem]", quarter === 3 ? "border-b border-solid border-white/50" : "border-b border-dashed border-white/20", isCellSelected(dayIndex, hour, quarter) && "bg-primary/30")}
                                                     data-cell-id={cellId}
                                                     onMouseDown={handleMouseDown}
                                                     onMouseMove={handleMouseMove}
