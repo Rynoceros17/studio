@@ -181,10 +181,6 @@ export function EditTaskDialog({ task, isOpen, onClose, updateTask }: EditTaskDi
                                  !field.value && "text-muted-foreground"
                                )}
                                 type="button"
-                                onClick={(e) => {
-                                   e.preventDefault();
-                                   setIsCalendarOpen(!isCalendarOpen);
-                                 }}
                              >
                                <CalendarIcon className="mr-2 h-4 w-4" />
                                {field.value ? (

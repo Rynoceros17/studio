@@ -37,7 +37,7 @@ const colorOptions = [
 const formSchema = z.object({
   name: z.string().min(1, { message: "Task name is required." }),
   description: z.string().optional(),
-  date: z.date({ required_error: "A date is required." }),
+  dates: z.array(z.date()).min(1, "At least one date is required."),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   recurring: z.boolean().optional().default(false),
@@ -78,24 +78,25 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: initialData?.name || "",
-      description: initialData?.description || "",
-      date: initialData?.date ? new Date(initialData.date + 'T00:00:00') : undefined,
-      startTime: initialData?.startTime || "",
-      endTime: initialData?.endTime || "",
-      recurring: initialData?.recurring || false,
-      highPriority: initialData?.highPriority || false,
-      color: initialData?.color || colorOptions[0].value,
+      name: "",
+      description: "",
+      dates: [],
+      startTime: "",
+      endTime: "",
+      recurring: false,
+      highPriority: false,
+      color: colorOptions[0].value,
     },
   });
 
    useEffect(() => {
      const defaultColorValue = colorOptions[0].value;
+     const initialDates = initialData?.date ? [new Date(initialData.date + 'T00:00:00')] : [];
      if (initialData) {
        form.reset({
          name: initialData.name || "",
          description: initialData.description || "",
-         date: initialData.date ? new Date(initialData.date + 'T00:00:00') : undefined,
+         dates: initialDates,
          startTime: initialData.startTime || "",
          endTime: initialData.endTime || "",
          recurring: initialData.recurring || false,
@@ -106,7 +107,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
        form.reset({
          name: "",
          description: "",
-         date: undefined,
+         dates: [],
          startTime: "",
          endTime: "",
          recurring: false,
@@ -118,20 +119,23 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
 
 
   const onSubmit: SubmitHandler<TaskFormValues> = (data) => {
-    const newTask: Omit<Task, 'id'> = {
-      name: data.name,
-      description: data.description,
-      date: format(data.date, 'yyyy-MM-dd'),
-      startTime: data.startTime || null,
-      endTime: data.endTime || null,
-      recurring: data.recurring,
-      highPriority: data.highPriority,
-      color: data.color,
-       details: '',
-       dueDate: undefined,
-       exceptions: [],
-    };
-    addTask(newTask);
+    data.dates.forEach(date => {
+        const newTask: Omit<Task, 'id'> = {
+            name: data.name,
+            description: data.description,
+            date: format(date, 'yyyy-MM-dd'),
+            startTime: data.startTime || null,
+            endTime: data.endTime || null,
+            recurring: data.recurring,
+            highPriority: data.highPriority,
+            color: data.color,
+            details: '',
+            dueDate: undefined,
+            exceptions: [],
+        };
+        addTask(newTask);
+    });
+    
     onTaskAdded?.();
     form.reset();
   };
@@ -168,10 +172,10 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
         />
         <FormField
           control={form.control}
-          name="date"
+          name="dates"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Date</FormLabel>
+              <FormLabel>Date(s)</FormLabel>
               <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger asChild>
                   <FormControl>
@@ -179,31 +183,28 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
                       variant={"outline"}
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !field.value && "text-muted-foreground"
+                        !field.value?.length && "text-muted-foreground"
                       )}
                       type="button"
-                      onClick={(e) => {
-                         e.preventDefault();
-                         setIsCalendarOpen(!isCalendarOpen);
-                       }}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? (
-                        format(field.value, "PPP")
+                      {field.value?.length ? (
+                        field.value.length === 1 ? (
+                            format(field.value[0], "PPP")
+                        ) : (
+                            `${field.value.length} dates selected`
+                        )
                       ) : (
-                        <span>Pick a date</span>
+                        <span>Pick one or more dates</span>
                       )}
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
-                    mode="single"
+                    mode="multiple"
                     selected={field.value}
-                    onSelect={(date) => {
-                      field.onChange(date);
-                      setIsCalendarOpen(false);
-                    }}
+                    onSelect={field.onChange}
                     disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   />
                 </PopoverContent>
@@ -328,7 +329,7 @@ export function TaskForm({ addTask, onTaskAdded, initialData }: TaskFormProps) {
           />
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Task(s)
         </Button>
       </form>
     </Form>
