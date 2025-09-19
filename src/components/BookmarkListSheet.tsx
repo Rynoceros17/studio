@@ -3,7 +3,7 @@
 
 import type * as React from 'react';
 import { useState, useCallback, useRef } from 'react';
-import useLocalStorage from '@/hooks/use-local-storage';
+import useLocalStorage from '@/hooks/useLocalStorage'; // Changed from useSyncedStorage
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { cn, truncateText } from '@/lib/utils'; // Import truncateText
+import { cn, truncateText } from '@/lib/utils'; 
 
 interface Bookmark {
     id: string;
@@ -28,7 +28,7 @@ export function BookmarkListSheet() {
 
     const isValidUrl = (url: string): boolean => {
         try {
-            // Basic check: requires http/https and a domain
+            
             const parsedUrl = new URL(url);
             return ['http:', 'https:'].includes(parsedUrl.protocol) && parsedUrl.hostname !== '';
         } catch (e) {
@@ -62,7 +62,7 @@ export function BookmarkListSheet() {
         setBookmarks(prev => [...prev, newBookmark]);
         setNewBookmarkName('');
         setNewBookmarkUrl('');
-        nameInputRef.current?.focus(); // Focus back on name input
+        nameInputRef.current?.focus(); 
         toast({
             title: "Bookmark Added",
             description: `"${newBookmark.name}" added successfully.`,
@@ -87,18 +87,17 @@ export function BookmarkListSheet() {
         }
     };
 
-     // Function to handle opening links safely
+     
      const openLink = (url: string) => {
-        // Open in a new tab, with security attributes
+        
         window.open(url, '_blank', 'noopener,noreferrer');
     };
 
     return (
-        // Use flex-grow to allow scroll area to fill available space
-        <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden"> {/* Remove padding top from here */}
-
-            {/* Input Section */}
-            <div className="p-4 border-b shrink-0 space-y-3 bg-secondary/30 rounded-b-md"> {/* Add padding here */}
+        
+        <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden h-full"> 
+            
+            <div className="p-4 border-b shrink-0 space-y-3 bg-secondary/30 rounded-b-md"> 
                 <div>
                     <Label htmlFor="bookmark-name" className="text-xs font-medium text-muted-foreground">
                         Bookmark Name
@@ -123,7 +122,7 @@ export function BookmarkListSheet() {
                         onChange={(e) => setNewBookmarkUrl(e.target.value)}
                         placeholder="https://example.com"
                         className="h-8 text-sm"
-                        type="url" // Use type url for basic validation hint
+                        type="url" 
                          onKeyPress={handleKeyPress}
                     />
                 </div>
@@ -133,9 +132,9 @@ export function BookmarkListSheet() {
             </div>
 
 
-            {/* Bookmark List */}
+            
             <ScrollArea className="flex-grow">
-                 <div className="p-4 space-y-2"> {/* Add padding within ScrollArea */}
+                 <div className="p-4 space-y-2"> 
                     {bookmarks.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center pt-4">No bookmarks yet. Add one above!</p>
                     ) : (
@@ -148,9 +147,9 @@ export function BookmarkListSheet() {
                                             <p className="text-sm font-medium truncate whitespace-nowrap overflow-hidden text-ellipsis group-hover:text-primary group-hover:underline" title={bookmark.name}>
                                                 {bookmark.name}
                                             </p>
-                                            {/* Apply truncation to the URL display */}
+                                            
                                             <p className="text-xs text-muted-foreground truncate whitespace-nowrap overflow-hidden text-ellipsis group-hover:text-primary" title={bookmark.url}>
-                                                {truncateText(bookmark.url, 25)} {/* Truncate URL display */}
+                                                {truncateText(bookmark.url, 25)} 
                                             </p>
                                         </div>
                                         <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -2,285 +2,88 @@
 "use client";
 
 import type * as React from 'react';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react'; // Removed useMemo as it's not used here
+import Link from 'next/link'; // Added Link import
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Card imports might be simplified if UI changes
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge"; // Import Badge
-import { Plus, Trash2, PlusCircle } from 'lucide-react'; // Added PlusCircle
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, PlusCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { cn, truncateText } from '@/lib/utils'; // Import truncateText
-import type { Subtask, Goal } from '@/lib/types'; // Import types
+import { cn, truncateText, calculateGoalProgress } from '@/lib/utils';
+import type { Subtask, Goal } from '@/lib/types';
 
 interface GoalsSheetProps {
-  onCreateTaskFromSubtask: (subtask: Subtask) => void; // Callback prop
+  // This component might no longer need onCreateTaskFromSubtask if the full page handles it,
+  // or it could still be used if the sheet is kept as a quick-add/view feature.
+  // For now, assuming it's a standalone display or simple interaction component.
+  // If it needs to trigger the main page's task form, the prop is still relevant.
+  onCreateTaskFromSubtask?: (subtask: Subtask) => void;
 }
 
 export function GoalsSheet({ onCreateTaskFromSubtask }: GoalsSheetProps) {
-    const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
-    const [newGoalName, setNewGoalName] = useState('');
-    const [newSubtaskInputs, setNewSubtaskInputs] = useState<Record<string, string>>({}); // { [goalId]: subtaskName }
-    const { toast } = useToast();
-
-    const addGoal = useCallback(() => {
-        if (!newGoalName.trim()) {
-            toast({
-                title: "Missing Goal Name",
-                description: "Please provide a name for the goal.",
-                variant: "destructive",
-            });
-            return;
-        }
-
-        const newGoal: Goal = {
-            id: crypto.randomUUID(),
-            name: newGoalName.trim(),
-            subtasks: [],
-        };
-        setGoals(prev => [...prev, newGoal]);
-        setNewGoalName('');
-        toast({
-            title: "Goal Added",
-            description: `"${newGoal.name}" added successfully.`,
-        });
-    }, [newGoalName, setGoals, toast]);
-
-    const deleteGoal = useCallback((id: string) => {
-        const goalToDelete = goals.find(g => g.id === id);
-        setGoals(prev => prev.filter(goal => goal.id !== id));
-        if (goalToDelete) {
-            toast({
-                title: "Goal Removed",
-                description: `"${goalToDelete.name}" removed.`,
-                variant: "destructive",
-            });
-        }
-    }, [goals, setGoals, toast]);
-
-    const handleSubtaskInputChange = (goalId: string, value: string) => {
-        setNewSubtaskInputs(prev => ({ ...prev, [goalId]: value }));
-    };
-
-    const addSubtask = useCallback((goalId: string) => {
-        const subtaskName = newSubtaskInputs[goalId]?.trim();
-        if (!subtaskName) {
-            toast({
-                title: "Missing Subtask Name",
-                description: "Please provide a name for the subtask.",
-                variant: "destructive",
-            });
-            return;
-        }
-
-        const newSubtask: Subtask = {
-            id: crypto.randomUUID(),
-            name: subtaskName,
-            completed: false,
-        };
-
-        setGoals(prevGoals => prevGoals.map(goal => {
-            if (goal.id === goalId) {
-                return { ...goal, subtasks: [...goal.subtasks, newSubtask] };
-            }
-            return goal;
-        }));
-
-        // Clear the input for that specific goal
-        setNewSubtaskInputs(prev => ({ ...prev, [goalId]: '' }));
-
-        toast({
-            title: "Subtask Added",
-            description: `Subtask "${newSubtask.name}" added to goal.`,
-        });
-    }, [newSubtaskInputs, setGoals, toast]);
-
-    const deleteSubtask = useCallback((goalId: string, subtaskId: string) => {
-        setGoals(prevGoals => prevGoals.map(goal => {
-            if (goal.id === goalId) {
-                const subtaskToDelete = goal.subtasks.find(st => st.id === subtaskId);
-                if (subtaskToDelete) {
-                    toast({
-                        title: "Subtask Removed",
-                        description: `Subtask "${subtaskToDelete.name}" removed.`,
-                        variant: "destructive",
-                    });
-                }
-                return { ...goal, subtasks: goal.subtasks.filter(subtask => subtask.id !== subtaskId) };
-            }
-            return goal;
-        }));
-    }, [setGoals, toast]);
-
-    const toggleSubtaskCompletion = useCallback((goalId: string, subtaskId: string) => {
-        setGoals(prevGoals => prevGoals.map(goal => {
-            if (goal.id === goalId) {
-                return {
-                    ...goal,
-                    subtasks: goal.subtasks.map(subtask => {
-                        if (subtask.id === subtaskId) {
-                            return { ...subtask, completed: !subtask.completed };
-                        }
-                        return subtask;
-                    }),
-                };
-            }
-            return goal;
-        }));
-    }, [setGoals]);
-
-    const calculateProgress = (goal: Goal): number => {
-        if (goal.subtasks.length === 0) return 0;
-        const completedCount = goal.subtasks.filter(st => st.completed).length;
-        return Math.round((completedCount / goal.subtasks.length) * 100);
-    };
-
-    const handleKeyPressGoal = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter') {
-            addGoal();
-        }
-    };
-
-    const handleKeyPressSubtask = (event: React.KeyboardEvent<HTMLInputElement>, goalId: string) => {
-        if (event.key === 'Enter') {
-            addSubtask(goalId);
-        }
-    };
-
-    // Handle clicking the "Create Task" button for a subtask
-    const handleCreateTaskClick = (subtask: Subtask) => {
-        onCreateTaskFromSubtask(subtask); // Call the passed-in callback
-    };
-
+    const [goals] = useLocalStorage<Goal[]>('weekwise-goals', []);
+    const { toast } = useToast(); // Kept for potential future interactions
 
     return (
-        <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden">
-
-            {/* Input Section for New Goal */}
-            <div className="p-4 border-b shrink-0 space-y-3 bg-secondary/30 rounded-b-md">
-                <Label htmlFor="goal-name" className="text-xs font-medium text-muted-foreground">
-                    New Goal Name
-                </Label>
-                <div className="flex space-x-2">
-                    <Input
-                        id="goal-name"
-                        value={newGoalName}
-                        onChange={(e) => setNewGoalName(e.target.value)}
-                        placeholder="e.g., Learn React"
-                        className="h-8 text-sm flex-grow"
-                        onKeyPress={handleKeyPressGoal}
-                    />
-                    <Button onClick={addGoal} size="sm" className="h-8">
-                        <Plus className="h-4 w-4" />
-                    </Button>
-                </div>
+        <div className="flex flex-col flex-grow p-4 pt-0 space-y-4 overflow-hidden h-full">
+            <div className="p-4 border-b shrink-0 bg-secondary/30 rounded-b-md">
+                 <p className="text-sm text-muted-foreground">
+                    View and manage your detailed goals on the dedicated <Link href="/goals" className="text-primary underline hover:text-primary/80">Goals Page</Link>.
+                 </p>
             </div>
 
-            {/* Goals List */}
             <ScrollArea className="flex-grow">
                 <div className="p-4 space-y-4">
                     {goals.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center pt-4">No goals yet. Add one above!</p>
+                        <p className="text-sm text-muted-foreground text-center pt-4">No goals yet. Add them on the Goals page!</p>
                     ) : (
                         <Accordion type="multiple" className="w-full">
                             {goals.map((goal) => {
-                                const progress = calculateProgress(goal);
+                                const progress = calculateGoalProgress(goal);
                                 return (
-                                    <AccordionItem key={goal.id} value={goal.id}>
-                                        <Card className="overflow-hidden shadow-sm border hover:shadow-md transition-shadow duration-200 mb-2">
-                                            <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/50 rounded-t-lg">
-                                                <AccordionTrigger className="flex-grow p-3 text-sm font-medium text-left">
-                                                    <div className="flex items-center space-x-2 min-w-0">
-                                                        <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 30)}</span> {/* Truncate goal name */}
-                                                        <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0">{progress}%</Badge>
-                                                    </div>
-                                                </AccordionTrigger>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-destructive hover:bg-destructive/10 mr-2 shrink-0"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        deleteGoal(goal.id);
-                                                    }}
-                                                    aria-label={`Delete goal ${goal.name}`}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </CardHeader>
-                                            <AccordionContent>
-                                                <CardContent className="p-3 space-y-3">
-                                                    <Progress value={progress} className="h-2" />
-
-                                                    {/* Subtask List */}
-                                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                                                        {goal.subtasks.length === 0 ? (
-                                                            <p className="text-xs text-muted-foreground">No subtasks yet.</p>
-                                                        ) : (
-                                                            goal.subtasks.map(subtask => (
-                                                                <div key={subtask.id} className="flex items-center justify-between space-x-1 bg-background p-1.5 rounded border">
-                                                                    <div className="flex items-center space-x-2 flex-grow min-w-0">
-                                                                        <Checkbox
-                                                                            id={`subtask-${subtask.id}`}
-                                                                            checked={subtask.completed}
-                                                                            onCheckedChange={() => toggleSubtaskCompletion(goal.id, subtask.id)}
-                                                                            className="shrink-0"
-                                                                            aria-label={`Mark subtask ${subtask.name} as ${subtask.completed ? 'incomplete' : 'complete'}`}
-                                                                        />
-                                                                        <Label
-                                                                            htmlFor={`subtask-${subtask.id}`}
-                                                                            className={cn("text-xs truncate whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer", subtask.completed && "line-through text-muted-foreground")}
-                                                                            title={subtask.name} // Full name as tooltip
-                                                                        >
-                                                                            {truncateText(subtask.name, 30)} {/* Truncate subtask name */}
-                                                                        </Label>
-                                                                    </div>
-                                                                    <div className="flex items-center shrink-0 space-x-1">
-                                                                         {/* Create Task Button */}
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-5 w-5 text-primary hover:bg-primary/10"
-                                                                            onClick={() => handleCreateTaskClick(subtask)}
-                                                                            aria-label={`Create calendar task for ${subtask.name}`}
-                                                                            title="Create Calendar Task" // Tooltip for clarity
-                                                                        >
-                                                                            <PlusCircle className="h-3 w-3" />
-                                                                        </Button>
-                                                                        {/* Delete Subtask Button */}
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-5 w-5 text-destructive hover:bg-destructive/10"
-                                                                            onClick={() => deleteSubtask(goal.id, subtask.id)}
-                                                                            aria-label={`Delete subtask ${subtask.name}`}
-                                                                        >
-                                                                            <Trash2 className="h-3 w-3" />
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            ))
+                                    <AccordionItem key={goal.id} value={goal.id} className="border-none mb-4">
+                                        <Card className="overflow-hidden shadow-md border hover:shadow-lg transition-shadow duration-200 bg-card">
+                                            <CardHeader className="p-0 flex flex-row items-center justify-between space-x-2 hover:bg-muted/30 rounded-t-md transition-colors">
+                                                <AccordionTrigger className="flex-grow p-4 text-base font-medium text-left text-primary hover:no-underline">
+                                                    <div className="flex flex-col min-w-0">
+                                                        <div className="flex items-center space-x-3">
+                                                            <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis" title={goal.name}>{truncateText(goal.name, 40)}</span>
+                                                            <Badge variant={progress === 100 ? "default" : "secondary"} className="text-xs shrink-0 h-6 px-2.5">{progress}%</Badge>
+                                                        </div>
+                                                        {goal.dueDate && (
+                                                            <span className="text-xs text-muted-foreground mt-1">
+                                                                Due: {goal.dueDate} {/* Consider formatting this date */}
+                                                            </span>
                                                         )}
                                                     </div>
-
-                                                    {/* Add Subtask Input */}
-                                                    <div className="flex space-x-2 pt-2">
-                                                        <Input
-                                                            value={newSubtaskInputs[goal.id] || ''}
-                                                            onChange={(e) => handleSubtaskInputChange(goal.id, e.target.value)}
-                                                            placeholder="Add a subtask..."
-                                                            className="h-7 text-xs flex-grow"
-                                                            onKeyPress={(e) => handleKeyPressSubtask(e, goal.id)}
-                                                        />
-                                                        <Button onClick={() => addSubtask(goal.id)} size="sm" className="h-7 px-2">
-                                                            <Plus className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
+                                                </AccordionTrigger>
+                                                {/* Optionally add delete or other actions here if needed in the sheet */}
+                                            </CardHeader>
+                                            <AccordionContent>
+                                                <CardContent className="p-4 space-y-2 border-t bg-muted/20">
+                                                    <Progress value={progress} className="h-2.5" />
+                                                    {goal.subtasks.length > 0 && (
+                                                        <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                                                            {goal.subtasks.map(subtask => (
+                                                                <div key={subtask.id} className="flex items-center space-x-2 bg-background p-1.5 rounded border text-xs">
+                                                                    <Checkbox id={`sheet-subtask-${subtask.id}`} checked={subtask.completed} disabled className="shrink-0"/>
+                                                                    <Label htmlFor={`sheet-subtask-${subtask.id}`} className={cn("truncate", subtask.completed && "line-through text-muted-foreground")}>
+                                                                        {truncateText(subtask.name, 25)}
+                                                                    </Label>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {goal.subtasks.length === 0 && (
+                                                         <p className="text-xs text-muted-foreground italic text-center py-1">No subtasks for this goal.</p>
+                                                    )}
                                                 </CardContent>
                                             </AccordionContent>
                                         </Card>

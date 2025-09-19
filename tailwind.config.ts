@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -9,7 +10,9 @@ export default {
   ],
   theme: {
   	extend: {
-        // Removed specific spacing utilities as they are no longer needed for icon positioning
+      screens: {
+        'wide': '1350px',
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -49,7 +52,8 @@ export default {
   				'2': 'hsl(var(--chart-2))',
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
+  				'5': 'hsl(var(--chart-5))',
+                '6': 'hsl(var(--chart-6))'
   			},
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
@@ -68,10 +72,10 @@ export default {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		keyframes: {
-            'task-complete': { // Animation for task completion
-                '0%': { transform: 'scale(1)', borderColor: 'hsl(var(--border))', opacity: 1 },
-                '50%': { transform: 'scale(1.05)', borderColor: 'hsl(var(--accent))', opacity: 0.8 },
-                '100%': { transform: 'scale(1)', borderColor: 'transparent', opacity: 0.6 },
+            'task-complete': {
+                '0%': { transform: 'scale(1)', opacity: 1 },
+                '50%': { transform: 'scale(1.05)', opacity: 0.8, borderColor: 'hsl(var(--accent))' },
+                '100%': { transform: 'scale(1)', opacity: 0.6, borderColor: 'transparent' },
             },
   			'accordion-down': {
   				from: {
@@ -88,14 +92,22 @@ export default {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
+        shine: {
+          '0%': { backgroundPosition: '200% 0' },
+          '100%': { backgroundPosition: '-200% 0' },
+        },
   		},
   		animation: {
-            'task-complete': 'task-complete 0.5s ease-in-out', // Removed 'forwards'
+            'task-complete': 'task-complete 0.5s ease-in-out',
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+        'shine': 'shine 4s linear infinite',
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography")
+  ],
 } satisfies Config;

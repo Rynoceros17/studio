@@ -1,26 +1,32 @@
 
-
 "use client";
 
 import type * as React from 'react';
-import { useCallback, useState, useMemo, useEffect } from 'react';
+import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import {
   DndContext,
   type DragEndEvent,
-  PointerSensor, // Import PointerSensor
-  useSensor, // Import useSensor
-  useSensors, // Import useSensors
+  PointerSensor,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import { TaskForm } from '@/components/TaskForm';
 import { CalendarView } from '@/components/CalendarView';
-import { PomodoroTimer } from '@/components/PomodoroTimer'; // Import PomodoroTimer
-import type { Task, Subtask } from '@/lib/types'; // Added Subtask type
-import useLocalStorage from '@/hooks/use-local-storage';
+import { PomodoroTimer } from '@/components/PomodoroTimer';
+import type { Task, Goal, UpcomingItem, SingleTaskOutput } from '@/lib/types';
+import useLocalStorage from '@/hooks/useLocalStorage';
 import { useToast } from "@/hooks/use-toast";
-import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -43,51 +49,143 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { TaskListSheet } from '@/components/TaskListSheet';
-import { BookmarkListSheet } from '@/components/BookmarkListSheet'; // Import BookmarkListSheet
-import { GoalsSheet } from '@/components/GoalsSheet'; // Import GoalsSheet
-import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target } from 'lucide-react'; // Added BookmarkIcon and Target
-import { format, parseISO } from 'date-fns';
-import { cn } from '@/lib/utils'; // Import cn
+import { TopTaskBar } from '@/components/TopTaskBar';
+import { AuthButton } from '@/components/AuthButton';
+import { useAuth } from '@/contexts/AuthContext';
+import { Plus, List, Timer as TimerIcon, Bookmark as BookmarkIcon, Target, LayoutDashboard, BookOpen, LogIn, SendHorizonal, Loader2, Save, Info, CalendarClock, Palette, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
+import { format, parseISO, startOfDay, addDays, subDays, isValid, isSameDay, startOfWeek } from 'date-fns';
+import { cn, calculateGoalProgress, calculateTimeLeft, parseISOStrict } from '@/lib/utils';
+import { parseNaturalLanguageTask } from '@/ai/flows/parse-natural-language-task-flow';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { colorTagToHexMap } from '@/lib/color-map';
+import { db } from '@/lib/firebase/firebase';
+import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { TodaysTasksDialog } from '@/components/TodaysTasksDialog';
+import { LoadingScreen } from '@/components/LoadingScreen';
+import { LandingPage } from '@/components/LandingPage';
+import { motion } from 'framer-motion';
+import { HueSlider } from '@/components/HueSlider';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { GoalOfWeekEditor } from '@/components/GoalOfWeekEditor';
+import { BookmarkListSheet } from '@/components/BookmarkListSheet';
+import { Separator } from '@/components/ui/separator';
+import { ThemePresets } from '@/components/ThemePresets';
+import { CurrentNextClass } from '@/components/CurrentNextClass';
+
+
+interface MoveRecurringConfirmationState {
+  task: Task;
+  originalDateStr: string;
+  newDateStr: string;
+}
 
 
 export default function Home() {
-  const [tasks, setTasks] = useLocalStorage<Task[]>('weekwise-tasks', []);
-  // completedTaskIds now stores strings in the format: `${taskId}_${dateStr}`
-  const [completedTaskIds, setCompletedTaskIds] = useLocalStorage<string[]>('weekwise-completed-tasks', []);
-  const completedTasks = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
-
-  // Calculate completed count based on unique task IDs present in completedTaskIds
-  const completedCount = useMemo(() => {
-      // Count based on unique tasks ever completed, might need adjustment based on exact requirement
-      // For now, just count the number of completion entries
-      return completedTaskIds.length;
-  }, [completedTaskIds]);
-
+  const [goals, setGoals] = useLocalStorage<Goal[]>('weekwise-goals', []);
+  const [currentDisplayDate, setCurrentDisplayDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [goalsByWeek, setGoalsByWeek] = useLocalStorage<Record<string, string>>('weekwise-goals-by-week', {});
+  
+  const { user, authLoading } = useAuth();
+  const isInitialLoad = useRef(true);
+  const firestoreUnsubscribeRef = useRef<Unsubscribe | null>(null);
+  const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
 
   const { toast } = useToast();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<Task> | null>(null); // State for prefilling task form
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
-  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false); // State for Bookmark sheet
-  const [isGoalsSheetOpen, setIsGoalsSheetOpen] = useState(false); // State for Goals sheet
-  const [isTimerVisible, setIsTimerVisible] = useState(false); // State for Pomodoro timer visibility
-  const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 }); // State for timer position
+  const [isBookmarkListOpen, setIsBookmarkListOpen] = useState(false);
+  const [isTimerVisible, setIsTimerVisible] = useState(false);
+  const [timerPosition, setTimerPosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{ task: Task; dateStr: string } | null>(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isThemeSheetOpen, setIsThemeSheetOpen] = useState(false);
+
+  const [chatInput, setChatInput] = useState('');
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [isTodaysTasksDialogOpen, setIsTodaysTasksDialogOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [hue, setHue] = useLocalStorage('app-primary-hue', 270);
+  const previousHueRef = useRef(hue);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const calendarRef = useRef<{ addTask: (task: Omit<Task, 'id'>) => void }>(null);
+
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary-hue', String(hue));
+    const oppositeHue = (hue + 180) % 360;
+    document.documentElement.style.setProperty('--opposite-hue', String(oppositeHue));
+
+    if (isDataLoaded && hue !== previousHueRef.current) {
+        previousHueRef.current = hue;
+    }
+  }, [hue, isDataLoaded]);
 
 
   useEffect(() => {
     setIsClient(true);
-    // Initial position slightly offset from top-right corner
-    const initialX = typeof window !== 'undefined' ? window.innerWidth - 300 - 24 : 0; // Adjust 300 based on timer width
-    const initialY = 24;
-    setTimerPosition({ x: initialX, y: initialY });
+    if (typeof window !== 'undefined') {
+        const initialX = window.innerWidth - 300 - 24;
+        const initialY = 24;
+        setTimerPosition({ x: initialX, y: initialY });
+    }
   }, []);
 
-  // Configure sensors for dragging the timer
+  // Show the "Today's Tasks" dialog only after the user's auth status and data is resolved.
+  useEffect(() => {
+    if (!authLoading && isDataLoaded) {
+        // Temporarily disabled to avoid being annoying during dev
+        // setIsTodaysTasksDialogOpen(true);
+    }
+  }, [authLoading, isDataLoaded]);
+
+  // Effect to handle initial data load (now only for non-task data from page)
+  useEffect(() => {
+    if (firestoreUnsubscribeRef.current) {
+      firestoreUnsubscribeRef.current();
+      firestoreUnsubscribeRef.current = null;
+    }
+
+    if (!user && !authLoading) {
+      isInitialLoad.current = false;
+      setIsDataLoaded(true);
+    } else if (user && db) {
+      // In a full implementation, you might load other non-task data here.
+      isInitialLoad.current = false;
+      setIsDataLoaded(true);
+    }
+    
+    return () => {
+      if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+      }
+    };
+  }, [user, authLoading, toast]);
+
+
+  // Effect for keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+K or Cmd+K to focus AI input
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        chatInputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup the event listener on component unmount
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []); // Empty dependency array ensures this effect runs only once
+
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      // Require the mouse to move by 10 pixels before activating
       activationConstraint: {
         distance: 10,
       },
@@ -103,497 +201,343 @@ export default function Home() {
     }
   };
 
-
-    const parseISOStrict = useCallback((dateString: string | undefined): Date | null => {
-        if (!dateString) return null;
-        const datePart = dateString.split('T')[0];
-        const date = parseISO(datePart + 'T00:00:00');
-        if (isNaN(date.getTime())) {
-            console.error("Invalid date string received:", dateString);
-            return null;
-        }
-        return date;
-    }, []); // Added useCallback with empty dependency array
-
-
-   const addTask = useCallback((newTaskData: Omit<Task, 'id'>) => {
-       const newTask: Task = {
-           ...newTaskData,
-           id: crypto.randomUUID(),
-           files: newTaskData.files ?? [],
-           details: newTaskData.details ?? '',
-           dueDate: newTaskData.dueDate,
-           recurring: newTaskData.recurring ?? false,
-           highPriority: newTaskData.highPriority ?? false, // Add high priority
-           exceptions: [], // Initialize exceptions array
-       };
-       setTasks((prevTasks) => {
-           const updatedTasks = [...prevTasks, newTask];
-           updatedTasks.sort((a, b) => {
-               const dateA = parseISOStrict(a.date);
-               const dateB = parseISOStrict(b.date);
-
-               if (!dateA && !dateB) return 0;
-               if (!dateA) return 1;
-               if (!dateB) return -1;
-
-               const dateComparison = dateA.getTime() - dateB.getTime();
-               if (dateComparison !== 0) return dateComparison;
-
-               // Sort by priority within the same day (High priority first)
-               if (a.highPriority !== b.highPriority) {
-                    return a.highPriority ? -1 : 1;
-               }
-
-               // Keep original order if dates and priority are the same
-               const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
-               const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
-               if (originalAIndex === -1 && originalBIndex === -1) return 0;
-               if (originalAIndex === -1) return 1;
-               if (originalBIndex === -1) return -1;
-               return originalAIndex - originalBIndex;
-
-           });
-           return updatedTasks;
-       });
-
-       const taskDate = parseISOStrict(newTaskData.date);
-       toast({
-           title: "Task Added",
-           description: `"${newTaskData.name}" added${taskDate ? ` for ${format(taskDate, 'PPP')}` : ''}.`,
-       });
-       setIsFormOpen(false); // Close form after adding
-       setPrefilledTaskData(null); // Clear prefilled data
-   }, [setTasks, toast, parseISOStrict]);
-
-
-    // Deletes the base task (and therefore all its occurrences)
-    const deleteAllOccurrences = useCallback((id: string) => {
-        const taskToDelete = tasks.find(task => task.id === id);
-        setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
-        // Remove all completion entries associated with this task ID
-        setCompletedTaskIds(prevIds => prevIds.filter(completionKey => !completionKey.startsWith(`${id}_`)));
-        if (taskToDelete) {
-            toast({
-                title: "Task Deleted",
-                description: `"${taskToDelete.name}" and all its future occurrences have been removed.`,
-                variant: "destructive",
-            });
-        }
-         setDeleteConfirmation(null); // Close confirmation dialog
-    }, [tasks, setTasks, setCompletedTaskIds, toast]);
-
-    // Adds an exception for a specific date instance of a recurring task
-    const deleteRecurringInstance = useCallback((taskId: string, dateStr: string) => {
-        const taskToModify = tasks.find(task => task.id === taskId);
-        setTasks(prevTasks => prevTasks.map(task => {
-            if (task.id === taskId) {
-                const updatedExceptions = [...(task.exceptions || []), dateStr];
-                return { ...task, exceptions: updatedExceptions };
-            }
-            return task;
-        }));
-        // Optionally remove completion entry if it exists for this specific instance
-        setCompletedTaskIds(prevIds => prevIds.filter(completionKey => completionKey !== `${taskId}_${dateStr}`));
-
-        if (taskToModify) {
-            toast({
-                title: "Task Instance Skipped",
-                description: `"${taskToModify.name}" for ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} will be skipped.`,
-            });
-        }
-        setDeleteConfirmation(null); // Close confirmation dialog
-    }, [tasks, setTasks, setCompletedTaskIds, toast, parseISOStrict]);
-
-    // This function is called by CalendarView to initiate the deletion process
-    const requestDeleteTask = useCallback((task: Task, dateStr: string) => {
-        if (task.recurring) {
-            setDeleteConfirmation({ task, dateStr }); // Open confirmation dialog for recurring tasks
-        } else {
-            deleteAllOccurrences(task.id); // Delete non-recurring task directly
-        }
-    }, [deleteAllOccurrences]);
-
-
-
-    const updateTask = useCallback((id: string, updates: Partial<Omit<Task, 'id' | 'files' | 'details' | 'dueDate' | 'exceptions'>>) => {
-        setTasks(prevTasks => {
-            let needsResort = false;
-            const updatedTasks = prevTasks.map(task => {
-                if (task.id === id) {
-                    const updatedTask = { ...task, ...updates };
-                    if ((updates.date && updates.date !== task.date) || (updates.highPriority !== undefined && updates.highPriority !== task.highPriority)) {
-                        needsResort = true;
-                    }
-                    return updatedTask;
-                }
-                return task;
-            });
-
-            if (needsResort) {
-                updatedTasks.sort((a, b) => {
-                    const dateA = parseISOStrict(a.date);
-                    const dateB = parseISOStrict(b.date);
-                    if (!dateA && !dateB) return 0;
-                    if (!dateA) return 1;
-                    if (!dateB) return -1;
-                    const dateComparison = dateA.getTime() - dateB.getTime();
-                    if (dateComparison !== 0) return dateComparison;
-
-                     // Sort by priority within the same day (High priority first)
-                    if (a.highPriority !== b.highPriority) {
-                        return a.highPriority ? -1 : 1;
-                    }
-                    return 0; // Maintain relative order otherwise
-                });
-            }
-            return updatedTasks;
-        });
+  const toggleGoalPriority = useCallback((goalId: string) => {
+    setGoals(prevGoals =>
+      prevGoals.map(goal =>
+        goal.id === goalId ? { ...goal, highPriority: !goal.highPriority } : goal
+      )
+    );
+    const goal = goals.find(g => g.id === goalId);
+    if (goal) {
         toast({
-            title: "Task Updated",
-            description: "Core task details have been updated.",
+            title: `Goal Priority ${!goal.highPriority ? 'Added' : 'Removed'}`,
+            description: `"${goal.name}" is ${!goal.highPriority ? 'now' : 'no longer'} high priority.`,
         });
-    }, [setTasks, toast, parseISOStrict]);
+    }
+  }, [goals, setGoals, toast]);
 
 
-  const updateTaskOrder = useCallback((date: string, orderedTaskIds: string[]) => {
-      setTasks(prevTasks => {
-          const tasksForDate = prevTasks.filter(task => {
-              const taskDateObj = parseISOStrict(task.date);
-               const currentDay = parseISOStrict(date);
+  const upcomingItemsForBar = useMemo((): UpcomingItem[] => {
+    if (!isClient) return [];
+    // This is now simplified as `tasks` state is in CalendarView.
+    // A more advanced implementation might use a shared context or lift state up again
+    // if this component *truly* needs realtime task data. For now, we'll only show goals.
+    const mappedGoals: UpcomingItem[] = goals
+      .filter(goal => {
+        if (!goal.dueDate) return false;
+        const goalDueDate = parseISOStrict(goal.dueDate);
+        if (!goalDueDate) return false;
+        const timeLeftDetails = calculateTimeLeft(goal.dueDate);
+        if (!timeLeftDetails || timeLeftDetails.isPastDue) return false;
+        if (calculateGoalProgress(goal) >= 100) return false;
+        return true;
+      })
+      .map(goal => ({
+        id: goal.id,
+        name: goal.name,
+        dueDate: goal.dueDate!,
+        type: 'goal' as 'goal',
+        goalHighPriority: goal.highPriority,
+        progress: calculateGoalProgress(goal),
+      }));
 
-              // Skip if task date or current day is invalid
-               if (!taskDateObj || !currentDay) return false;
+    return mappedGoals.sort((a, b) => {
+      const aIsHighPriority = a.goalHighPriority;
+      const bIsHighPriority = b.goalHighPriority;
 
-               // Skip if the task has an exception for this date
-               if (task.exceptions?.includes(date)) return false;
+      if (aIsHighPriority && !bIsHighPriority) return -1;
+      if (!aIsHighPriority && bIsHighPriority) return 1;
 
-               if (task.recurring) {
-                   const taskStartDayOfWeek = taskDateObj.getDay();
-                   const currentDayOfWeek = currentDay.getDay();
-                   return taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj;
-               } else {
-                    return format(taskDateObj, 'yyyy-MM-dd') === date;
-               }
-          });
-          const otherTasks = prevTasks.filter(task => {
-             const taskDateObj = parseISOStrict(task.date);
-             if (!taskDateObj) return true; // Keep tasks without dates
-             const currentDay = parseISOStrict(date);
-             if (!currentDay) return true; // Keep if target date is invalid
-
-             // Skip if the task has an exception for this date (already handled above but good for clarity)
-             if (task.exceptions?.includes(date)) return true;
-
-             if (task.recurring) {
-                 const taskStartDayOfWeek = taskDateObj.getDay();
-                 const currentDayOfWeek = currentDay.getDay();
-                 // Exclude if it's recurring and matches the target date's day of week
-                 return !(taskStartDayOfWeek === currentDayOfWeek && currentDay >= taskDateObj);
-             } else {
-                 // Exclude if it matches the target date directly
-                 return format(taskDateObj, 'yyyy-MM-dd') !== date;
-             }
-          });
-
-          const taskMap = new Map(tasksForDate.map(task => [task.id, task]));
-          const reorderedTasksForDate = orderedTaskIds.map(id => taskMap.get(id)).filter(Boolean) as Task[];
-
-          const combinedTasks = [...otherTasks, ...reorderedTasksForDate];
-
-          // Keep the existing sort logic, which should place reordered tasks correctly at the end
-           combinedTasks.sort((a, b) => {
-               const dateA = parseISOStrict(a.date);
-               const dateB = parseISOStrict(b.date);
-
-               if (!dateA && !dateB) return 0;
-               if (!dateA) return 1;
-               if (!dateB) return -1;
-
-               const dateComparison = dateA.getTime() - dateB.getTime();
-               if (dateComparison !== 0) return dateComparison;
-
-               // Within the same date, check if these tasks belong to the day being reordered
-               const aIsForTargetDate = tasksForDate.some(t => t.id === a.id);
-               const bIsForTargetDate = tasksForDate.some(t => t.id === b.id);
-
-               if (aIsForTargetDate && bIsForTargetDate) {
-                   // If both tasks are for the specific date being reordered, use the provided order
-                   const aIndex = orderedTaskIds.indexOf(a.id);
-                   const bIndex = orderedTaskIds.indexOf(b.id);
-                   if (aIndex !== -1 && bIndex !== -1) {
-                       return aIndex - bIndex;
-                   }
-               }
-
-               // If not part of the reorder for this specific date, sort by priority
-                if (a.highPriority !== b.highPriority) {
-                    return a.highPriority ? -1 : 1;
-                }
-
-               // Fallback to original overall order if dates and priority are the same
-               const originalAIndex = prevTasks.findIndex(t => t.id === a.id);
-               const originalBIndex = prevTasks.findIndex(t => t.id === b.id);
-                if (originalAIndex === -1 && originalBIndex === -1) return 0;
-                if (originalAIndex === -1) return 1;
-                if (originalBIndex === -1) return -1;
-               return originalAIndex - originalBIndex;
-          });
+      const dueDateA = parseISOStrict(a.dueDate)!;
+      const dueDateB = parseISOStrict(b.dueDate)!;
+      return dueDateA.getTime() - dueDateB.getTime();
+    });
+  }, [goals, isClient]);
 
 
-          return combinedTasks;
-      });
-  }, [setTasks, parseISOStrict]);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Check for two-finger touch
+    if (e.touches.length === 2) {
+      setTouchStartX(e.touches[0].clientX);
+    } else {
+      setTouchStartX(null); // Reset if not a two-finger touch
+    }
+  };
 
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) {
+      // Gesture didn't start with two fingers, so ignore.
+      return;
+    }
 
-    const toggleTaskCompletion = useCallback((taskId: string, dateStr: string) => {
-        const task = tasks.find(t => t.id === taskId);
-        if (!task) return;
+    // Use the first of the "changed" touches to determine the end position.
+    const touchEndX = e.changedTouches[0].clientX;
+    const deltaX = touchEndX - touchStartX;
+    const swipeThreshold = 50; // Minimum swipe distance in pixels
 
-        const completionKey = `${taskId}_${dateStr}`;
-        const currentCompletedKeys = new Set(completedTaskIds);
+    if (deltaX > swipeThreshold) {
+      // Swipe Right -> Go to Goals page
+      router.push('/goals');
+    } else if (deltaX < -swipeThreshold) {
+      // Swipe Left -> Go to Timetable page
+      router.push('/timetable');
+    }
 
-        if (currentCompletedKeys.has(completionKey)) {
-            currentCompletedKeys.delete(completionKey);
-            toast({
-                title: "Task Incomplete",
-                description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as incomplete.`,
-            });
-        } else {
-            currentCompletedKeys.add(completionKey);
-            toast({
-                title: "Task Completed!",
-                description: `"${task.name}" on ${format(parseISOStrict(dateStr) ?? new Date(), 'PPP')} marked as complete.`,
-            });
-        }
-        setCompletedTaskIds(Array.from(currentCompletedKeys));
-        // Trigger re-render by creating a new array - might not be needed if CalendarView reacts to completedTasks change
-        // setTasks(prevTasks => [...prevTasks]);
+    // Reset touch start position regardless of whether a swipe was detected.
+    // This completes the gesture.
+    setTouchStartX(null);
+  };
 
-    }, [tasks, completedTaskIds, setCompletedTaskIds, toast, parseISOStrict]);
+    const handleAddTask = (taskData: Omit<Task, 'id'>) => {
+        calendarRef.current?.addTask(taskData);
+        setIsFormOpen(false); // Close the dialog after adding
+    };
+  
+  if (authLoading || !isDataLoaded) {
+    return <LoadingScreen />;
+  }
 
-
-   // Removed highPriority from updates type
-   const updateTaskDetails = useCallback((id: string, updates: Partial<Pick<Task, 'details' | 'dueDate' | 'files'>>) => {
-     setTasks(prevTasks => {
-        let needsResort = false; // Keep for potential future use or if other updates require resorting
-       const updatedTasks = prevTasks.map(task => {
-         if (task.id === id) {
-             const updatedTask = { ...task, ...updates };
-             // Removed check if priority changed
-           return updatedTask;
-         }
-         return task;
-       });
-
-        // Keep the sorting logic in case other updates might require it in the future
-        if (needsResort) {
-             updatedTasks.sort((a, b) => {
-                 const dateA = parseISOStrict(a.date);
-                 const dateB = parseISOStrict(b.date);
-                 if (!dateA && !dateB) return 0;
-                 if (!dateA) return 1;
-                 if (!dateB) return -1;
-                 const dateComparison = dateA.getTime() - dateB.getTime();
-                 if (dateComparison !== 0) return dateComparison;
-
-                  // Sort by priority within the same day (High priority first)
-                 if (a.highPriority !== b.highPriority) {
-                     return a.highPriority ? -1 : 1;
-                 }
-                 return 0; // Maintain relative order otherwise
-             });
-         }
-
-       return updatedTasks;
-     });
-     toast({
-       title: "Task Details Updated",
-       description: "Additional details have been updated.",
-     });
-   }, [setTasks, toast, parseISOStrict]);
-
-   // Function to handle creating a task from a subtask
-    const handleCreateTaskFromSubtask = useCallback((subtask: Subtask) => {
-        // Prefill task data with subtask name
-        setPrefilledTaskData({ name: subtask.name });
-        setIsGoalsSheetOpen(false); // Close the Goals sheet
-        setIsFormOpen(true); // Open the TaskForm dialog
-    }, []); // Dependencies: none
-
+  if (!user) {
+    return <LandingPage />;
+  }
 
   return (
-    // Wrap the relevant part in DndContext for the timer
     <DndContext sensors={sensors} onDragEnd={handleTimerDragEnd}>
-      <main className="flex min-h-screen flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 relative overflow-hidden"> {/* Added overflow-hidden */}
-        <div className="w-full max-w-7xl space-y-4">
-          <header className="text-center py-2 relative z-10"> {/* Ensure header is above timer */}
-            <h1 className="text-3xl md:text-4xl font-bold text-primary tracking-tight">WeekWise</h1>
-          </header>
+      <div
+        className="flex min-h-screen flex-col items-center"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <header
+          className={cn(
+            "bg-background/95 backdrop-blur-sm border-b shadow-sm w-full sticky top-0 z-40",
+            "flex flex-col"
+          )}
+        >
+          <div className="relative flex justify-center items-center w-full px-4 h-12 md:h-14">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+               <Sheet open={isThemeSheetOpen} onOpenChange={setIsThemeSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary hover:bg-primary/10"
+                    aria-label="Change theme color"
+                  >
+                    <Palette className="h-5 w-5" />
+                    <span className="hidden md:inline ml-2">Theme</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[320px]" showOverlay={false}>
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="text-lg">Theme Settings</SheetTitle>
+                  </SheetHeader>
+                  <div className="p-4 space-y-6">
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Mode</Label>
+                      {isClient && theme && (
+                          <Tabs
+                            value={theme === 'system' ? 'light' : theme}
+                            onValueChange={setTheme}
+                            className="w-full"
+                          >
+                            <TabsList className="grid w-full grid-cols-2 h-9 p-0.5">
+                              <TabsTrigger value="light" className="text-xs h-7 px-2">Light</TabsTrigger>
+                              <TabsTrigger value="dark" className="text-xs h-7 px-2">Dark</TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                      )}
+                    </div>
+                    <Separator />
+                    <HueSlider hue={hue} setHue={setHue} />
+                    <Separator />
+                    <div className="space-y-3">
+                        <Label className="text-sm font-medium">Presets</Label>
+                        <ThemePresets setHue={setHue} currentHue={hue} />
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <Button
+                variant="ghost"
+                className="h-9 w-9 md:h-10 md:w-10 text-primary hover:bg-primary/10"
+                aria-label="Show welcome message"
+                onClick={() => setIsWelcomeOpen(true)}
+              >
+                <Info className="h-5 w-5" />
+              </Button>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
+              WeekWise.
+            </h1>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <AuthButton />
+            </div>
+          </div>
 
-          {/* Conditionally render CalendarView only on the client */}
-          {isClient && (
-              <CalendarView
-                tasks={tasks}
-                requestDeleteTask={requestDeleteTask} // Pass the request function
-                updateTaskOrder={updateTaskOrder}
-                toggleTaskCompletion={toggleTaskCompletion} // Pass the modified function
-                completedTasks={completedTasks} // Pass the Set of completion keys
-                updateTaskDetails={updateTaskDetails} // Pass the modified updateTaskDetails
-                updateTask={updateTask}
-                completedCount={completedCount} // Pass the completed count
+          <nav className="flex justify-center items-center w-full py-2 space-x-1 md:space-x-2 border-t-[0.5px]">
+              <Link
+                href="/detailed-view"
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20 dark:hover:text-primary-foreground")}
+                aria-label="Go to detailed view"
+              >
+                  <LayoutDashboard className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Detailed View</span>
+              </Link>
+              <Link
+                 href="/study-tracker"
+                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20 dark:hover:text-primary-foreground")}
+                 aria-label="Go to study tracker"
+              >
+                  <BookOpen className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Study</span>
+              </Link>
+              <Link
+                 href="/timetable"
+                 className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20 dark:hover:text-primary-foreground")}
+                 aria-label="Go to timetable importer"
+              >
+                  <CalendarClock className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Timetable</span>
+              </Link>
+              <Link
+                href="/goals"
+                className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20 dark:hover:text-primary-foreground")}
+                aria-label="View goals"
+              >
+                  <Target className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Goals</span>
+              </Link>
+              <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
+                  <SheetTrigger asChild>
+                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20 dark:hover:text-primary-foreground")} aria-label="View bookmarks">
+                          <BookmarkIcon className="h-5 w-5" />
+                          <span className="ml-2 hidden md:inline">Bookmarks</span>
+                      </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                      <div className="p-4 border-b shrink-0">
+                          <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
+                      </div>
+                      <BookmarkListSheet />
+                  </SheetContent>
+              </Sheet>
+              <Button
+                  variant="ghost"
+                  className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20 dark:hover:text-primary-foreground")}
+                  aria-label="Toggle Pomodoro Timer"
+                  onClick={() => setIsTimerVisible(!isTimerVisible)}
+              >
+                  <TimerIcon className="h-5 w-5" />
+                  <span className="ml-2 hidden md:inline">Timer</span>
+              </Button>
+              <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
+                  <SheetTrigger asChild>
+                      <Button variant="ghost" className={cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 md:h-10 md:w-auto md:px-3 text-primary bg-primary/5 hover:bg-primary/20 dark:hover:text-primary-foreground")} aria-label="Open scratchpad">
+                          <List className="h-5 w-5" />
+                          <span className="ml-2 hidden md:inline">Scratchpad</span>
+                      </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
+                      <div className="p-4 border-b shrink-0">
+                          <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Scratchpad</h3>
+                      </div>
+                      <TaskListSheet />
+                  </SheetContent>
+              </Sheet>
+          </nav>
+        </header>
+
+        <main
+          className="flex-grow w-full flex-col items-center justify-start p-2 md:p-4 bg-secondary/30 pt-4 md:pt-6"
+        >
+          <div className="grid grid-cols-12 gap-4 w-full max-w-[1800px] mx-auto">
+            {/* Left Column: Goal of the Week & Upcoming */}
+            <div className="col-span-12 wide:col-span-2 space-y-4">
+              <GoalOfWeekEditor
+                currentDisplayDate={currentDisplayDate}
+                goalsByWeek={goalsByWeek}
+                setGoalsByWeek={setGoalsByWeek}
               />
+              <CurrentNextClass />
+              <TopTaskBar
+               items={upcomingItemsForBar}
+               toggleGoalPriority={toggleGoalPriority}
+              />
+            </div>
+            
+            {/* Center Column: Calendar */}
+            <div className="col-span-12 wide:col-span-8">
+                <CalendarView
+                    ref={calendarRef}
+                    currentDisplayDate={currentDisplayDate}
+                    setCurrentDisplayDate={setCurrentDisplayDate}
+                />
+            </div>
+
+            {/* Right Column: Bookmarks */}
+            <div className="col-span-12 wide:col-span-2">
+               <Card className="h-full">
+                <div className="p-4 border-b shrink-0">
+                    <h3 className="text-lg font-semibold leading-none tracking-tight text-primary">Bookmarks</h3>
+                </div>
+                <BookmarkListSheet />
+               </Card>
+            </div>
+          </div>
+          
+          {isClient && isTimerVisible && (
+            <PomodoroTimer
+              position={timerPosition}
+              onClose={() => setIsTimerVisible(false)}
+            />
           )}
 
-          {/* Add New Task Dialog */}
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="default"
-                size="icon"
-                className="fixed bottom-4 right-4 md:bottom-6 md:right-6 h-12 w-12 rounded-full shadow-lg z-50"
-                aria-label="Add new task"
-                onClick={() => setPrefilledTaskData(null)} // Clear prefill when opening manually
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                 {/* Title changes based on whether it's prefilled */}
-                 <DialogTitle className="text-primary">
-                   {prefilledTaskData ? "Create Task from Subtask" : "Add New Task"}
-                 </DialogTitle>
-              </DialogHeader>
-               {/* Pass prefilledTaskData to TaskForm */}
-               <TaskForm
-                 addTask={addTask}
-                 onTaskAdded={() => {
-                    setIsFormOpen(false);
-                    setPrefilledTaskData(null); // Always clear after adding
-                 }}
-                 initialData={prefilledTaskData} // Pass initial data
-               />
-            </DialogContent>
-          </Dialog>
-
-         {/* Left Side Icons Container */}
-         <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col space-y-2"> {/* Container with spacing */}
-
-              {/* Goals Sheet Trigger */}
-             <Sheet open={isGoalsSheetOpen} onOpenChange={setIsGoalsSheetOpen}>
-                 <SheetTrigger asChild>
-                     <Button
-                         variant="outline"
-                         size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
-                         aria-label="View goals"
-                     >
-                         <Target className="h-6 w-6 text-primary" />
-                     </Button>
-                 </SheetTrigger>
-                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b shrink-0">
-                         <SheetTitle className="text-primary">Goals</SheetTitle>
-                     </SheetHeader>
-                      {/* Pass the callback to GoalsSheet */}
-                      <GoalsSheet onCreateTaskFromSubtask={handleCreateTaskFromSubtask} />
-                 </SheetContent>
-             </Sheet>
-
-             {/* Bookmark List Sheet Trigger */}
-             <Sheet open={isBookmarkListOpen} onOpenChange={setIsBookmarkListOpen}>
-                 <SheetTrigger asChild>
-                     <Button
-                         variant="outline"
-                         size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
-                         aria-label="View bookmarks"
-                     >
-                         <BookmarkIcon className="h-6 w-6 text-primary" />
-                     </Button>
-                 </SheetTrigger>
-                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b shrink-0">
-                         <SheetTitle className="text-primary">Bookmarks</SheetTitle>
-                     </SheetHeader>
-                     <BookmarkListSheet />
-                 </SheetContent>
-             </Sheet>
-
-             {/* Pomodoro Timer Trigger */}
-             <Button
-                 variant="outline"
-                 size="icon"
-                 className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
-                 aria-label="Toggle Pomodoro Timer"
-                 onClick={() => setIsTimerVisible(!isTimerVisible)}
-             >
-                 <TimerIcon className="h-6 w-6 text-primary" />
-             </Button>
-
-             {/* Task List (Scratchpad) Sheet Trigger */}
-             <Sheet open={isTaskListOpen} onOpenChange={setIsTaskListOpen}>
-                 <SheetTrigger asChild>
-                     <Button
-                         variant="outline"
-                         size="icon"
-                         className="h-12 w-12 rounded-full shadow-lg bg-card hover:bg-card/90 border-primary" // Standard size and styling
-                         aria-label="View scratchpad"
-                     >
-                         <List className="h-6 w-6 text-primary" />
-                     </Button>
-                 </SheetTrigger>
-                 <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b shrink-0">
-                         <SheetTitle className="text-primary">Scratchpad</SheetTitle>
-                     </SheetHeader>
-                     <TaskListSheet />
-                 </SheetContent>
-             </Sheet>
-
-         </div>
-
-
-        </div>
-
-        {/* Render Pomodoro Timer if visible and on client */}
-        {isClient && isTimerVisible && (
-          <PomodoroTimer
-            position={timerPosition}
-            onClose={() => setIsTimerVisible(false)}
+          <TodaysTasksDialog
+              isOpen={isTodaysTasksDialogOpen}
+              onClose={() => setIsTodaysTasksDialogOpen(false)}
+              tasks={[]}
           />
-        )}
 
-         {/* Recurring Task Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Recurring Task</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Do you want to delete only this occurrence of "{deleteConfirmation?.task?.name}" on {deleteConfirmation?.dateStr ? format(parseISOStrict(deleteConfirmation.dateStr) ?? new Date(), 'PPP') : ''}, or all future occurrences?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeleteConfirmation(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={() => deleteRecurringInstance(deleteConfirmation!.task.id, deleteConfirmation!.dateStr)}
-                         // Apply buttonVariants for outline and ensure text color contrasts
-                         className={cn(buttonVariants({ variant: "outline" }), "text-foreground")}
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild>
+                    <Button
+                        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+                        aria-label="Add new task"
                     >
-                        Delete This Occurrence Only
-                    </AlertDialogAction>
-                    <AlertDialogAction
-                        onClick={() => deleteAllOccurrences(deleteConfirmation!.task.id)}
-                        className={buttonVariants({ variant: "destructive" })}
-                    >
-                        Delete All Occurrences
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+                        <Plus className="h-7 w-7" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-primary">Add New Task</DialogTitle>
+                        <DialogDescription>
+                            Fill out the details for your new task below.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <TaskForm
+                        addTask={handleAddTask}
+                        onTaskAdded={() => setIsFormOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
 
-      </main>
+          <Dialog open={isWelcomeOpen} onOpenChange={setIsWelcomeOpen}>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Welcome to WeekWise</DialogTitle>
+                      <DialogDescription>
+                          This is your personal planner to organize your life, track your goals, and manage your time effectively. Use the AI to quickly add tasks, view your schedule in different formats, and stay on top of your deadlines.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                      <Button onClick={() => setIsWelcomeOpen(false)}>Get Started</Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+        </main>
+      </div>
     </DndContext>
   );
 }
+
+    
